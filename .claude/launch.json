@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "web", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5173 },
+    { "name": "web-headers", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "preview", "--config", "C:/Users/pawar/AppData/Local/Temp/claude/8a58d119fb0be0d5/529e3152-b621-4eba-adb9-bb86eba0d22f/scratchpad/preview-headers.config.mjs"], "port": 4173 }
+  ]
+}

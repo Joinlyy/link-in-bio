@@ -1,0 +1,20 @@
+project_id = "sdxvwmkzjqwmvsyscxup"
+
+# All functions verify callers in code (auth.getUser, order tokens or Meta signatures)
+[functions.instagram]
+verify_jwt = false
+
+[functions.account]
+verify_jwt = false
+
+[functions.check-url]
+verify_jwt = false
+
+[functions.download]
+verify_jwt = false
+
+[functions.instagram-webhook]
+verify_jwt = false
+
+[functions.domains]
+verify_jwt = false

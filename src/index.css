@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "DM Sans", "Noto Sans Devanagari", ui-sans-serif, sans-serif;
+
+  --color-cream: #f2f1ec;
+  --color-cream-200: #eceae3;
+  --color-cream-300: #e3e0d6;
+  --color-ink: #15161a;
+  --color-ink-800: #1f2025;
+  --color-ink-700: #2c2e35;
+  --color-ink-600: #464953;
+  --color-ink-500: #6b6e78;
+  --color-ink-400: #9a9ca4;
+  --color-lime: #d5f05c;
+  --color-lime-200: #ecf8b4;
+  --color-lilac: #b9aff5;
+  --color-lilac-100: #efecfe;
+  --color-lilac-200: #dfdafb;
+  --color-teal: #0f6b5f;
+  --color-rose: #f26b5b;
+
+  --shadow-soft: 0 1px 2px rgb(21 22 26 / 0.04), 0 12px 32px -16px rgb(21 22 26 / 0.14);
+  --shadow-lift: 0 2px 4px rgb(21 22 26 / 0.06), 0 24px 48px -20px rgb(21 22 26 / 0.25);
+
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    /* Opening a popup hides the scrollbar: keep its space so the page doesn't jump sideways */
+    scrollbar-gutter: stable;
+  }
+  body {
+    @apply bg-cream text-ink font-sans antialiased;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+    text-wrap: balance;
+  }
+  p { text-wrap: pretty; }
+  ::selection { background: var(--color-lime); color: var(--color-ink); }
+  :focus-visible {
+    outline: 2px solid var(--color-lilac);
+    outline-offset: 2px;
+  }
+  /* Single-column grids must never grow wider than their container (mobile overflow) */
+  [class~="grid"] { grid-template-columns: minmax(0, 1fr); }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em];
+  }
+  .display-xl {
+    @apply font-display font-bold tracking-[-0.025em] leading-[1.02];
+    font-size: clamp(2.5rem, 6.4vw, 5rem);
+  }
+  .display-lg {
+    @apply font-display font-bold tracking-[-0.025em] leading-[1.04];
+    font-size: clamp(2rem, 4.6vw, 3.5rem);
+  }
+  .display-md {
+    @apply font-display font-bold tracking-[-0.02em] leading-[1.08];
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+  }
+  .display-italic {
+    @apply italic font-medium text-ink-600;
+  }
+  .card {
+    @apply rounded-3xl bg-white shadow-soft;
+  }
+  .field {
+    @apply h-12 w-full rounded-2xl border border-ink/10 bg-cream px-4 text-[15px] text-ink placeholder:text-ink-400 transition outline-none;
+    @apply focus:border-lilac focus:bg-white focus:ring-4 focus:ring-lilac/25;
+  }
+  textarea.field {
+    @apply h-auto min-h-24 py-3 leading-relaxed;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+/* Phones zoom the whole page when a field's text is under 16px, and the layout jumps */
+@media (max-width: 639px) {
+  input:not([type="checkbox"], [type="radio"], [type="color"], [type="range"]), select, textarea { font-size: 16px; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  @page { margin: 12mm; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
