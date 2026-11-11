@@ -5,8 +5,8 @@ export const APP_NAME = import.meta.env.VITE_APP_NAME || 'LinkInBio'
 export const CONFIGURED_DOMAIN = import.meta.env.VITE_PUBLIC_DOMAIN || ''
 /** The address creators share. Until a domain is set it's the address the app runs on, so it always works */
 export const PUBLIC_DOMAIN = CONFIGURED_DOMAIN || (typeof window === 'undefined' ? '' : window.location.host)
-/** Instagram import and DM automation need a Meta app. They stay hidden until it's set up */
-export const INSTAGRAM_ENABLED = import.meta.env.VITE_INSTAGRAM_ENABLED === 'true'
+/** Instagram import and DM automation (Meta app is set up). Set VITE_INSTAGRAM_ENABLED=false to hide them */
+export const INSTAGRAM_ENABLED = import.meta.env.VITE_INSTAGRAM_ENABLED !== 'false'
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Missing VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY in .env')
