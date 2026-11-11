@@ -42,10 +42,13 @@ Deno.serve(handle(async (req) => {
       return json({ account: await exchange(admin, user.id, body.code, body.state) })
     case 'sync':
       return json({ account: await sync(admin, user.id) })
-    case 'disconnect':
+    case 'disconnect': {
+      const { data: tok } = await admin.from('instagram_tokens').select('access_token').eq('owner_id', user.id).maybeSingle()
+      if (tok?.access_token) await subscribe(tok.access_token, false)
       await admin.from('instagram_tokens').delete().eq('owner_id', user.id)
       await admin.from('instagram_accounts').delete().eq('owner_id', user.id)
       return json({ ok: true })
+    }
     default:
       throw new HttpError(400, 'Unknown action')
   }
@@ -145,7 +148,25 @@ async function exchange(admin: SupabaseClient, userId: string, code: string, sta
     owner_id: userId, access_token: long.access_token, expires_at: expiresAt, updated_at: new Date().toISOString(),
   })
 
-  return await fetchAndStoreProfile(admin, userId, long.access_token, String(short.user_id ?? ''))
+  const account = await fetchAndStoreProfile(admin, userId, long.access_token, String(short.user_id ?? ''))
+  await subscribe(long.access_token)
+  return account
+}
+
+/** Ask Instagram to send this account's comments and DMs to our webhook (DM automation).
+ *  Safe to repeat; failures are logged, never block connecting. */
+async function subscribe(token: string, on = true) {
+  try {
+    const url = new URL(`${GRAPH}/v21.0/me/subscribed_apps`)
+    if (on) url.searchParams.set('subscribed_fields', 'comments,messages')
+    url.searchParams.set('access_token', token)
+    const res = await fetch(url, { method: on ? 'POST' : 'DELETE' })
+    if (!res.ok) console.warn('subscribed_apps', on ? 'subscribe' : 'unsubscribe', res.status, (await res.text()).slice(0, 300))
+    return res.ok
+  } catch (e) {
+    console.warn('subscribed_apps failed', e)
+    return false
+  }
 }
 
 async function sync(admin: SupabaseClient, userId: string) {
@@ -172,7 +193,9 @@ async function sync(admin: SupabaseClient, userId: string) {
       throw new HttpError(401, 'Your Instagram connection expired. Please reconnect.')
     }
   }
-  return await fetchAndStoreProfile(admin, userId, token, acc?.ig_user_id ?? '')
+  const account = await fetchAndStoreProfile(admin, userId, token, acc?.ig_user_id ?? '')
+  await subscribe(token) // keeps older connections receiving comments and DMs
+  return account
 }
 
 async function fetchAndStoreProfile(admin: SupabaseClient, userId: string, token: string, igUserId: string) {

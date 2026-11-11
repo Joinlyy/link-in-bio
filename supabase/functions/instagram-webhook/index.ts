@@ -215,7 +215,7 @@ function followUpFields(rule: Rule, windowUntil: string | null) {
 async function sendMain(account: Account, rule: Rule, to: { igsid: string } | { commentId: string }) {
   if ('commentId' in to) {
     // A private reply is a single message; fold the collect prompt into it.
-    const msg = rule.collect ? { text: `${buildMessage(rule, true).text}\n\n${collectPrompt(rule)}` } : buildMessage(rule)
+    const msg = rule.collect ? { text: `${buildMessage(rule, true).text}\n\n${collectPrompt(rule)}` } : buildMessage(rule, true) // plain text: the safest format for a private reply
     await account.client.http.post(`/${account.ig_user_id}/messages`, { recipient: { comment_id: to.commentId }, message: msg })
     return
   }

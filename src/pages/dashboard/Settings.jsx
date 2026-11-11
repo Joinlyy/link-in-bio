@@ -158,7 +158,7 @@ function InstagramCard() {
             {instagram ? <Badge tone="green">Connected</Badge> : <Badge>Not connected</Badge>}
           </div>
           <p className="mt-1 text-sm text-ink-500">
-            Uses Meta’s official Instagram API. Requires a Creator or Business account. We only read your profile, posts and permitted insights.
+            Uses Meta’s official Instagram API. Needs a Creator or Business account. We read your profile, posts and insights, and send the DMs and comment replies you set up in DM automation.
           </p>
         </div>
       </div>
