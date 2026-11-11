@@ -30,11 +30,7 @@
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.5"
   },
-  "optionalDependencies": {
-    "@rolldown/binding-win32-x64-msvc": "1.2.16",
-    "@oxlint/binding-win32-x64-msvc": "1.90.0"
-  },
   "engines": {
-    "node": ">=22.12.0"
+    "node": "22.x"
   }
 }
