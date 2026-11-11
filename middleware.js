@@ -16,9 +16,11 @@ async function rpc(fn, params) {
 }
 
 const APP_HOSTS = (process.env.VITE_APP_HOSTS || '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
-const MAIN_DOMAIN = (process.env.VITE_PUBLIC_DOMAIN || 'yourbrand.in').toLowerCase()
+const MAIN_DOMAIN = (process.env.VITE_PUBLIC_DOMAIN || '').toLowerCase()
 
 function isAppHost(host) {
+  // Until the site's own domain is set, treat every host as the main site
+  if (!MAIN_DOMAIN && !APP_HOSTS.length) return true
   return APP_HOSTS.includes(host) || host === MAIN_DOMAIN || host === `www.${MAIN_DOMAIN}` || host.endsWith('.vercel.app') || host === 'localhost'
 }
 

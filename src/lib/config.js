@@ -23,6 +23,8 @@ const APP_HOSTS = (import.meta.env.VITE_APP_HOSTS || '')
   .concat(['localhost', '127.0.0.1', ...(CONFIGURED_DOMAIN ? [CONFIGURED_DOMAIN, `www.${CONFIGURED_DOMAIN}`] : [])])
 
 export function isCustomDomainHost(host = window.location.hostname) {
+  // Until the site's own domain is set, there's no way to tell it apart from a creator's, so assume it's ours
+  if (!CONFIGURED_DOMAIN && !import.meta.env.VITE_APP_HOSTS) return false
   const h = host.toLowerCase()
   return !APP_HOSTS.includes(h) && !h.endsWith('.vercel.app') && !h.endsWith('.localhost')
 }
