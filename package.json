@@ -28,7 +28,9 @@
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.89.0",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.3.5",
+    "vite": "^8.3.5"
+  },
+  "optionalDependencies": {
     "@rolldown/binding-win32-x64-msvc": "1.2.16",
     "@oxlint/binding-win32-x64-msvc": "1.90.0"
   },
