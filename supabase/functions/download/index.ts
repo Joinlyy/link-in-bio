@@ -45,4 +45,4 @@ Deno.serve(handle(async (req) => {
 
   await admin.from('orders').update({ downloads: order.downloads + 1 }).eq('id', order.id)
   return json({ url: data.signedUrl })
-}))
+}, { anyOrigin: true })) // order pages can be on a creator's own domain; the token is the credential
