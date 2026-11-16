@@ -21,3 +21,6 @@ verify_jwt = false
 
 [functions.whatsapp]
 verify_jwt = false
+
+[functions.instagram-data]
+verify_jwt = false

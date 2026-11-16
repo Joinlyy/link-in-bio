@@ -6,7 +6,7 @@ import { useOwnerFeatures } from '../../lib/usePlan'
 import { UpgradeNote } from '../../components/PlanGate'
 import { useAuth } from '../../context/AuthContext'
 import { errorMessage, invokeFunction, supabase } from '../../lib/supabase'
-import { disconnectInstagram, startInstagramConnect, syncInstagram } from '../../lib/instagram'
+import { disconnectInstagram, onInstagramConnected, startInstagramConnect, syncInstagram } from '../../lib/instagram'
 import { INSTAGRAM_ENABLED, PUBLIC_DOMAIN } from '../../lib/config'
 import { formatNumber } from '../../lib/embeds'
 import { LANGUAGES, NICHES } from '../../lib/i18n'
@@ -144,6 +144,7 @@ function InstagramCard() {
   const { instagram, setInstagram, isOwner } = usePage()
   const toast = useToast()
   const [busy, setBusy] = useState('')
+  useEffect(() => onInstagramConnected(() => toast('Instagram connected!')), [toast])
 
   async function run(kind, fn) {
     setBusy(kind)

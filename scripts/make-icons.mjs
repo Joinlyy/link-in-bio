@@ -140,6 +140,8 @@ const ICONS = [
   ['maskable-512.png', 512, { corner: 0, glyphSpan: 0.4 }],
   // iOS masks it itself and shows transparency as black — keep it opaque
   ['apple-touch-icon.png', 180, { corner: 0, glyphSpan: 0.48 }],
+  // Meta app icon (App settings → Basic): 1024×1024, square, opaque
+  ['app-icon-1024.png', 1024, { corner: 0, glyphSpan: 0.46 }],
 ]
 
 mkdirSync(OUT, { recursive: true })

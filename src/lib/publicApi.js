@@ -80,3 +80,6 @@ export async function getDownloadUrl(token, productId = null) {
   if (!res.ok) throw await readError(res)
   return (await res.json()).url
 }
+
+/** Status of an Instagram data deletion request (from Meta's data deletion callback) */
+export const fetchDeletionStatus = (code) => rpcGet('instagram_deletion_status', { p_code: code })

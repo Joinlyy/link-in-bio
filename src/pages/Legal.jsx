@@ -1,10 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { fetchDeletionStatus } from '../lib/publicApi'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
 import { APP_NAME } from '../lib/config'
 
-const UPDATED = '29 October 2026'
+const UPDATED = '16 November 2026'
+const CONTACT = 'support@joinlyy.com'
 
-function LegalShell({ title, children }) {
+function LegalShell({ title, children, hideNote = false }) {
   useEffect(() => {
     document.title = `${title} | ${APP_NAME}`
     window.scrollTo(0, 0)
@@ -19,9 +22,11 @@ function LegalShell({ title, children }) {
           <div className="mt-8 space-y-6 text-[15px] leading-relaxed text-ink-700 [&_h2]:mt-10 [&_h2]:font-display [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-ink [&_li]:ml-5 [&_li]:list-disc [&_ul]:space-y-1.5">
             {children}
           </div>
-          <p className="mt-10 rounded-2xl bg-lilac-100 p-4 text-sm">
-            This document is a starting template. Have it reviewed by a qualified lawyer before launch.
-          </p>
+          {!hideNote && (
+            <p className="mt-10 rounded-2xl bg-lilac-100 p-4 text-sm">
+              This document is a starting template. Have it reviewed by a qualified lawyer before launch.
+            </p>
+          )}
         </article>
       </main>
       <SiteFooter />
@@ -38,6 +43,8 @@ export function Privacy() {
         <li><b>Creators:</b> name, email, login details, page content, and — if you connect it — Instagram profile data and permitted insights via Meta’s official API.</li>
         <li><b>Visitors:</b> anonymous analytics (page views, clicks, approximate device/browser type, referring site) linked to a random identifier stored on your device. We do not use third-party advertising cookies.</li>
         <li><b>Leads:</b> name, email and/or WhatsApp number you submit to a creator’s form, with the consent text you agreed to.</li>
+        <li><b>Instagram automations:</b> when a creator turns on DM automation, we receive the comments and messages people send to that creator’s Instagram account through Meta’s API (Instagram username and the text), only to send the automatic reply and show it in the creator’s activity log. If someone replies with their email or phone number, it is saved as a lead for that creator.</li>
+        <li><b>WhatsApp:</b> if you give a WhatsApp number and opt in, we send order and payment updates to it from our WhatsApp Business number.</li>
       </ul>
       <h2>How we use it</h2>
       <ul>
@@ -47,10 +54,17 @@ export function Privacy() {
       </ul>
       <h2>Your rights</h2>
       <p>You can access, correct, export and delete your data at any time from Settings → Your data. Visitors who submitted a lead form can ask the creator, or us, to delete their details.</p>
+      <h2 id="data-deletion">Deleting your Instagram data</h2>
+      <p>You can remove our access to Instagram and delete the Instagram data we hold at any time, in any of these ways:</p>
+      <ul>
+        <li>In your dashboard, go to <b>Settings → Instagram → Disconnect</b>. We delete your Instagram access token and profile data straight away.</li>
+        <li>In the Instagram app, go to <b>Settings → Website permissions → Apps and websites</b>, remove {APP_NAME} and choose to delete your data. Meta notifies us and we delete your token, profile data and DM automation history. You get a confirmation code you can check at <a href="/data-deletion" className="underline">{typeof window === 'undefined' ? '' : window.location.host}/data-deletion</a>.</li>
+        <li>Delete your whole account from <b>Settings → Your data</b>, or email us at <a href={`mailto:${CONTACT}`} className="underline">{CONTACT}</a> and we will delete it within 30 days.</li>
+      </ul>
       <h2>Storage & security</h2>
       <p>Data is stored with Supabase (PostgreSQL) with row-level security; Instagram access tokens are stored server-side only and never exposed to browsers. Images and files are stored in Supabase Storage.</p>
       <h2>Contact</h2>
-      <p>Grievance officer: privacy@yourbrand.in</p>
+      <p>Grievance officer: <a href={`mailto:${CONTACT}`} className="underline">{CONTACT}</a></p>
     </LegalShell>
   )
 }
@@ -73,6 +87,50 @@ export function Terms() {
       <p>Only contact people who gave consent through your form, and honour opt-out requests promptly. WhatsApp messaging must follow WhatsApp Business policies.</p>
       <h2>Liability</h2>
       <p>The service is provided “as is”. To the extent permitted by law, our liability is limited to the amount you paid us in the last 12 months.</p>
+    </LegalShell>
+  )
+}
+
+/** Where Meta sends people after an Instagram data deletion request: /data-deletion?code=… */
+export function DataDeletion() {
+  const [params] = useSearchParams()
+  const [code, setCode] = useState(params.get('code') || '')
+  const [state, setState] = useState(null) // null | 'loading' | result | 'missing'
+
+  async function check(c = code) {
+    if (!c.trim()) return
+    setState('loading')
+    try {
+      const r = await fetchDeletionStatus(c.trim())
+      setState(r || 'missing')
+    } catch {
+      setState('missing')
+    }
+  }
+  useEffect(() => {
+    const c = params.get('code')
+    if (c) check(c)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const when = (ts) => new Date(ts).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return (
+    <LegalShell title="Data deletion" hideNote>
+      <p>When you remove {APP_NAME} from Instagram and ask for your data to be deleted, Meta gives you a confirmation code. Enter it here to see the status.</p>
+      <form onSubmit={(e) => { e.preventDefault(); check() }} className="flex flex-wrap gap-2">
+        <input className="field h-12 min-w-0 flex-1" placeholder="Confirmation code" value={code} onChange={(e) => setCode(e.target.value)} aria-label="Confirmation code" />
+        <button type="submit" className="h-12 rounded-full bg-ink px-6 text-sm font-semibold text-white">Check</button>
+      </form>
+      {state === 'loading' && <p>Checking…</p>}
+      {state === 'missing' && <p className="rounded-2xl bg-red-50 p-4 text-red-700">We couldn’t find that code. Check it and try again, or email <a href={`mailto:${CONTACT}`} className="underline">{CONTACT}</a>.</p>}
+      {state && typeof state === 'object' && (
+        <p className="rounded-2xl bg-lime-200 p-4">
+          {state.status === 'complete'
+            ? <>Done. Request <b>{state.code}</b> was received on {when(state.requested_at)} and your Instagram data was deleted on {when(state.completed_at)}.</>
+            : <>Request <b>{state.code}</b> was received on {when(state.requested_at)} and is being processed.</>}
+        </p>
+      )}
+      <p>See our <a href="/privacy#data-deletion" className="underline">privacy policy</a> for the other ways to delete your data.</p>
     </LegalShell>
   )
 }

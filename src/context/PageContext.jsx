@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { errorMessage, invokeFunction, supabase } from '../lib/supabase'
 import { normalizeUrl } from '../lib/embeds'
+import { onInstagramConnected } from '../lib/instagram'
 import { useAuth } from './AuthContext'
 import { useToast } from '../components/ui'
 import { ONE_PER_SITE } from '../pages/dashboard/blockTypes'
@@ -93,6 +94,9 @@ export function PageProvider({ children }) {
   useEffect(() => {
     load()
   }, [load])
+
+  // Instagram is connected in its own tab: refresh this one when it finishes (profile import, stats)
+  useEffect(() => onInstagramConnected(() => load()), [load])
 
   const track = useCallback(async (promise, onError) => {
     setSaving((n) => n + 1)

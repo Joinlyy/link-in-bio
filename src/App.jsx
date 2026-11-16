@@ -20,6 +20,7 @@ const ProductPage = lazy(() => import('./pages/ProductPage'))
 const OrderPage = lazy(() => import('./pages/OrderPage'))
 const Privacy = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Terms })))
+const DataDeletion = lazy(() => import('./pages/Legal').then((m) => ({ default: m.DataDeletion })))
 const SignIn = lazy(() => import('./pages/auth/SignIn'))
 const SignUp = lazy(() => import('./pages/auth/SignUp'))
 const ForgotPassword = lazy(() => import('./pages/auth/PasswordPages').then((m) => ({ default: m.ForgotPassword })))
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/data-deletion" element={<DataDeletion />} />
           <Route path="/academy" element={<Academy />} />
           <Route path="/academy/:slug" element={<Academy />} />
           <Route path="/:username" element={<PublicPage />} />

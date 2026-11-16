@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowUpRight, Check } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { errorMessage, supabase } from '../../lib/supabase'
-import { startInstagramConnect } from '../../lib/instagram'
+import { onInstagramConnected, startInstagramConnect } from '../../lib/instagram'
 import { INSTAGRAM_ENABLED, PUBLIC_DOMAIN } from '../../lib/config'
 import { LANGUAGES, NICHES } from '../../lib/i18n'
 import { cleanUsername, useUsernameCheck } from '../../lib/useUsernameCheck'
@@ -56,6 +56,9 @@ export default function Onboarding() {
       }
     })
   }, [user, navigate, addingPage])
+
+  // Instagram finished connecting in its own tab (profile already imported): go to the editor
+  useEffect(() => onInstagramConnected(() => navigate('/dashboard/editor', { replace: true })), [navigate])
 
   async function createPage(template) {
     setBusy(true)
@@ -110,8 +113,9 @@ export default function Onboarding() {
       await startInstagramConnect({ returnTo: '/dashboard/editor', importProfile: true })
     } catch (err) {
       setError(err.message)
-      setBusy(false)
     }
+    // Instagram opens in its own tab; this page moves on when that tab says it's connected
+    setBusy(false)
   }
 
   if (checking) return <FullScreenLoader />

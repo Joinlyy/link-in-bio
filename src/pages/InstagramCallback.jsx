@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { applyInstagramToPage, exchangeInstagramCode } from '../lib/instagram'
+import { announceInstagramConnected, applyInstagramToPage, clearConnectSettings, connectSettings, exchangeInstagramCode } from '../lib/instagram'
 import { useAuth } from '../context/AuthContext'
+import { APP_NAME } from '../lib/config'
 import { Alert, Button, Spinner } from '../components/ui'
 import { InstagramIcon } from '../components/icons'
 
@@ -11,8 +12,19 @@ export default function InstagramCallback() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [error, setError] = useState(params.get('error_description') || (params.get('error') ? 'Instagram connection was cancelled.' : ''))
+  const [done, setDone] = useState(false)
   const ran = useRef(false)
-  const returnTo = sessionStorage.getItem('lib_ig_return') || '/dashboard/settings'
+  const [settings] = useState(connectSettings)
+  const { returnTo, newTab } = settings
+
+  // In its own tab: close it (allowed only for tabs a script opened); otherwise go back into the app
+  function finish(path) {
+    if (newTab) {
+      window.close()
+      // Still open (the browser refused): fall through to the page below
+    }
+    navigate(path, { replace: true })
+  }
 
   useEffect(() => {
     if (ran.current || error || !user) return
@@ -20,7 +32,7 @@ export default function InstagramCallback() {
     ;(async () => {
       try {
         const account = await exchangeInstagramCode(params.get('code'), params.get('state'))
-        if (sessionStorage.getItem('lib_ig_import')) {
+        if (settings.importProfile) {
           // Import into the page being edited (or the first page this creator owns)
           let selected = null
           try {
@@ -32,13 +44,19 @@ export default function InstagramCallback() {
           const page = (owned || []).find((p) => p.id === selected) || (owned || [])[0]
           if (page) await applyInstagramToPage(page, account)
         }
-        sessionStorage.removeItem('lib_ig_import')
-        navigate(`${returnTo}${returnTo.includes('?') ? '&' : '?'}instagram=connected`, { replace: true })
+        clearConnectSettings()
+        announceInstagramConnected()
+        if (newTab) {
+          setDone(true)
+          window.close()
+        } else {
+          navigate(`${returnTo}${returnTo.includes('?') ? '&' : '?'}instagram=connected`, { replace: true })
+        }
       } catch (err) {
         setError(err.message)
       }
     })()
-  }, [user, error, params, navigate, returnTo])
+  }, [user, error, params, navigate, returnTo, newTab, settings])
 
   return (
     <div className="grid min-h-dvh place-items-center px-4">
@@ -50,7 +68,13 @@ export default function InstagramCallback() {
           <>
             <h1 className="display-md mt-6">Couldn’t connect</h1>
             <div className="mt-4 text-left"><Alert>{error}</Alert></div>
-            <Button className="mt-6" onClick={() => navigate(returnTo, { replace: true })}>Go back</Button>
+            <Button className="mt-6" onClick={() => finish(returnTo)}>{newTab ? 'Close this tab' : 'Go back'}</Button>
+          </>
+        ) : done ? (
+          <>
+            <h1 className="display-md mt-6">Instagram connected</h1>
+            <p className="mt-2 text-ink-500">Your {APP_NAME} tab has been updated. You can close this tab.</p>
+            <Button className="mt-6" onClick={() => finish(`${returnTo}${returnTo.includes('?') ? '&' : '?'}instagram=connected`)}>Close this tab</Button>
           </>
         ) : (
           <>
