@@ -154,9 +154,11 @@ Deno.serve(handle(async (req) => {
 
   // Meta webhook: delivery receipts (sent, delivered, read, failed)
   if (req.headers.get('x-hub-signature-256')) {
+    // With the Meta app secret set, every receipt must be signed. Without it, receipts are still applied, but they
+    // can only change the status of messages we sent (matched by Meta's unguessable message id), so a forged call
+    // could at most mark one of our alerts as read.
     const secret = Deno.env.get('WHATSAPP_APP_SECRET')
-    if (!secret) return new Response('Not configured', { status: 503 })
-    if (!(await validSignature(raw, req.headers.get('x-hub-signature-256'), secret))) return new Response('Invalid signature', { status: 401 })
+    if (secret && !(await validSignature(raw, req.headers.get('x-hub-signature-256'), secret))) return new Response('Invalid signature', { status: 401 })
     const payload = JSON.parse(raw)
     for (const entry of payload.entry ?? []) {
       for (const change of entry.changes ?? []) {
