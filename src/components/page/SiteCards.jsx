@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { trackClick } from '../../lib/analytics'
 import { normalizeUrl } from '../../lib/embeds'
+import { isExternal, productKind } from '../../lib/productKind'
 import { formatInr, optimizedImage } from '../../lib/images'
 import { FONTS, hexAlpha } from '../../lib/themes'
 import { ArrowUpRightIcon } from '../icons'
@@ -143,8 +144,8 @@ export function CardsBlock({ block, ctx }) {
   )
 }
 
-const TYPE_EMOJI = { digital: '📥', content: '🔒', bundle: '📦', session: '🎥', webinar: '🗓️', membership: '👑', question: '💬', link: '🛍️' }
-const GROUP_LABEL = { digital: 'Downloads', content: 'Paid content', bundle: 'Bundles', session: '1:1 sessions', webinar: 'Webinars', membership: 'Memberships', question: 'Ask me', link: 'Shop' }
+const TYPE_EMOJI = { digital: '📥', content: '🔒', bundle: '📦', session: '🎥', webinar: '🗓️', membership: '👑', question: '💬', link: '🛍️', course: '🎓' }
+const GROUP_LABEL = { digital: 'Downloads', content: 'Paid content', bundle: 'Bundles', session: '1:1 sessions', webinar: 'Webinars', membership: 'Memberships', question: 'Ask me', link: 'Shop', course: 'Courses' }
 
 /** Older pages stored a layout name instead of columns + style */
 function productDisplay(d) {
@@ -165,9 +166,9 @@ export function ProductsBlock({ block, ctx }) {
       <div className="mx-auto w-full max-w-2xl p-5 text-center text-sm opacity-70" style={surfaceCss(ctx.theme)}>Your products show here once you publish them.</div>
     ) : null
   }
-  const types = [...new Set(all.map((p) => p.type))]
+  const types = [...new Set(all.map(productKind))]
   const showFilters = all.length >= 4 && types.length >= 2
-  const list = group ? all.filter((p) => p.type === group) : all
+  const list = group ? all.filter((p) => productKind(p) === group) : all
   const visible = expanded ? list : list.slice(0, Number(limit) || list.length)
   const chip = (active) => ({ background: active ? ctx.theme.text : hexAlpha(ctx.theme.text, 0.07), color: active ? ctx.theme.bg : ctx.theme.text })
 
@@ -186,7 +187,9 @@ export function ProductsBlock({ block, ctx }) {
       )}
       <CardsLayout columns={columns} count={visible.length}>
         {visible.map((p) => {
-          const isLink = p.type === 'link'
+          const kind = productKind(p)
+          const isLink = isExternal(p)
+          const direct = isLink && kind !== 'course' // brand products open the store; courses show details first
           const per = p.type === 'membership' && p.price_inr > 0 && !p.pay_what_you_want ? ` / ${p.data?.interval === 'year' ? 'yr' : 'mo'}` : ''
           const price = p.pay_what_you_want ? `${formatInr(p.min_price_inr)}+` : p.price_inr ? `${formatInr(p.price_inr)}${per}` : isLink ? null : 'Free'
           const soldOut = p.stock_left === 0
@@ -198,16 +201,16 @@ export function ProductsBlock({ block, ctx }) {
                 style={style}
                 wide={Number(columns) === 1}
                 title={p.title}
-                text={p.data?.label || GROUP_LABEL[p.type]}
+                text={kind === 'course' ? [p.data?.lessons ? `${p.data.lessons} lessons` : '', p.data?.duration, p.data?.label].filter(Boolean).join(' · ') || 'Course' : p.data?.label || GROUP_LABEL[kind]}
                 image={p.thumbnail_url}
-                emoji={TYPE_EMOJI[p.type]}
+                emoji={TYPE_EMOJI[kind]}
                 price={price}
                 oldPrice={p.compare_at_inr > p.price_inr ? formatInr(p.compare_at_inr) : null}
                 badge={soldOut ? 'Sold out' : onSale ? 'Sale' : null}
-                href={isLink && p.data?.url ? normalizeUrl(p.data.url) : undefined}
+                href={direct && p.data?.url ? normalizeUrl(p.data.url) : undefined}
                 onClick={() => {
                   if (!ctx.preview) trackClick(ctx.pageId, null)
-                  if (!isLink) ctx.openItem(p.id)
+                  if (!direct) ctx.openItem(p.id)
                 }}
               />
             </div>

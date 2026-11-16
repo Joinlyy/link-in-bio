@@ -57,13 +57,14 @@ function useUsage(userId) {
 }
 
 function UsageBar({ label, scope, used, max }) {
-  const pct = max ? Math.min(100, (used / max) * 100) : used ? 100 : 0
-  const full = max !== undefined && used >= max
+  const pct = max === null || max >= 10000 ? 0 : max ? Math.min(100, (used / max) * 100) : used ? 100 : 0
+  const unlimited = max === null || max >= 10000
+  const full = !unlimited && max !== undefined && used >= max
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-sm font-semibold">{label} <span className="font-normal text-ink-500">· {scope}</span></p>
-        <p className={`shrink-0 text-sm font-semibold ${full ? 'text-red-600' : ''}`}>{used ?? '—'} / {max ?? '—'}</p>
+        <p className={`shrink-0 text-sm font-semibold ${full ? 'text-red-600' : ''}`}>{used ?? '—'} / {unlimited ? '∞' : max ?? '—'}</p>
       </div>
       <div className="mt-2 h-2 rounded-full bg-cream">
         <div className={`h-2 rounded-full transition-all ${full ? 'bg-rose' : 'bg-ink'}`} style={{ width: `${pct}%` }} />
@@ -121,7 +122,7 @@ export default function Billing() {
     setBusy(null)
     setConfirmCancel(false)
     if (error) return toast(errorMessage(error), 'error')
-    toast('Plan cancelled — you’re back on Free')
+    toast('Plan cancelled — you’re back on Starter')
     reload()
     reloadPages()
   }
@@ -143,7 +144,7 @@ export default function Billing() {
           <span className="inline-flex items-center gap-1.5 font-semibold"><FlaskConical className="size-4" /> Test mode</span>: upgrades are instant and no payment is taken.
         </Alert>
       ) : payInfo && !payInfo.upi_id ? (
-        <Alert tone="info">Paid plans open soon. You can keep using Free in the meantime.</Alert>
+        <Alert tone="info">Paid plans open soon. You can keep using Starter in the meantime.</Alert>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
@@ -293,7 +294,7 @@ export default function Billing() {
       </Modal>
 
       <Modal open={confirmCancel} onClose={() => setConfirmCancel(false)} title="Cancel your plan?">
-        <p className="text-sm text-ink-600">You’ll move to Free right away. Extra pages, team access, custom domains and branding removal stop working. Your content stays safe.</p>
+        <p className="text-sm text-ink-600">You’ll move to Starter right away. Paid features stop: extra pages, team access, custom domain, branding removal, WhatsApp alerts and advanced DM automations. Your content stays safe.</p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setConfirmCancel(false)}>Keep plan</Button>
           <Button variant="danger" loading={busy === 'cancel'} onClick={cancel}>Cancel plan</Button>

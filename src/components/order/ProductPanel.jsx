@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { checkCoupon, checkoutOrder, fetchPaymentMode } from '../../lib/publicApi'
 import { formatBytes, formatInr, optimizedImage } from '../../lib/images'
+import { normalizeUrl } from '../../lib/embeds'
+import { courseHighlights, isExternal, productKind } from '../../lib/productKind'
 import { FONTS } from '../../lib/themes'
 import { formatIst } from '../../lib/slots'
 import { CalendarIcon, CheckIcon } from '../icons'
@@ -111,7 +113,7 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
       <input className="field" placeholder="Your name" required maxLength={120} autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       <input className="field" type="email" required placeholder="Email (we’ll show your access link)" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
       <input className="field" type="tel" placeholder="WhatsApp number (optional)" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-      {mode === 'upi' && form.phone.trim() && (
+      {mode === 'upi' && page.wa_updates !== false && form.phone.trim() && (
         <label className="flex items-start gap-2.5 text-sm">
           <input type="checkbox" className="mt-0.5 size-4 accent-ink" checked={form.waUpdates} onChange={(e) => setForm({ ...form, waUpdates: e.target.checked })} />
           <span>Send me a WhatsApp message when my payment is confirmed</span>
@@ -142,9 +144,11 @@ export function ProductInfo({ product, theme, seatsLeft, stockLeft }) {
   const when = product.type === 'webinar' && product.data?.starts_at
   const sessions = Math.max(1, Number(product.data?.sessions) || 1)
   const items = product.bundle_items || []
+  const kind = productKind(product)
+  const highlights = kind === 'course' ? courseHighlights(product) : []
   return (
             <div>
-              <p className="eyebrow text-ink-500">{TYPE_LABEL[product.type]}</p>
+              <p className="eyebrow text-ink-500">{TYPE_LABEL[kind]}</p>
               <h1 className="mt-2 text-3xl leading-tight font-bold tracking-tight break-words sm:text-4xl" style={{ fontFamily: FONTS[theme.headingFont]?.css }}>{product.title}</h1>
               <div className="mt-4 flex flex-wrap gap-2 text-sm">
                 {when && <span className="inline-flex items-center gap-1.5 rounded-full bg-cream px-3 py-1.5 font-medium"><CalendarIcon size={14} /> {formatIst(product.data.starts_at, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} IST · {product.data.duration || 60} min</span>}
@@ -153,6 +157,10 @@ export function ProductInfo({ product, theme, seatsLeft, stockLeft }) {
                 {product.type === 'bundle' && items.length > 0 && <span className="rounded-full bg-cream px-3 py-1.5 font-medium">{items.length} items included</span>}
                 {product.type === 'membership' && <span className="rounded-full bg-cream px-3 py-1.5 font-medium">Billed {product.data?.interval === 'year' ? 'yearly' : 'monthly'}</span>}
                 {product.type === 'question' && <span className="rounded-full bg-cream px-3 py-1.5 font-medium">Reply within {product.data?.response_days || 3} day{Number(product.data?.response_days) === 1 ? '' : 's'}</span>}
+                {kind === 'course' && product.data?.lessons && <span className="rounded-full bg-cream px-3 py-1.5 font-medium">{product.data.lessons} lessons</span>}
+                {kind === 'course' && product.data?.duration && <span className="rounded-full bg-cream px-3 py-1.5 font-medium">{product.data.duration}</span>}
+                {kind === 'course' && product.data?.level && <span className="rounded-full bg-cream px-3 py-1.5 font-medium">{product.data.level}</span>}
+                {isExternal(product) && product.data?.label && <span className="rounded-full bg-cream px-3 py-1.5 font-medium">On {product.data.label}</span>}
                 {seatsLeft != null && <span className="rounded-full bg-lime px-3 py-1.5 font-semibold">{seatsLeft} seats left</span>}
                 {stockLeft != null && stockLeft > 0 && <span className="rounded-full bg-lime px-3 py-1.5 font-semibold">Only {stockLeft} left</span>}
               </div>
@@ -175,7 +183,15 @@ export function ProductInfo({ product, theme, seatsLeft, stockLeft }) {
                   </ul>
                 </div>
               )}
-              <ul className="mt-6 space-y-2 text-sm text-ink-600">
+              {highlights.length > 0 && (
+                <div className="mt-6">
+                  <p className="eyebrow mb-2 text-ink-500">What you’ll learn</p>
+                  <ul className="grid gap-2">
+                    {highlights.map((h, i) => <li key={i} className="flex items-start gap-2 text-[15px]"><span className="mt-0.5 shrink-0"><CheckIcon size={16} /></span> <span className="break-words">{h}</span></li>)}
+                  </ul>
+                </div>
+              )}
+              {!isExternal(product) && <ul className="mt-6 space-y-2 text-sm text-ink-600">
                 {product.type === 'digital' && <li className="flex items-center gap-2"><CheckIcon size={16} /> Instant download after checkout</li>}
                 {product.type === 'bundle' && <li className="flex items-center gap-2"><CheckIcon size={16} /> Everything unlocked instantly after checkout</li>}
                 {product.type === 'content' && <li className="flex items-center gap-2"><CheckIcon size={16} /> Unlocked instantly after checkout</li>}
@@ -185,13 +201,14 @@ export function ProductInfo({ product, theme, seatsLeft, stockLeft }) {
                 {product.type === 'session' && Number(product.data?.reschedule_hours ?? 24) >= 0 && <li className="flex items-center gap-2"><CheckIcon size={16} /> Reschedule up to {product.data?.reschedule_hours ?? 24} hours before</li>}
                 {product.type === 'webinar' && <li className="flex items-center gap-2"><CheckIcon size={16} /> Joining link shown right after registration</li>}
                 <li className="flex items-center gap-2"><CheckIcon size={16} /> Receipt on screen — bookmark your access page</li>
-              </ul>
+              </ul>}
             </div>
   )
 }
 
 /** Price, offer countdown and the checkout form */
 export function BuyBox({ product, page, booked, seatsLeft, stockLeft, onReload, onOrdered, preview }) {
+  if (isExternal(product)) return <ExternalBuy product={product} page={page} />
   const soldOut = seatsLeft === 0 || stockLeft === 0
   const per = product.type === 'membership' ? ` / ${intervalLabel(product.data)}` : ''
   const priceText = product.pay_what_you_want ? `${formatInr(product.min_price_inr)}+` : product.price_inr ? formatInr(product.price_inr) : 'Free'
@@ -204,6 +221,34 @@ export function BuyBox({ product, page, booked, seatsLeft, stockLeft, onReload, 
         {product.compare_at_inr > product.price_inr && <span className="text-lg text-ink-400 line-through">{formatInr(product.compare_at_inr)}</span>}
       </div>
       <Checkout key={product.price_inr} product={product} page={page} booked={booked} soldOut={soldOut} onOrdered={onOrdered} preview={preview} />
+    </>
+  )
+}
+
+/** Brand products and courses are bought on another website: price for reference and a link out */
+function ExternalBuy({ product, page }) {
+  const course = productKind(product) === 'course'
+  const where = product.data?.label?.trim()
+  const url = product.data?.url ? normalizeUrl(product.data.url) : null
+  const verb = course ? 'Enrol' : 'Buy'
+  return (
+    <>
+      {product.price_inr > 0 && (
+        <div className="mb-5 flex flex-wrap items-baseline gap-x-2">
+          <span className="font-display text-4xl font-bold">{formatInr(product.price_inr)}</span>
+          {product.compare_at_inr > product.price_inr && <span className="text-lg text-ink-400 line-through">{formatInr(product.compare_at_inr)}</span>}
+        </div>
+      )}
+      {url ? (
+        <a href={url} target="_blank" rel="noopener noreferrer sponsored" className="flex h-13 w-full items-center justify-center rounded-full bg-ink px-5 text-center text-[15px] font-semibold text-white">
+          {where ? `${verb} on ${where}` : course ? 'Enrol now' : 'Buy now'} ↗
+        </a>
+      ) : (
+        <div className="rounded-2xl bg-cream p-5 text-center font-semibold">Link coming soon</div>
+      )}
+      <p className="mt-3 text-center text-xs text-ink-500">
+        {course ? 'You enrol and pay' : 'You buy and pay'} on {where || 'another website'}. {page.display_name || 'The creator'} shares the link; payment{course ? ', course access' : ''} and delivery are handled there.
+      </p>
     </>
   )
 }

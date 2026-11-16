@@ -12,6 +12,7 @@ export const TYPE_LABEL = {
   session: '1:1 session',
   webinar: 'Live webinar',
   link: 'Product',
+  course: 'Online course',
 }
 
 export const intervalLabel = (data) => (data?.interval === 'year' ? 'year' : 'month')

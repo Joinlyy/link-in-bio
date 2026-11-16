@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { BarChart3, Check, Copy, Link2, RefreshCw } from 'lucide-react'
 import { usePage } from '../../context/PageContext'
+import { useOwnerFeatures } from '../../lib/usePlan'
+import { UpgradeNote } from '../../components/PlanGate'
 import { supabase } from '../../lib/supabase'
 import { formatNumber } from '../../lib/embeds'
 import { formatInr } from '../../lib/images'
@@ -16,6 +18,7 @@ const RANGES = [
   { key: '7', label: '7 days' },
   { key: '30', label: '30 days' },
   { key: '90', label: '90 days' },
+  { key: '365', label: '1 year' },
   { key: 'custom', label: 'Custom' },
 ]
 
@@ -153,13 +156,19 @@ function UtmBuilder({ username }) {
 
 export default function Analytics() {
   const { page, blocks, products } = usePage()
-  const [range, setRange] = useState('30')
+  const features = useOwnerFeatures(page.owner_id)
+  const maxDays = features?.analytics_days ?? 365
+  const rangeOk = (k) => k === 'custom' || Number(k) <= maxDays
+  const [chosenRange, setRange] = useState('30')
+  // A range longer than the plan allows falls back to the longest one it does
+  const range = rangeOk(chosenRange) ? chosenRange : [...RANGES].reverse().find((r) => r.key !== 'custom' && rangeOk(r.key))?.key || '7'
+  const earliest = addDays(istToday(), -(maxDays - 1))
   const [custom, setCustom] = useState({ from: addDays(istToday(), -13), to: istToday() })
   const [data, setData] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [tick, setTick] = useState(0)
 
-  const { from, to } = range === 'custom' ? custom : { from: addDays(istToday(), -(Number(range) - 1)), to: istToday() }
+  const { from, to } = range === 'custom' ? { ...custom, from: custom.from < earliest ? earliest : custom.from } : { from: addDays(istToday(), -(Number(range) - 1)), to: istToday() }
 
   useEffect(() => {
     let alive = true
@@ -252,19 +261,23 @@ export default function Analytics() {
       <Card className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="scrollbar-none flex gap-1 overflow-x-auto rounded-full bg-cream p-1">
           {RANGES.map((r) => (
-            <button key={r.key} type="button" onClick={() => setRange(r.key)} className={`h-9 shrink-0 rounded-full px-4 text-sm font-semibold ${range === r.key ? 'bg-ink text-white' : 'text-ink-600'}`}>
+            <button key={r.key} type="button" disabled={!rangeOk(r.key)} title={rangeOk(r.key) ? undefined : 'Longer history is on a bigger plan'} onClick={() => setRange(r.key)} className={`h-9 shrink-0 rounded-full px-4 text-sm font-semibold disabled:opacity-40 ${range === r.key ? 'bg-ink text-white' : 'text-ink-600'}`}>
               {r.label}
             </button>
           ))}
         </div>
         {range === 'custom' && (
           <div className="flex items-center gap-2">
-            <input type="date" className="field h-10 text-sm" value={custom.from} max={custom.to} onChange={(e) => setCustom({ ...custom, from: e.target.value })} aria-label="From" />
+            <input type="date" className="field h-10 text-sm" value={custom.from < earliest ? earliest : custom.from} min={earliest} max={custom.to} onChange={(e) => setCustom({ ...custom, from: e.target.value })} aria-label="From" />
             <span className="text-ink-400">→</span>
             <input type="date" className="field h-10 text-sm" value={custom.to} min={custom.from} max={istToday()} onChange={(e) => setCustom({ ...custom, to: e.target.value })} aria-label="To" />
           </div>
         )}
       </Card>
+
+      {maxDays < 365 && (
+        <UpgradeNote compact>Your plan shows the last {maxDays} days. Creator keeps 90 days of history and Pro a full year.</UpgradeNote>
+      )}
 
       {!view ? (
         <div className="grid h-80 place-items-center"><Spinner /></div>
@@ -400,7 +413,7 @@ export default function Analytics() {
             <Breakdown title="Cities" rows={view.cities} color="bg-[#9C8FF0]" empty="No city data yet" note="City data appears once the site runs on Vercel." />
           </div>
 
-          <UtmBuilder username={page.username} />
+          {features?.tracking ?? true ? <UtmBuilder username={page.username} /> : <UpgradeNote>The UTM link builder, Meta Pixel and Google Analytics are on the Creator and Pro plans.</UpgradeNote>}
         </>
       )}
     </div>

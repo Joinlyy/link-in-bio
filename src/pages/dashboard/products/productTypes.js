@@ -1,7 +1,10 @@
-import { CalendarDays, Crown, Download, ExternalLink, Lock, MessageCircleQuestionMark, Package, Video } from 'lucide-react'
+import { CalendarDays, Crown, Download, ExternalLink, GraduationCap, Lock, MessageCircleQuestionMark, Package, Video } from 'lucide-react'
+import { productKind } from '../../../lib/productKind'
+
+export { productKind }
 
 /** What creators can add. The other types stay only so products already made keep working */
-export const MAIN_PRODUCT_TYPES = ['digital', 'session', 'webinar', 'link', 'question']
+export const MAIN_PRODUCT_TYPES = ['digital', 'session', 'webinar', 'link', 'course', 'question']
 
 export const PRODUCT_TYPES = {
   digital: {
@@ -68,13 +71,25 @@ export const PRODUCT_TYPES = {
     defaults: { data: { starts_at: '', duration: 60, capacity: '' }, private: { meeting_url: '', instructions: '' } },
   },
   link: {
-    label: 'Affiliate product',
-    desc: 'Sold on Amazon, Myntra or any store: add an image, price and buy link',
+    label: 'Brand product',
+    desc: 'A product from another brand or store (Amazon, Nykaa, a brand’s site). Visitors buy it there.',
     icon: ExternalLink,
     color: 'bg-cream-200',
     defaults: { data: { url: '', label: '' }, private: {} },
   },
+  /** Saved as a 'link' product with data.kind = 'course' (see lib/productKind) */
+  course: {
+    label: 'Course',
+    desc: 'A course on Graphy, Udemy or your own site: add details, price and the enrol link. Students pay there.',
+    icon: GraduationCap,
+    color: 'bg-[#DCEBFF]',
+    dbType: 'link',
+    defaults: { data: { kind: 'course', url: '', label: '', duration: '', lessons: '', level: '', highlights: '' }, private: {} },
+  },
 }
+
+/** Type definition for a product, course-aware */
+export const typeOf = (p) => PRODUCT_TYPES[productKind(p)] || PRODUCT_TYPES.digital
 
 /** Types that can be put inside a bundle */
 export const BUNDLE_ITEM_TYPES = ['digital', 'content']
@@ -93,7 +108,7 @@ export function missing(p) {
   const blank = (v) => v == null || v === ''
   if (!p.title.trim()) return 'Add a title'
   if (p.type === 'digital' && !p.file_path) return 'Upload the file buyers will download'
-  if (p.type === 'link' && !p.data.url) return 'Add the buy link'
+  if (p.type === 'link' && !p.data.url) return productKind(p) === 'course' ? 'Add the enrol link' : 'Add the buy link'
   if (p.type === 'webinar' && !p.data.starts_at) return 'Set the webinar date & time'
   if (p.type === 'session' && !(p.data.availability || []).length) return 'Add at least one availability window'
   if (p.type === 'bundle' && (p.data.items || []).length < 2) return 'Pick at least 2 products for the bundle'

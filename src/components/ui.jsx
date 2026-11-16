@@ -196,7 +196,7 @@ export function Select({ label, hint, className = '', options, ...props }) {
       {(id) => (
         <select id={id} className="field appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2315161A%22 stroke-width=%222.5%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-[length:14px] bg-[right_1rem_center] bg-no-repeat pr-10" {...props}>
           {options.map((o) => (
-            <option key={o.value} value={o.value}>
+            <option key={o.value} value={o.value} disabled={o.disabled}>
               {o.label}
             </option>
           ))}

@@ -8,8 +8,10 @@ import { formatBytes, formatInr } from '../../../lib/images'
 import { DAYS } from '../../../lib/slots'
 import { normalizeUrl } from '../../../lib/embeds'
 import ImageInput from '../../../components/ImageInput'
+import { UpgradeNote } from '../../../components/PlanGate'
+import { useOwnerFeatures } from '../../../lib/usePlan'
 import { Alert, Button, Card, Input, Modal, Select, Textarea, Toggle, useToast, askConfirm } from '../../../components/ui'
-import { BUNDLE_ITEM_TYPES, missing, PRODUCT_TYPES, UPSELL_TYPES } from './productTypes'
+import { BUNDLE_ITEM_TYPES, missing, PRODUCT_TYPES, productKind, typeOf, UPSELL_TYPES } from './productTypes'
 
 const toIstInput = (ts) => (ts ? new Date(new Date(ts).getTime() + 5.5 * 3600_000).toISOString().slice(0, 16) : '')
 const fromIstInput = (v) => (v ? new Date(`${v}:00+05:30`).toISOString() : '')
@@ -22,6 +24,8 @@ const TITLE_PLACEHOLDER = {
   content: 'My exact gear list & brand-deal email templates',
   membership: 'Inner circle — monthly community',
   question: 'Ask me anything about growing on Instagram',
+  course: 'Reels editing masterclass (8 lessons)',
+  link: 'Wireless mic I use for every Reel',
 }
 
 function Availability({ value, onChange }) {
@@ -94,7 +98,7 @@ function SummaryRow({ label, children }) {
 /** What she's about to save, in plain words, before it goes on her site */
 function SaveSummary({ open, product: p, saving, onClose, onSave, onDraft }) {
   if (!open) return null
-  const t = PRODUCT_TYPES[p.type] || PRODUCT_TYPES.digital
+  const t = typeOf(p)
   const sellable = p.type !== 'link'
   const price = Number(p.price_inr) || 0
   const sale = sellable && !blank(p.sale_price_inr) ? Number(p.sale_price_inr) : null
@@ -122,7 +126,7 @@ function SaveSummary({ open, product: p, saving, onClose, onSave, onDraft }) {
         {p.type === 'digital' && <SummaryRow label="File">{p.file_name || 'No file yet'}</SummaryRow>}
         {p.type === 'session' && <SummaryRow label="Session">{p.data.duration || 30} min{Number(p.data.sessions) > 1 ? ` · ${p.data.sessions} sessions` : ''}</SummaryRow>}
         {p.type === 'webinar' && <SummaryRow label="Starts">{p.data.starts_at ? when(p.data.starts_at) : 'No date yet'}</SummaryRow>}
-        {p.type === 'link' && <SummaryRow label="Buy link">{p.data.url ? 'Added' : 'Missing'}</SummaryRow>}
+        {p.type === 'link' && <SummaryRow label={productKind(p) === 'course' ? 'Enrol link' : 'Buy link'}>{p.data.url ? 'Added' : 'Missing'}</SummaryRow>}
         <SummaryRow label="On your site">{p.is_published ? 'Yes, live on your Shop page' : 'No, saved as a draft'}</SummaryRow>
       </div>
       {problem && <div className="mt-3"><Alert>To publish it: {problem.toLowerCase()}. Fix that, or save it as a draft for now.</Alert></div>}
@@ -147,6 +151,10 @@ export default function ProductEditor() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [reviewing, setReviewing] = useState(false)
+  const features = useOwnerFeatures(page?.owner_id)
+  // Unknown while loading: show the controls; the database enforces the plan when saving
+  const salesTools = features?.sales_tools ?? true
+  const advancedProducts = features?.advanced_products ?? true
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -154,7 +162,7 @@ export default function ProductEditor() {
   }, [id, navigate])
 
   if (!p) return null
-  const t = PRODUCT_TYPES[p.type] || PRODUCT_TYPES.digital
+  const t = typeOf(p)
   const set = (patch) => setP((x) => ({ ...x, ...patch }))
   const setData = (patch) => setP((x) => ({ ...x, data: { ...x.data, ...patch } }))
   const setPrivate = (patch) => setP((x) => ({ ...x, private: { ...x.private, ...patch } }))
@@ -184,6 +192,10 @@ export default function ProductEditor() {
       data.reschedule_hours = Number(data.reschedule_hours ?? 24)
     }
     if (p.type === 'question') data.response_days = Math.max(1, Number(data.response_days) || 3)
+    if (productKind(p) === 'course') {
+      data.lessons = blank(data.lessons) ? '' : Math.min(999, Math.max(1, parseInt(data.lessons, 10) || 1))
+      for (const k of ['label', 'duration', 'highlights']) data[k] = String(data[k] || '').trim()
+    }
     const priv = { ...next.private }
     if (priv.invite_url?.trim()) priv.invite_url = normalizeUrl(priv.invite_url.trim())
     const payload = {
@@ -250,7 +262,7 @@ export default function ProductEditor() {
       <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-2">
         <Link to="/dashboard/products" className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-500 hover:text-ink"><ArrowLeft className="size-4" /> Products</Link>
         <div className="flex items-center gap-2">
-          {p.is_published && p.type !== 'link' && (
+          {p.is_published && productKind(p) !== 'link' && (
             <Button variant="outline" size="sm" href={`/${page.username}/p/${p.id}`} target="_blank" rel="noreferrer"><ExternalLink className="size-4" /> View</Button>
           )}
           {canEdit && <Button variant="dangerSoft" size="sm" onClick={remove} aria-label="Delete product"><Trash2 className="size-4" /></Button>}
@@ -271,7 +283,7 @@ export default function ProductEditor() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-4">
             <Card className="grid gap-4 p-5 sm:p-7">
-              <Input label="Title" maxLength={120} placeholder={TITLE_PLACEHOLDER[p.type] || 'Lightroom preset pack (12 presets)'} value={p.title} onChange={(e) => set({ title: e.target.value })} />
+              <Input label="Title" maxLength={120} placeholder={TITLE_PLACEHOLDER[productKind(p)] || 'Lightroom preset pack (12 presets)'} value={p.title} onChange={(e) => set({ title: e.target.value })} />
               <Textarea label="Description" rows={6} maxLength={4000} placeholder="What’s included, who it’s for, what buyers get…" value={p.description} onChange={(e) => set({ description: e.target.value })} />
               <ImageInput label="Thumbnail" value={p.thumbnail_url} onChange={(thumbnail_url) => set({ thumbnail_url })} folder="products" />
             </Card>
@@ -331,10 +343,30 @@ export default function ProductEditor() {
               </Card>
             )}
 
-            {p.type === 'link' && (
+            {p.type === 'link' && productKind(p) !== 'course' && (
               <Card className="grid gap-4 p-5 sm:p-7">
-                <Input label="Buy link" inputMode="url" placeholder="https://www.amazon.in/…" value={p.data.url || ''} onChange={(e) => setData({ url: e.target.value })} />
-                <Input label="Store name (optional)" maxLength={30} placeholder="Amazon, Nykaa, my website…" value={p.data.label || ''} onChange={(e) => setData({ label: e.target.value })} />
+                <Alert tone="info">Visitors tap this product and go straight to the link below to buy it. Payment happens on that website, not on your page.</Alert>
+                <Input label="Buy link" inputMode="url" placeholder="https://www.amazon.in/…" value={p.data.url || ''} onChange={(e) => setData({ url: e.target.value })} hint="Your affiliate or brand link works too." />
+                <Input label="Brand or store name (optional)" maxLength={30} placeholder="Amazon, Nykaa, the brand’s website…" value={p.data.label || ''} onChange={(e) => setData({ label: e.target.value })} />
+              </Card>
+            )}
+
+            {productKind(p) === 'course' && (
+              <Card className="grid gap-4 p-5 sm:p-7">
+                <Alert tone="info">Visitors see the course details on your page, then tap <b>Enrol</b> to buy it on your course website. Payment and course access happen there.</Alert>
+                <Input label="Enrol link" inputMode="url" placeholder="https://yourname.graphy.com/courses/…" value={p.data.url || ''} onChange={(e) => setData({ url: e.target.value })} />
+                <Input label="Course platform (optional)" maxLength={30} placeholder="Graphy, Udemy, Teachable, my website…" value={p.data.label || ''} onChange={(e) => setData({ label: e.target.value })} hint="Shown on the button: “Enrol on Graphy”." />
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Input label="Length (optional)" maxLength={40} placeholder="6 weeks · 12 hours" value={p.data.duration || ''} onChange={(e) => setData({ duration: e.target.value })} />
+                  <Input label="Lessons (optional)" type="number" min={1} max={999} placeholder="24" value={p.data.lessons ?? ''} onChange={(e) => setData({ lessons: e.target.value === '' ? '' : Number(e.target.value) })} />
+                  <Select
+                    label="Level"
+                    value={p.data.level || ''}
+                    onChange={(e) => setData({ level: e.target.value })}
+                    options={[{ value: '', label: 'Not shown' }, { value: 'Beginner', label: 'Beginner' }, { value: 'Intermediate', label: 'Intermediate' }, { value: 'Advanced', label: 'Advanced' }, { value: 'All levels', label: 'All levels' }]}
+                  />
+                </div>
+                <Textarea label="What students will learn (optional)" rows={5} maxLength={1500} placeholder={['Plan a month of Reels in one hour', 'Edit faster with CapCut templates', 'Write hooks that stop the scroll'].join('\n')} value={p.data.highlights || ''} onChange={(e) => setData({ highlights: e.target.value })} hint="One point per line." />
               </Card>
             )}
 
@@ -371,6 +403,9 @@ export default function ProductEditor() {
                   <h2 className="text-lg font-bold">One-click upsell</h2>
                   <p className="mt-1 text-sm text-ink-500">After checkout, buyers see a special offer they can add with one tap — no form to fill again.</p>
                 </div>
+                {!advancedProducts && !p.data.upsell_product_id ? (
+                  <UpgradeNote>One-click upsells are on the Creator and Pro plans.</UpgradeNote>
+                ) : (
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_160px]">
                   <Select
                     label="Offer"
@@ -383,6 +418,7 @@ export default function ProductEditor() {
                     <Input label="Special price (₹)" type="number" min={0} placeholder={String(upsellOptions.find((x) => x.id === p.data.upsell_product_id)?.price_inr ?? '')} value={p.data.upsell_price_inr ?? ''} onChange={(e) => setData({ upsell_price_inr: e.target.value })} />
                   )}
                 </div>
+                )}
               </Card>
             )}
           </div>
@@ -396,7 +432,11 @@ export default function ProductEditor() {
               </div>
               {sellable && (
                 <>
-                  <Toggle label="Pay what you want" description="Buyers can pay more than the minimum" checked={p.pay_what_you_want} onChange={(v) => set({ pay_what_you_want: v })} disabled={!canEdit} />
+                  {salesTools || p.pay_what_you_want ? (
+                    <Toggle label="Pay what you want" description="Buyers can pay more than the minimum" checked={p.pay_what_you_want} onChange={(v) => set({ pay_what_you_want: v })} disabled={!canEdit} />
+                  ) : (
+                    <UpgradeNote compact>Pay what you want is on the Creator and Pro plans.</UpgradeNote>
+                  )}
                   {p.pay_what_you_want && <Input label="Minimum (₹)" type="number" min={0} value={p.min_price_inr} onChange={(e) => set({ min_price_inr: e.target.value })} />}
                 </>
               )}
@@ -408,7 +448,11 @@ export default function ProductEditor() {
                   <h2 className="text-lg font-bold">Limited-time offer</h2>
                   <p className="mt-1 text-xs text-ink-500">Shows a countdown and the regular price struck through.</p>
                 </div>
-                <Input label="Offer price (₹)" type="number" min={0} placeholder="None" value={p.sale_price_inr ?? ''} onChange={(e) => set({ sale_price_inr: e.target.value })} />
+                {!salesTools && blank(p.sale_price_inr) ? (
+                  <UpgradeNote compact>Limited-time offers are on the Creator and Pro plans.</UpgradeNote>
+                ) : (
+                  <Input label="Offer price (₹)" type="number" min={0} placeholder="None" value={p.sale_price_inr ?? ''} onChange={(e) => set({ sale_price_inr: e.target.value })} />
+                )}
                 {!blank(p.sale_price_inr) && (
                   <div className="grid gap-2">
                     <Input label="Offer ends (IST)" type="datetime-local" value={toIstInput(p.sale_ends_at)} onChange={(e) => set({ sale_ends_at: fromIstInput(e.target.value) || null })} />

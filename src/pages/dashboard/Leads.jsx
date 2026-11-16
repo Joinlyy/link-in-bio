@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Download, Mail, Plus, Search, Trash2, Users, X } from 'lucide-react'
 import { usePage } from '../../context/PageContext'
+import { useOwnerFeatures } from '../../lib/usePlan'
+import { PlanTag } from '../../components/PlanGate'
 import { supabase } from '../../lib/supabase'
 import { Button, Card, Empty, Spinner, Tabs, useToast, askConfirm, askText } from '../../components/ui'
 import { WhatsappIcon } from '../../components/icons'
@@ -18,6 +20,8 @@ function toCsv(rows) {
 
 export default function Leads() {
   const { page } = usePage()
+  const features = useOwnerFeatures(page.owner_id)
+  const canExport = features?.leads_export ?? true
   const toast = useToast()
   const [rows, setRows] = useState(null)
   const [count, setCount] = useState(0)
@@ -104,9 +108,15 @@ export default function Leads() {
         title="Leads."
         italic={`${count} and counting.`}
         actions={
-          <Button variant="outline" size="sm" onClick={exportAll} disabled={!count}>
-            <Download className="size-4" /> Export CSV
-          </Button>
+          canExport ? (
+            <Button variant="outline" size="sm" onClick={exportAll} disabled={!count}>
+              <Download className="size-4" /> Export CSV
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" to="/dashboard/billing" title="CSV export is on the Creator and Pro plans">
+              <Download className="size-4" /> Export CSV <PlanTag />
+            </Button>
+          )
         }
       >
         People who joined through a Lead form block, with the consent they gave. Only you can see this list.

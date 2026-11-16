@@ -9,20 +9,21 @@ import { formatInr } from '../../../lib/images'
 import { pageUrl } from '../../../lib/config'
 import { removeProductFile } from '../../../lib/storage'
 import { useOwnerFeatures } from '../../../lib/usePlan'
+import { UpgradeNote } from '../../../components/PlanGate'
 import { Badge, Button, Card, Empty, Input, Modal, Select, Tabs, Toggle, useToast } from '../../../components/ui'
 import { DataTable, useViewMode, ViewToggle } from '../../../components/DataTable'
 import { PageHeading } from '../DashboardLayout'
 import { BLOCK_TYPES } from '../blockTypes'
 import SectionCard from '../SectionCard'
-import { MAIN_PRODUCT_TYPES, missing, PRODUCT_TYPES, saleActive } from './productTypes'
+import { MAIN_PRODUCT_TYPES, missing, PRODUCT_TYPES, productKind, saleActive, typeOf } from './productTypes'
 
-const CATEGORY_LABEL = { digital: 'Digital products', session: '1:1 sessions', webinar: 'Webinars', link: 'Affiliate', bundle: 'Bundles', content: 'Paid content', membership: 'Memberships', question: 'Paid messages' }
+const CATEGORY_LABEL = { digital: 'Digital products', session: '1:1 sessions', webinar: 'Webinars', link: 'Brand products', course: 'Courses', bundle: 'Bundles', content: 'Paid content', membership: 'Memberships', question: 'Paid messages' }
 
 /** What a product costs right now: the words to show and the number to sort by */
 function priceOf(p) {
   const onSale = p.type !== 'link' && saleActive(p)
   const amount = p.pay_what_you_want ? p.min_price_inr : onSale ? p.sale_price_inr : p.price_inr
-  const label = p.type === 'link' ? (p.price_inr ? formatInr(p.price_inr) : 'Buy link') : p.pay_what_you_want ? `${formatInr(p.min_price_inr)}+` : amount ? formatInr(amount) : 'Free'
+  const label = p.type === 'link' ? (p.price_inr ? formatInr(p.price_inr) : productKind(p) === 'course' ? 'Enrol link' : 'Buy link') : p.pay_what_you_want ? `${formatInr(p.min_price_inr)}+` : amount ? formatInr(amount) : 'Free'
   return { label, amount: amount || 0, onSale }
 }
 const statusOf = (p) => (p.is_published ? 'Live' : p.title ? 'Deactivated' : 'Draft')
@@ -77,7 +78,7 @@ function CoffeeCard() {
   )
 }
 
-function Coupons() {
+function Coupons({ allowed = true }) {
   const { page, products } = usePage()
   const toast = useToast()
   const [rows, setRows] = useState([])
@@ -114,6 +115,9 @@ function Coupons() {
   return (
     <Card className="p-5 sm:p-7">
       <div className="flex items-center gap-2"><Ticket className="size-5" /><h2 className="text-lg font-bold">Coupons</h2></div>
+      {!allowed ? (
+        <UpgradeNote className="mt-5">Discount coupons are on the Creator and Pro plans.</UpgradeNote>
+      ) : (
       <form onSubmit={add} className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:items-end">
         <Input label="Code" required placeholder="DIWALI20" maxLength={24} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '') })} />
         <Select label="Type" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} options={[{ value: 'percent', label: '% off' }, { value: 'amount', label: '₹ off' }]} />
@@ -122,6 +126,7 @@ function Coupons() {
         <Input label="Max uses" type="number" min={1} placeholder="∞" value={form.max_uses} onChange={(e) => setForm({ ...form, max_uses: e.target.value })} />
         <Button type="submit" className="h-12">Create</Button>
       </form>
+      )}
       {rows.length > 0 && <div className="mt-5"><ViewToggle value={view} onChange={setView} /></div>}
       {rows.length > 0 && view === 'table' && (
         <div className="mt-3 rounded-2xl border border-ink/10">
@@ -196,8 +201,8 @@ export default function Products() {
   const [view, setView] = useViewMode('products')
   const features = useOwnerFeatures(page.owner_id)
   const liveCount = products.filter((p) => p.is_published).length
-  const categories = [...MAIN_PRODUCT_TYPES, ...Object.keys(PRODUCT_TYPES).filter((type) => !MAIN_PRODUCT_TYPES.includes(type) && products.some((p) => p.type === type))]
-  const visible = category ? products.filter((p) => p.type === category) : products
+  const categories = [...MAIN_PRODUCT_TYPES, ...Object.keys(PRODUCT_TYPES).filter((type) => !MAIN_PRODUCT_TYPES.includes(type) && products.some((p) => productKind(p) === type))]
+  const visible = category ? products.filter((p) => productKind(p) === category) : products
   const chosen = products.filter((p) => selected.includes(p.id))
   const chosenSold = chosen.filter((p) => p.sales_count > 0).length
 
@@ -275,9 +280,10 @@ export default function Products() {
   async function create(type) {
     setPicking(false)
     const def = PRODUCT_TYPES[type].defaults
+    const dbType = PRODUCT_TYPES[type].dbType || type
     const { data, error } = await supabase
       .from('products')
-      .insert({ page_id: page.id, owner_id: page.owner_id, type, title: '', data: def.data, private: def.private, position: products.length })
+      .insert({ page_id: page.id, owner_id: page.owner_id, type: dbType, title: '', data: def.data, private: def.private, position: products.length })
       .select()
       .single()
     if (error) return toast(error.message, 'error')
@@ -288,7 +294,7 @@ export default function Products() {
   return (
     <div className="space-y-4">
       <PageHeading title="Products." italic="Sell anything." actions={canEdit && <Button onClick={() => setPicking(true)}><Plus className="size-4" /> New product</Button>}>
-        Digital products, 1:1 sessions, webinars, affiliate products and paid messages. They go on a Shop page in your site’s top menu. Optional: with nothing to sell, your website works fine without it.
+        Digital products, 1:1 sessions, webinars, paid messages, plus brand products and courses that people buy on another website. They go on a Shop page in your site’s top menu. Optional: with nothing to sell, your website works fine without it.
       </PageHeading>
 
       <div className="rounded-3xl bg-lilac-100 px-5 py-4 text-sm">
@@ -297,12 +303,12 @@ export default function Products() {
 
       {products.length === 0 ? (
         <Empty icon={ShoppingBag} title="No products yet" action={canEdit && <Button onClick={() => setPicking(true)}>Create your first product</Button>}>
-          Start with a PDF guide, a 30-minute call or something you recommend from another store.
+          Start with a PDF guide, a 30-minute call, your course, or a product you recommend from another brand.
         </Empty>
       ) : (
         <>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Tabs label="Product categories" value={category} onChange={pickCategory} tabs={[null, ...categories].map((type) => ({ key: type, label: type ? CATEGORY_LABEL[type] : 'All', count: type ? products.filter((p) => p.type === type).length : products.length }))} />
+          <Tabs label="Product categories" value={category} onChange={pickCategory} tabs={[null, ...categories].map((type) => ({ key: type, label: type ? CATEGORY_LABEL[type] : 'All', count: type ? products.filter((p) => productKind(p) === type).length : products.length }))} />
           <div className="flex items-center gap-3">
             {features?.max_products != null && <p className="text-sm font-semibold text-ink-600">{liveCount} of {features.max_products} live</p>}
             <ViewToggle value={view} onChange={setView} />
@@ -320,7 +326,7 @@ export default function Products() {
             onRowClick={(p) => navigate(`/dashboard/products/${p.id}`)}
             columns={[
               { key: 'title', label: 'Product', value: (p) => p.title, render: (p) => {
-                const t = PRODUCT_TYPES[p.type] || PRODUCT_TYPES.digital
+                const t = typeOf(p)
                 return (
                   <span className="flex items-center gap-2.5">
                     {canEdit && <input type="checkbox" className="size-4 shrink-0 accent-ink" aria-label={`Select ${p.title || 'untitled product'}`} checked={selected.includes(p.id)} onChange={() => setSelected((list) => (list.includes(p.id) ? list.filter((id) => id !== p.id) : [...list, p.id]))} />}
@@ -329,14 +335,14 @@ export default function Products() {
                   </span>
                 )
               } },
-              { key: 'type', label: 'Type', value: (p) => (PRODUCT_TYPES[p.type] || PRODUCT_TYPES.digital).label, className: 'whitespace-nowrap text-ink-600' },
+              { key: 'type', label: 'Type', value: (p) => typeOf(p).label, className: 'whitespace-nowrap text-ink-600' },
               { key: 'status', label: 'Status', value: statusOf, render: (p) => <Badge tone={p.is_published ? 'green' : 'neutral'}>{statusOf(p)}</Badge> },
               { key: 'price', label: 'Price', align: 'right', value: (p) => priceOf(p).amount, className: 'font-semibold whitespace-nowrap', render: (p) => priceOf(p).label },
               { key: 'sales_count', label: 'Sold', align: 'right', value: (p) => (p.type === 'link' ? null : p.sales_count), render: (p) => (p.type === 'link' ? '—' : p.sales_count) },
               { key: 'show', label: 'On my page', value: (p) => (p.show_on_page !== false ? 1 : 0), render: (p) => <Toggle checked={p.show_on_page !== false} disabled={!canEdit || !p.is_published} onChange={(v) => toggleShow(p, v)} /> },
               { key: 'actions', label: '', align: 'right', render: (p) => (canEdit && !p.is_published
                 ? <button type="button" onClick={() => activate(p)} className="text-xs font-semibold underline underline-offset-2">Activate</button>
-                : p.type !== 'link' && <button type="button" onClick={() => navigator.clipboard.writeText(`${pageUrl(page.username)}/p/${p.id}`).then(() => toast('Product link copied'))} className="ml-auto grid size-8 place-items-center rounded-full text-ink-500 hover:bg-white" aria-label="Copy product link"><Copy className="size-4" /></button>) },
+                : productKind(p) !== 'link' && <button type="button" onClick={() => navigator.clipboard.writeText(`${pageUrl(page.username)}/p/${p.id}`).then(() => toast('Product link copied'))} className="ml-auto grid size-8 place-items-center rounded-full text-ink-500 hover:bg-white" aria-label="Copy product link"><Copy className="size-4" /></button>) },
             ]}
           />
         )}
@@ -344,7 +350,7 @@ export default function Products() {
           {visible.map((p) => {
             const index = products.indexOf(p)
             const isSelected = selected.includes(p.id)
-            const t = PRODUCT_TYPES[p.type] || PRODUCT_TYPES.digital
+            const t = typeOf(p)
             const { label: price, onSale } = priceOf(p)
             const left = p.stock != null && p.type !== 'link' ? Math.max(0, p.stock - (p.sales_count || 0)) : null
             return (
@@ -393,7 +399,7 @@ export default function Products() {
                 {canEdit && !p.is_published && (
                   <button type="button" onClick={() => activate(p)} className="mx-4 mb-4 self-start text-xs font-semibold underline underline-offset-2">Activate</button>
                 )}
-                {p.is_published && p.type !== 'link' && (
+                {p.is_published && productKind(p) !== 'link' && (
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(`${pageUrl(page.username)}/p/${p.id}`).then(() => toast('Product link copied'))}
@@ -437,7 +443,7 @@ export default function Products() {
 
       <CoffeeCard />
       <ProductDisplay />
-      <Coupons />
+      <Coupons allowed={features?.sales_tools ?? true} />
       <NewProductModal open={picking} onClose={() => setPicking(false)} onPick={create} />
     </div>
   )

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bot, Clock, Mail, MessageCircle, Plus, Trash2, UserPlus } from 'lucide-react'
+import { Bot, Check, Clock, Image as ImageIcon, LayoutGrid, Mail, MessageCircle, Plus, RefreshCw, Trash2, UserPlus } from 'lucide-react'
 import { usePage } from '../../context/PageContext'
 import { useAuth } from '../../context/AuthContext'
 import { errorMessage, supabase } from '../../lib/supabase'
 import { normalizeUrl } from '../../lib/embeds'
+import { syncInstagram } from '../../lib/instagram'
 import { pageUrl } from '../../lib/config'
 import { Alert, Badge, Button, Card, Empty, Input, Modal, Select, Spinner, Stats, Textarea, Toggle, useToast, askConfirm } from '../../components/ui'
 import { DataTable, useViewMode, ViewToggle } from '../../components/DataTable'
+import { PlanTag, UpgradeNote } from '../../components/PlanGate'
+import { usePlan } from '../../lib/usePlan'
 import { PageHeading } from './DashboardLayout'
 
 const TRIGGERS = {
@@ -86,17 +89,133 @@ function Section({ title, children }) {
   )
 }
 
-function RuleModal({ rule, onClose, onSaved }) {
+function fmtDay(d) {
+  return d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''
+}
+
+function mediaKind(m) {
+  if (m.media_product_type === 'REELS') return 'Reel'
+  if (m.media_type === 'CAROUSEL_ALBUM') return 'Carousel'
+  if (m.media_type === 'VIDEO') return 'Video'
+  return 'Post'
+}
+
+/** Instagram photo links expire after a while; fall back to a plain tile until the next sync */
+function MediaThumb({ m, className = '' }) {
+  const [broken, setBroken] = useState(false)
+  if (!m?.image || broken) {
+    return (
+      <span className={`grid place-items-center bg-ink/5 text-ink-400 ${className}`}>
+        <ImageIcon className="size-5" />
+      </span>
+    )
+  }
+  return <img src={m.image} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} className={`object-cover ${className}`} />
+}
+
+/** Choose which post a comment automation listens to: all posts, or one of the recent ones.
+ *  onRefresh (optional) re-syncs Instagram so new posts appear. */
+export function PostPicker({ value, onChange, media = [], onRefresh }) {
+  const [busy, setBusy] = useState(false)
+  const known = !value || media.some((m) => m.id === value)
+
+  async function refresh() {
+    setBusy(true)
+    try {
+      await onRefresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const tile = (selected) =>
+    `relative aspect-square overflow-hidden rounded-2xl text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
+      selected ? 'ring-[3px] ring-ink' : 'ring-1 ring-ink/10 hover:ring-ink/30'
+    }`
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Which post or Reel?</p>
+        {onRefresh && (
+          <button type="button" onClick={refresh} disabled={busy} className="inline-flex items-center gap-1 text-xs font-semibold text-ink-500 hover:text-ink disabled:opacity-50">
+            <RefreshCw className={`size-3.5 ${busy ? 'animate-spin' : ''}`} /> {busy ? 'Refreshing…' : 'Refresh posts'}
+          </button>
+        )}
+      </div>
+      <div role="radiogroup" aria-label="Which post or Reel" className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+        <button type="button" role="radio" aria-checked={!value} onClick={() => onChange('')} className={`${tile(!value)} grid place-items-center bg-lime p-2 text-center`}>
+          <span>
+            <LayoutGrid className="mx-auto size-5" />
+            <span className="mt-1 block text-xs font-semibold leading-tight">All posts &amp; Reels</span>
+          </span>
+          {!value && <Check className="absolute right-1.5 top-1.5 size-4" />}
+        </button>
+        {!known && (
+          <button type="button" role="radio" aria-checked onClick={() => onChange(value)} className={`${tile(true)} grid place-items-center bg-lilac-100 p-2 text-center`} title={`Post ID ${value}`}>
+            <span>
+              <ImageIcon className="mx-auto size-5" />
+              <span className="mt-1 block text-xs font-semibold leading-tight">An older post</span>
+            </span>
+            <Check className="absolute right-1.5 top-1.5 size-4" />
+          </button>
+        )}
+        {media.map((m) => {
+          const selected = value === m.id
+          return (
+            <button
+              key={m.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={`${mediaKind(m)} from ${fmtDay(m.timestamp)}`}
+              onClick={() => onChange(m.id)}
+              className={tile(selected)}
+            >
+              <MediaThumb m={m} className="size-full" />
+              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1 pt-4 text-[11px] font-semibold text-white">
+                {mediaKind(m)} · {fmtDay(m.timestamp)}
+              </span>
+              {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-ink text-white"><Check className="size-3.5" /></span>}
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-2 text-xs text-ink-500">
+        {media.length
+          ? `Your ${media.length} most recent posts. Posted something new? Tap Refresh posts.`
+          : 'No posts found yet. Tap Refresh posts after you publish one, or keep All posts & Reels.'}
+        {!known && ' “An older post” is no longer in your recent posts; it still works.'}
+      </p>
+    </div>
+  )
+}
+
+function RuleModal({ rule, plan = {}, onClose, onSaved }) {
   const toast = useToast()
-  const { page, pages } = usePage()
+  const { page, pages, instagram, setInstagram, isOwner } = usePage()
   const { user } = useAuth()
   const [r, setR] = useState(rule)
+
+  async function refreshPosts() {
+    try {
+      setInstagram(await syncInstagram())
+      toast('Posts refreshed')
+    } catch (e) {
+      toast(errorMessage(e), 'error')
+    }
+  }
   const [busy, setBusy] = useState(false)
   const set = (patch) => setR((x) => ({ ...x, ...patch }))
-  const hasFollowUp = Boolean(r.follow_up_message?.trim())
+  // While the plan loads, show everything; the database has the final say either way
+  const advanced = plan.dm_advanced ?? true
+  const allowedTriggers = Array.isArray(plan.dm_triggers) ? plan.dm_triggers : null
+  const triggerOk = (t) => !allowedTriggers || allowedTriggers.includes(t)
+  const hasFollowUp = advanced && Boolean(r.follow_up_message?.trim())
   const minutes = Number(r.follow_up_minutes)
 
   async function save() {
+    if (r.is_active && !triggerOk(r.trigger)) return toast('Story reply and DM keyword automations are on the Creator and Pro plans', 'error')
     if (r.trigger === 'dm_keyword' && !r.keywords.length) return toast('DM rules need at least one keyword', 'error')
     if (hasFollowUp && !(minutes >= 5 && minutes <= 1380)) return toast('Follow-up delay must be between 5 and 1380 minutes', 'error')
     setBusy(true)
@@ -114,6 +233,7 @@ function RuleModal({ rule, onClose, onSaved }) {
       follow_up_message: hasFollowUp ? r.follow_up_message.trim() : null,
       follow_up_minutes: hasFollowUp ? Math.round(minutes) : null,
     }
+    if (!advanced) Object.assign(payload, { require_follow: false, follow_prompt: null, collect: null, collect_prompt: null, collect_thanks: null, follow_up_message: null, follow_up_minutes: null })
     const q = r.id ? supabase.from('dm_rules').update(payload).eq('id', r.id) : supabase.from('dm_rules').insert(payload)
     const { data, error } = await q.select().single()
     setBusy(false)
@@ -126,7 +246,7 @@ function RuleModal({ rule, onClose, onSaved }) {
     <Modal open onClose={onClose} title={r.id ? 'Edit automation' : 'New automation'} wide>
       <div className="grid gap-4">
         <Input label="Name (only you see this)" maxLength={80} placeholder="Free guide for comment “GUIDE”" value={r.name} onChange={(e) => set({ name: e.target.value })} />
-        <Select label="When" value={r.trigger} onChange={(e) => set({ trigger: e.target.value })} options={Object.entries(TRIGGERS).map(([value, t]) => ({ value, label: t.label }))} hint={TRIGGERS[r.trigger].hint} />
+        <Select label="When" value={r.trigger} onChange={(e) => set({ trigger: e.target.value })} options={Object.entries(TRIGGERS).map(([value, t]) => ({ value, label: triggerOk(value) ? t.label : `${t.label} (Creator plan)`, disabled: !triggerOk(value) && value !== r.trigger }))} hint={TRIGGERS[r.trigger].hint} />
         <Input
           label={r.trigger === 'dm_keyword' ? 'Keywords (required)' : 'Keywords (leave empty for any)'}
           placeholder="guide, link, price"
@@ -136,22 +256,24 @@ function RuleModal({ rule, onClose, onSaved }) {
         />
         {r.trigger === 'comment' && (
           <>
-            <Input label="Only for this post ID (optional)" placeholder="Leave empty for all posts & Reels" value={r.media_id || ''} onChange={(e) => set({ media_id: e.target.value.trim() })} />
+            <PostPicker value={r.media_id || ''} onChange={(media_id) => set({ media_id })} media={instagram?.recent_media || []} onRefresh={isOwner ? refreshPosts : undefined} />
             <Input label="Public reply to the comment (optional)" maxLength={300} placeholder="Sent! Check your DMs 📩" value={r.comment_reply || ''} onChange={(e) => set({ comment_reply: e.target.value })} />
           </>
         )}
 
-        <Section title="Follow to unlock">
-          <Toggle
-            label="Ask them to follow first"
-            description="We check they follow you before sending the message. Up to 3 reminders."
-            checked={r.require_follow}
-            onChange={(require_follow) => set({ require_follow, follow_prompt: require_follow && !r.follow_prompt ? DEFAULT_FOLLOW_PROMPT : r.follow_prompt })}
-          />
-          {r.require_follow && (
-            <Textarea label="Follow request" rows={2} maxLength={500} placeholder={DEFAULT_FOLLOW_PROMPT} value={r.follow_prompt || ''} onChange={(e) => set({ follow_prompt: e.target.value })} hint="Tell them to reply (e.g. DONE) after following — their reply is when we check." />
-          )}
-        </Section>
+        {advanced && (
+                <Section title="Follow to unlock">
+            <Toggle
+              label="Ask them to follow first"
+              description="We check they follow you before sending the message. Up to 3 reminders."
+              checked={r.require_follow}
+              onChange={(require_follow) => set({ require_follow, follow_prompt: require_follow && !r.follow_prompt ? DEFAULT_FOLLOW_PROMPT : r.follow_prompt })}
+            />
+            {r.require_follow && (
+              <Textarea label="Follow request" rows={2} maxLength={500} placeholder={DEFAULT_FOLLOW_PROMPT} value={r.follow_prompt || ''} onChange={(e) => set({ follow_prompt: e.target.value })} hint="Tell them to reply (e.g. DONE) after following — their reply is when we check." />
+            )}
+          </Section>
+        )}
 
         <Textarea label="DM message" rows={4} maxLength={1000} placeholder="Hey! Here’s the free guide you asked for 👇" value={r.message} onChange={(e) => set({ message: e.target.value })} />
         <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
@@ -159,6 +281,8 @@ function RuleModal({ rule, onClose, onSaved }) {
           <Input label="Button text" maxLength={20} placeholder="Open link" value={r.button_title || ''} onChange={(e) => set({ button_title: e.target.value })} />
         </div>
 
+        {advanced ? (
+          <>
         <Section title="Collect leads">
           <Select
             label="After the message, ask for"
@@ -201,6 +325,10 @@ function RuleModal({ rule, onClose, onSaved }) {
             />
           )}
         </Section>
+          </>
+        ) : (
+          <UpgradeNote>Follow to unlock, collecting emails or WhatsApp numbers, and follow-up DMs are on the Creator and Pro plans.</UpgradeNote>
+        )}
 
         <Toggle label="Active" checked={r.is_active} onChange={(is_active) => set({ is_active })} />
       </div>
@@ -249,6 +377,8 @@ export default function Automations() {
   const [now, setNow] = useState(0)
   const [view, setView] = useViewMode('automations')
   const [eventsView, setEventsView] = useViewMode('dm-activity')
+  const { features: plan } = usePlan()
+  const [monthSent, setMonthSent] = useState(null)
 
   const load = useCallback(async () => {
     const [{ data: r }, { data: e }] = await Promise.all([
@@ -257,6 +387,7 @@ export default function Automations() {
     ])
     setRules(r || [])
     setEvents(e || [])
+    supabase.rpc('dm_sent_this_month', { p_owner: user.id }).then(({ data }) => setMonthSent(data ?? 0))
     setNow(Date.now())
   }, [user.id])
   useEffect(() => {
@@ -282,6 +413,10 @@ export default function Automations() {
       follow_up_minutes: r.follow_up_minutes ?? BLANK.follow_up_minutes,
     })
   const sent = events.filter((e) => e.status === 'sent').length
+  const activeCount = (rules || []).filter((r) => r.is_active).length
+  const maxRules = typeof plan.max_automations === 'number' ? plan.max_automations : null
+  const monthLimit = typeof plan.dm_monthly_limit === 'number' ? plan.dm_monthly_limit : null
+  const needsPaid = (rule) => (Array.isArray(plan.dm_triggers) && !plan.dm_triggers.includes(rule.trigger)) || (plan.dm_advanced === false && (rule.require_follow || rule.collect || rule.follow_up_message))
   const waiting = events.filter((e) => e.awaiting && now - new Date(e.created_at).getTime() < DAY_MS).length
 
   const templates = instagram && (
@@ -295,7 +430,7 @@ export default function Automations() {
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-lime"><t.icon className="size-[18px]" /></span>
           <span className="min-w-0">
-            <span className="block text-sm font-semibold">{t.title}</span>
+            <span className="block text-sm font-semibold">{t.title}{needsPaid(t.rule) && <PlanTag />}</span>
             <span className="mt-0.5 block text-xs text-ink-500">{t.text}</span>
           </span>
         </button>
@@ -317,6 +452,14 @@ export default function Automations() {
         <Alert tone="info">
           Follows Instagram’s rules: one private reply per comment, and DMs only within 24 hours of the person’s message. If you connected before automations existed, reconnect Instagram to grant messaging access.
         </Alert>
+      )}
+
+      {instagram && (maxRules != null || monthLimit != null) && (
+        <UpgradeNote compact>
+          Starter plan: {activeCount} of {maxRules ?? '∞'} automations on
+          {monthLimit != null && <> · {monthSent == null ? '…' : monthSent.toLocaleString('en-IN')} of {monthLimit.toLocaleString('en-IN')} DMs this month</>}.
+          {' '}Comment → DM is free. Story replies, DM keywords, follow to unlock and lead collection are on Creator.
+        </UpgradeNote>
       )}
 
       <Stats
@@ -364,8 +507,17 @@ export default function Automations() {
                   <p className="truncate text-sm text-ink-500">
                     {TRIGGERS[r.trigger].label}{r.keywords.length ? ` · “${r.keywords.join('”, “')}”` : ' · any'} · {r.sent_count} sent
                   </p>
-                  {(r.require_follow || r.collect || r.follow_up_message) && (
-                    <span className="mt-1.5 flex flex-wrap gap-1.5">
+                  {(r.require_follow || r.collect || r.follow_up_message || (r.trigger === 'comment' && r.media_id)) && (
+                    <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {r.trigger === 'comment' && r.media_id && (() => {
+                        const m = instagram?.recent_media?.find((x) => x.id === r.media_id)
+                        return (
+                          <Badge tone="neutral">
+                            {m && <MediaThumb m={m} className="size-4 rounded" />}
+                            {m ? `Only this ${mediaKind(m).toLowerCase()} · ${fmtDay(m.timestamp)}` : 'Only one post'}
+                          </Badge>
+                        )
+                      })()}
                       {r.require_follow && <Badge tone="lilac">Follow to unlock</Badge>}
                       {r.collect && <Badge tone="lilac">Collects {r.collect === 'email' ? 'email' : 'phone'}</Badge>}
                       {r.follow_up_message && <Badge tone="lilac">Follow-up after {fmtDelay(r.follow_up_minutes)}</Badge>}
@@ -418,7 +570,7 @@ export default function Automations() {
         </Card>
       )}
 
-      {editing && <RuleModal rule={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />}
+      {editing && <RuleModal rule={editing} plan={plan} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />}
     </div>
   )
 }

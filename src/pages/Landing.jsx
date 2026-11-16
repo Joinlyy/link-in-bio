@@ -259,7 +259,7 @@ function AnalyticsShowcase() {
 function usePlans() {
   const [plans, setPlans] = useState(null)
   useEffect(() => {
-    fetch(`${SUPABASE_URL}/rest/v1/plans?select=id,name,description,price_monthly_inr,features&is_active=eq.true&order=position`, { headers: { apikey: SUPABASE_KEY } })
+    fetch(`${SUPABASE_URL}/rest/v1/plans?select=id,name,description,price_monthly_inr,price_yearly_inr,features&is_active=eq.true&order=position`, { headers: { apikey: SUPABASE_KEY } })
       .then((r) => (r.ok ? r.json() : []))
       .then(setPlans)
       .catch(() => setPlans([]))
@@ -269,6 +269,7 @@ function usePlans() {
 
 function Pricing() {
   const plans = usePlans()
+  const [period, setPeriod] = useState('month')
   return (
     <section id="pricing" className="card scroll-mt-28 p-6 sm:p-12">
       <h2 className="display-lg">
@@ -276,6 +277,11 @@ function Pricing() {
         <br />
         <span className="display-italic">Free while you grow.</span>
       </h2>
+      <div className="mt-8 flex w-fit gap-1 rounded-full bg-cream-200 p-1" role="group" aria-label="Billing period">
+        {[['month', 'Monthly'], ['year', 'Yearly · 2 months free']].map(([v, l]) => (
+          <button key={v} type="button" aria-pressed={period === v} onClick={() => setPeriod(v)} className={`h-10 rounded-full px-4 text-sm font-semibold ${period === v ? 'bg-ink text-white' : 'text-ink-600'}`}>{l}</button>
+        ))}
+      </div>
       {plans === null ? (
         <div className="mt-10 h-72 animate-pulse rounded-3xl bg-cream-200" />
       ) : (
@@ -286,9 +292,14 @@ function Pricing() {
               <div key={p.id} className={`flex flex-col rounded-3xl p-7 sm:p-9 ${dark ? 'bg-ink text-white' : 'bg-cream-200'}`}>
                 <p className={`eyebrow ${dark ? 'text-lime' : 'text-ink-500'}`}>{p.name}</p>
                 <p className="mt-4 font-display text-5xl font-bold">
-                  ₹{(p.price_monthly_inr || 0).toLocaleString('en-IN')}
-                  <span className={`text-lg font-medium ${dark ? 'text-white/50' : 'text-ink-500'}`}>{p.price_monthly_inr ? ' / month' : ' / forever'}</span>
+                  ₹{((period === 'year' ? p.price_yearly_inr : p.price_monthly_inr) || 0).toLocaleString('en-IN')}
+                  <span className={`text-lg font-medium ${dark ? 'text-white/50' : 'text-ink-500'}`}>{p.price_monthly_inr ? (period === 'year' ? ' / year' : ' / month') : ' / forever'}</span>
                 </p>
+                {period === 'year' && p.price_yearly_inr > 0 && (
+                  <p className={`mt-1 text-sm font-semibold ${dark ? 'text-lime' : 'text-ink-600'}`}>
+                    ₹{Math.round(p.price_yearly_inr / 12).toLocaleString('en-IN')} a month, save ₹{(p.price_monthly_inr * 12 - p.price_yearly_inr).toLocaleString('en-IN')}
+                  </p>
+                )}
                 {p.description && <p className={`mt-2 text-sm ${dark ? 'text-white/70' : 'text-ink-600'}`}>{p.description}</p>}
                 <ul className="mt-8 space-y-3 text-[15px]">
                   {featureList(p.features || {}).map((f) => (

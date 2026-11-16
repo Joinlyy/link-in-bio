@@ -75,6 +75,12 @@ async function send(db: SupabaseClient, a: Alert) {
 
 const recent = (ts?: string | null) => Boolean(ts) && Date.now() - new Date(ts!).getTime() < RECENT_MS
 
+/** WhatsApp messages are a Creator/Pro feature (Starter gets none, to creators or buyers) */
+async function pageHasWhatsApp(db: SupabaseClient, pageId: string) {
+  const { data } = await db.rpc('page_plan_features', { p_page: pageId })
+  return Boolean((data as { whatsapp?: boolean } | null)?.whatsapp)
+}
+
 async function alertsFor(db: SupabaseClient, kind: string, id: string): Promise<Alert[]> {
   if (kind === 'order') {
     const { data: o } = await db.from('orders')
@@ -167,7 +173,9 @@ Deno.serve(handle(async (req) => {
 
   if (body.action === 'event') {
     if (!['order', 'lead', 'enquiry'].includes(body.kind) || !/^[0-9a-f-]{36}$/i.test(body.id || '')) throw new HttpError(400, 'Bad event')
-    for (const a of await alertsFor(db, body.kind, body.id)) await send(db, a)
+    const alerts = await alertsFor(db, body.kind, body.id)
+    if (alerts.length && !(await pageHasWhatsApp(db, alerts[0].pageId))) return json({ ok: true, skipped: 'plan' })
+    for (const a of alerts) await send(db, a)
     return json({ ok: true })
   }
 
@@ -177,6 +185,7 @@ Deno.serve(handle(async (req) => {
     if (!page) throw new HttpError(404, 'Page not found')
     const { data: member } = await db.from('page_members').select('role').eq('page_id', page.id).eq('user_id', user.id).not('accepted_at', 'is', null).maybeSingle()
     if (page.owner_id !== user.id && !['admin', 'editor'].includes(member?.role)) throw new HttpError(403, 'Not allowed')
+    if (!(await pageHasWhatsApp(db, page.id))) throw new HttpError(403, 'WhatsApp alerts are on the Creator and Pro plans. Upgrade to turn them on.')
     if (!page.alert_whatsapp) throw new HttpError(400, 'Add your WhatsApp number first')
     const key = `test:${page.id}:${Math.floor(Date.now() / 60_000)}` // one test a minute
     await send(db, { key, pageId: page.id, event: 'test', recipient: 'test', to: page.alert_whatsapp, params: [] })

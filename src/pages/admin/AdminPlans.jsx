@@ -5,15 +5,27 @@ import { formatInr } from '../../lib/images'
 import { Badge, Button, Card, Empty, Input, Modal, Spinner, Toggle, useToast, askConfirm } from '../../components/ui'
 import { PageHeading } from '../dashboard/DashboardLayout'
 
+// Empty number = unlimited (stored as null)
 const LIMIT_FIELDS = [
   ['max_pages', 'Bio pages'],
   ['max_site_pages', 'Sub-pages / page'],
   ['max_team', 'Team / page'],
-  ['max_products', 'Products / page'],
+  ['max_products', 'Live products / page'],
+  ['max_automations', 'DM automations'],
+  ['dm_monthly_limit', 'DMs / month'],
+  ['analytics_days', 'Analytics days'],
+  ['commission_pct', 'Commission %'],
 ]
 const BOOL_FIELDS = [
   ['remove_branding', 'Remove branding'],
   ['custom_domain', 'Custom domain'],
+  ['dm_advanced', 'Follow to unlock, lead capture, follow-ups'],
+  ['whatsapp', 'WhatsApp alerts'],
+  ['sales_tools', 'Coupons, offers, pay what you want'],
+  ['advanced_products', 'Bundles, memberships, upsells'],
+  ['gst_invoices', 'GST invoices'],
+  ['leads_export', 'CSV export'],
+  ['tracking', 'Pixels & UTM links'],
 ]
 
 const BLANK = {
@@ -61,7 +73,7 @@ function PlanEditor({ plan, isNew, onClose, onSaved }) {
           <p className="eyebrow text-ink-500">Limits</p>
           <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {LIMIT_FIELDS.map(([k, label]) => (
-              <Input key={k} label={label} type="number" min={0} value={form.features?.[k] ?? 0} onChange={(e) => setFeature(k, int(e.target.value))} />
+              <Input key={k} label={label} type="number" min={0} placeholder="∞" value={form.features?.[k] ?? ''} onChange={(e) => setFeature(k, e.target.value === '' ? null : int(e.target.value))} />
             ))}
           </div>
         </div>
@@ -69,7 +81,7 @@ function PlanEditor({ plan, isNew, onClose, onSaved }) {
           {BOOL_FIELDS.map(([k, label]) => (
             <Toggle key={k} label={label} checked={!!form.features?.[k]} onChange={(v) => setFeature(k, v)} />
           ))}
-          <Toggle label="Active" description={form.id === 'free' ? 'The Free plan is always active' : 'Inactive plans are hidden from the billing page'} checked={form.id === 'free' ? true : form.is_active} disabled={form.id === 'free'} onChange={(v) => set({ is_active: v })} />
+          <Toggle label="Active" description={form.id === 'free' ? 'The Starter plan is always active' : 'Inactive plans are hidden from the billing page'} checked={form.id === 'free' ? true : form.is_active} disabled={form.id === 'free'} onChange={(v) => set({ is_active: v })} />
         </div>
         <Input label="Position (sort order)" type="number" min={0} value={form.position} onChange={(e) => set({ position: e.target.value })} className="max-w-40" />
         <div className="flex justify-end gap-2">
@@ -138,7 +150,7 @@ export default function AdminPlans() {
               <p className="mt-4 font-display text-3xl font-bold">{formatInr(p.price_monthly_inr)}<span className="text-sm font-medium text-ink-500"> / mo · {formatInr(p.price_yearly_inr)} / yr</span></p>
               <dl className="mt-4 grid flex-1 grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {LIMIT_FIELDS.map(([k, label]) => (
-                  <div key={k} className="flex justify-between gap-2"><dt className="text-ink-500">{label}</dt><dd className="font-semibold">{p.features?.[k] ?? '—'}</dd></div>
+                  <div key={k} className="flex justify-between gap-2"><dt className="text-ink-500">{label}</dt><dd className="font-semibold">{p.features?.[k] ?? '∞'}</dd></div>
                 ))}
                 {BOOL_FIELDS.map(([k, label]) => (
                   <div key={k} className="flex justify-between gap-2"><dt className="text-ink-500">{label}</dt><dd className="font-semibold">{p.features?.[k] ? 'Yes' : 'No'}</dd></div>

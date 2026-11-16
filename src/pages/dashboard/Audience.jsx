@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bookmark, Download, Mail, Save, Search, UsersRound, X } from 'lucide-react'
 import { usePage } from '../../context/PageContext'
+import { useOwnerFeatures } from '../../lib/usePlan'
+import { PlanTag } from '../../components/PlanGate'
 import { errorMessage, supabase } from '../../lib/supabase'
 import { whatsappUrl } from '../../lib/embeds'
 import { formatInr } from '../../lib/images'
@@ -50,6 +52,8 @@ function Check({ checked, onChange, label }) {
 
 export default function Audience() {
   const { page, products, canEdit } = usePage()
+  const features = useOwnerFeatures(page.owner_id)
+  const canExport = features?.leads_export ?? true
   const toast = useToast()
   const [filter, setFilter] = useState(EMPTY_FILTER)
   const [rows, setRows] = useState(null)
@@ -173,9 +177,15 @@ export default function Audience() {
         title="Audience."
         italic="Everyone, in one place."
         actions={
-          <Button variant="outline" size="sm" onClick={exportCsv} disabled={!rows?.length}>
-            <Download className="size-4" /> Export CSV
-          </Button>
+          canExport ? (
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!rows?.length}>
+              <Download className="size-4" /> Export CSV
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" to="/dashboard/billing" title="CSV export is on the Creator and Pro plans">
+              <Download className="size-4" /> Export CSV <PlanTag />
+            </Button>
+          )
         }
       >
         Leads, buyers, tippers and brands merged by email or phone. Filter, save segments and reach out — only your team can see this.

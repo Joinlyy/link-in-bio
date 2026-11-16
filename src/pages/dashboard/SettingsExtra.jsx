@@ -5,6 +5,7 @@ import { usePage } from '../../context/PageContext'
 import { errorMessage, invokeFunction, supabase } from '../../lib/supabase'
 import { useOwnerFeatures } from '../../lib/usePlan'
 import ImageInput from '../../components/ImageInput'
+import { UpgradeNote } from '../../components/PlanGate'
 import { Alert, Badge, Button, Card, Input, Textarea, useToast, askConfirm } from '../../components/ui'
 
 export function SeoTrackingCard() {
@@ -13,6 +14,8 @@ export function SeoTrackingCard() {
   const tracking = page.tracking || {}
   const ga4Bad = tracking.ga4 && !/^G-[A-Z0-9]{4,16}$/.test(tracking.ga4)
   const pixelBad = tracking.meta_pixel && !/^\d{6,20}$/.test(tracking.meta_pixel)
+  const features = useOwnerFeatures(page.owner_id)
+  const canTrack = features?.tracking ?? true
   return (
     <Card className="p-5 sm:p-7">
       <h2 className="text-lg font-bold">SEO & sharing</h2>
@@ -24,10 +27,14 @@ export function SeoTrackingCard() {
       </div>
       <h3 className="mt-8 font-bold">Tracking pixels</h3>
       <p className="mt-1 text-sm text-ink-500">Loaded only after a visitor accepts cookies on your page.</p>
+      {!canTrack ? (
+        <UpgradeNote className="mt-4">Meta Pixel and Google Analytics are on the Creator and Pro plans.</UpgradeNote>
+      ) : (
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Input label="Google Analytics 4 ID" placeholder="G-XXXXXXXXXX" value={tracking.ga4 || ''} error={ga4Bad ? 'Should look like G-XXXXXXXXXX' : ''} onChange={(e) => updatePage({ tracking: { ...tracking, ga4: e.target.value.trim().toUpperCase() } })} />
         <Input label="Meta Pixel ID" placeholder="123456789012345" inputMode="numeric" value={tracking.meta_pixel || ''} error={pixelBad ? 'Pixel IDs are numbers only' : ''} onChange={(e) => updatePage({ tracking: { ...tracking, meta_pixel: e.target.value.trim() } })} />
       </div>
+      )}
     </Card>
   )
 }

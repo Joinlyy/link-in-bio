@@ -125,15 +125,45 @@ async function processPayload(payload: { object: string; entry: Array<Record<str
   }
 }
 
+type Plan = { dm_triggers?: string[] | null; dm_advanced?: boolean; max_automations?: number | null; dm_monthly_limit?: number | null }
+
+async function planOf(admin: SupabaseClient, ownerId: string): Promise<Plan> {
+  const { data } = await admin.rpc('plan_features', { p_user: ownerId })
+  return (data ?? {}) as Plan
+}
+
+/** Only what the creator's plan includes. Rules saved on a bigger plan keep working in their basic form. */
+function rulesForPlan(rules: Rule[], plan: Plan): Rule[] {
+  const allowed = Array.isArray(plan.dm_triggers) ? plan.dm_triggers : null
+  let list = rules.filter((r) => !allowed || allowed.includes(r.trigger))
+  if (!plan.dm_advanced) {
+    list = list.map((r) => ({ ...r, require_follow: false, collect: null, follow_up_message: null }))
+  }
+  if (typeof plan.max_automations === 'number') list = list.slice(0, plan.max_automations)
+  return list
+}
+
 async function loadAccount(admin: SupabaseClient, igId: string) {
   const { data: acc } = await admin.from('instagram_accounts').select('owner_id, ig_user_id, username').eq('ig_user_id', igId).maybeSingle()
   if (!acc) return null
   const { data: tok } = await admin.from('instagram_tokens').select('access_token').eq('owner_id', acc.owner_id).maybeSingle()
   if (!tok) return null
-  const { data: rules } = await admin.from('dm_rules').select('*').eq('owner_id', acc.owner_id).eq('is_active', true)
+  const [{ data: rules }, plan] = await Promise.all([
+    admin.from('dm_rules').select('*').eq('owner_id', acc.owner_id).eq('is_active', true).order('created_at'),
+    planOf(admin, acc.owner_id),
+  ])
   const client = makeClient(tok.access_token, igId)
-  return { ...acc, client, rules: (rules ?? []) as Rule[] }
+  return { ...acc, client, plan, rules: rulesForPlan((rules ?? []) as Rule[], plan) }
 }
+
+/** Monthly DM limit reached? (Starter: 1,000 a month) */
+async function overMonthlyLimit(admin: SupabaseClient, account: { owner_id: string; plan: Plan }) {
+  const limit = account.plan.dm_monthly_limit
+  if (typeof limit !== 'number') return false
+  const { data } = await admin.rpc('dm_sent_this_month', { p_owner: account.owner_id })
+  return Number(data ?? 0) >= limit
+}
+const LIMIT_TEXT = 'Monthly DM limit reached. Upgrade to Creator for unlimited DMs.'
 
 function makeClient(accessToken: string, igId: string) {
   return new InstagramClient({ accessToken, instagramAccountId: igId, baseUrl: GRAPH, maxRetries: 2, timeout: 10000 })
@@ -235,6 +265,10 @@ async function onComment(admin: SupabaseClient, account: Account, value: Record<
   const eventId = await claim(admin, account.owner_id, `c_${commentId}`)
   if (!eventId) return
   const base = { event: 'comment', rule_id: rule.id, ig_user_id: fromId, ig_username: value.from?.username ?? null }
+  if (await overMonthlyLimit(admin, account)) {
+    await finish(admin, eventId, { ...base, status: 'skipped', error: LIMIT_TEXT })
+    return
+  }
   // A new trigger supersedes anything we were still waiting for from this person
   if (fromId) {
     await admin.from('dm_events').update({ awaiting: null })
@@ -294,6 +328,10 @@ async function onMessage(admin: SupabaseClient, account: Account, m: Record<stri
   const eventId = await claim(admin, account.owner_id, `m_${m.message.mid}`)
   if (!eventId) return
   const base = { event: isStoryReply ? 'story_reply' : 'dm', rule_id: rule.id, ig_user_id: senderId, ig_username: last?.ig_username ?? null, window_until: windowUntil }
+  if (await overMonthlyLimit(admin, account)) {
+    await finish(admin, eventId, { ...base, status: 'skipped', error: LIMIT_TEXT })
+    return
+  }
   if (last?.awaiting) await admin.from('dm_events').update({ awaiting: null }).eq('id', last.id)
 
   try {
@@ -436,7 +474,9 @@ async function sendDueFollowUps(admin: SupabaseClient) {
 
     if (!rules.has(ev.rule_id)) {
       const { data } = await admin.from('dm_rules').select('*').eq('id', ev.rule_id).eq('is_active', true).maybeSingle()
-      rules.set(ev.rule_id, (data as Rule | null) ?? null)
+      // Follow-ups are a Creator/Pro feature: skip them if the creator has moved to Starter since
+      const plan = data ? await planOf(admin, (data as Rule).owner_id) : null
+      rules.set(ev.rule_id, data && plan?.dm_advanced ? (data as Rule) : null)
     }
     const rule = rules.get(ev.rule_id)
     if (!rule?.follow_up_message?.trim() || !ev.ig_user_id) { skipped++; continue }

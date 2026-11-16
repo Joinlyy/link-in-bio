@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { BellRing, Check, ChevronDown, Download, Mail, Pencil, Plus, ReceiptIndianRupee, Send, Trash2, X } from 'lucide-react'
 import { usePage } from '../../context/PageContext'
+import { useOwnerFeatures } from '../../lib/usePlan'
+import { UpgradeNote } from '../../components/PlanGate'
 import { errorMessage, supabase } from '../../lib/supabase'
 import { whatsappUrl } from '../../lib/embeds'
 import { WhatsappIcon } from '../../components/icons'
@@ -336,6 +338,8 @@ function ReminderModal({ invoice, billing, phone, onClose, onLogged }) {
 // ---------------------------------------------------------------------------
 export default function Invoices() {
   const { page, canEdit, updatePage } = usePage()
+  const features = useOwnerFeatures(page.owner_id)
+  const canInvoice = features?.gst_invoices ?? true
   const toast = useToast()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
@@ -501,10 +505,12 @@ export default function Invoices() {
       <PageHeading
         title="Invoices."
         italic="Get paid on time."
-        actions={canEdit && <Button onClick={() => setEditing(newInvoice(null))}><Plus className="size-4" /> New invoice</Button>}
+        actions={canEdit && canInvoice && <Button onClick={() => setEditing(newInvoice(null))}><Plus className="size-4" /> New invoice</Button>}
       >
         GST-ready invoices for your brand deals. Tax is split into CGST + SGST or IGST automatically based on the brand’s state.
       </PageHeading>
+
+      {!canInvoice && <UpgradeNote>Creating GST invoices is on the Creator and Pro plans. Invoices you already made stay here.</UpgradeNote>}
 
       <Stats
         items={[
@@ -528,7 +534,7 @@ export default function Invoices() {
         <Empty
           icon={ReceiptIndianRupee}
           title={invoices.length ? 'Nothing here' : 'No invoices yet'}
-          action={canEdit && !invoices.length ? <Button onClick={() => setEditing(newInvoice(null))}><Plus className="size-4" /> Create your first invoice</Button> : null}
+          action={canEdit && canInvoice && !invoices.length ? <Button onClick={() => setEditing(newInvoice(null))}><Plus className="size-4" /> Create your first invoice</Button> : null}
         >
           {invoices.length ? 'No invoices match this filter.' : 'Create an invoice from scratch, or open a brand deal and tap “Create invoice”.'}
         </Empty>

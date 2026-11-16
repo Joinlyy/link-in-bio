@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Download, RefreshCw, Trash2, Unplug } from 'lucide-react'
 import { usePage } from '../../context/PageContext'
+import { useOwnerFeatures } from '../../lib/usePlan'
+import { UpgradeNote } from '../../components/PlanGate'
 import { useAuth } from '../../context/AuthContext'
 import { errorMessage, invokeFunction, supabase } from '../../lib/supabase'
 import { disconnectInstagram, startInstagramConnect, syncInstagram } from '../../lib/instagram'
@@ -66,6 +68,8 @@ function WhatsappAlertsCard() {
   const [phone, setPhone] = useState(page.alert_whatsapp ? `+${page.alert_whatsapp}` : '')
   const [busy, setBusy] = useState(false)
   const [recent, setRecent] = useState([])
+  const features = useOwnerFeatures(page.owner_id)
+  const allowed = features?.whatsapp ?? true
   const digits = (() => {
     let p = phone.replace(/[^\d+]/g, '')
     if (p.startsWith('+')) return p.slice(1)
@@ -104,6 +108,10 @@ function WhatsappAlertsCard() {
         {page.alert_on && page.alert_whatsapp ? <Badge tone="green">On</Badge> : <Badge>Off</Badge>}
       </div>
       <p className="mt-1 text-sm text-ink-500">Get a WhatsApp message when someone pays you by UPI, buys something, joins your lead form or sends a brand enquiry.</p>
+      {!allowed ? (
+        <UpgradeNote className="mt-5">WhatsApp alerts, for you and order updates for your buyers, are on the Creator and Pro plans.</UpgradeNote>
+      ) : (
+      <>
       <div className="mt-5 grid gap-4">
         <Input label="Your WhatsApp number" inputMode="tel" placeholder="98765 43210" value={phone} disabled={!canEdit} error={wrong ? 'Enter a mobile number, e.g. 98765 43210' : undefined} hint="Indian numbers get +91 automatically" onChange={(e) => setPhone(e.target.value)} />
         <Toggle label="Send me alerts" checked={page.alert_on} disabled={!canEdit || !digits || wrong} onChange={(v) => save(v)} />
@@ -113,6 +121,8 @@ function WhatsappAlertsCard() {
           <Button onClick={() => save()} disabled={!changed || wrong}>Save number</Button>
           <Button variant="outline" loading={busy} disabled={!page.alert_whatsapp || changed} onClick={test}>Send a test</Button>
         </div>
+      )}
+      </>
       )}
       {recent.length > 0 && (
         <ul className="mt-5 divide-y divide-ink/5 rounded-2xl bg-cream px-4 text-sm">

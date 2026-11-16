@@ -7,7 +7,6 @@ import {
 } from 'lucide-react'
 import { Avatar } from '../../components/page/PageRenderer'
 import { supabase } from '../../lib/supabase'
-import InstallAppButton from '../../components/InstallApp'
 import PasswordBanner from '../../components/SetPassword'
 import { useAuth } from '../../context/AuthContext'
 import { PageProvider, usePage } from '../../context/PageContext'
@@ -99,7 +98,6 @@ function MobileNav({ isAdmin }) {
   return (
     <nav ref={ref} className="scrollbar-none sticky top-0 z-30 -mx-3 -my-2 flex gap-1.5 overflow-x-auto bg-cream px-3 py-2 sm:-mx-4 sm:px-4 lg:hidden" aria-label="Dashboard sections">
       {NAV.map((n) => <MainNavLink key={n.to} n={n} mobile />)}
-      <div className="shrink-0 [&>*]:mt-0"><InstallAppButton /></div>
       {isAdmin && (
         <Link to="/admin" className="flex shrink-0 items-center gap-2 rounded-full bg-lilac-100 px-4 py-2.5 text-sm font-semibold">
           <ShieldCheck className="size-4" /> Admin
@@ -286,7 +284,6 @@ function Shell() {
               <ShieldCheck className="size-[18px]" /> Super admin
             </Link>
           )}
-          <InstallAppButton />
         </nav>
         <div className="rounded-2xl bg-cream p-3">
           <p className="truncate text-sm font-semibold">{profile?.full_name || page.display_name || page.username}</p>
