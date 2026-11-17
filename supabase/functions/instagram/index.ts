@@ -1,10 +1,9 @@
 // Instagram connection via Instagram Business Login (no Facebook Page required).
-// Uses the `instagram-platform` SDK (github.com/urlsandcodes/instagram-platform) for Graph calls.
+// Calls the Instagram Graph API directly (the instagram-platform SDK has no /me helper).
 //
 // Secrets: INSTAGRAM_APP_ID, INSTAGRAM_APP_SECRET, INSTAGRAM_REDIRECT_URI, CRON_SECRET
 // Cron (pg_cron → pg_net): POST {action:'sync_all'} with header `x-cron-secret: <CRON_SECRET>`
 // refreshes stale accounts (and their tokens) without a user session.
-import { InstagramClient } from 'npm:instagram-platform@1.0.0'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminClient, handle, HttpError, json, requireUser } from '../_shared/utils.ts'
 
@@ -198,24 +197,32 @@ async function sync(admin: SupabaseClient, userId: string) {
   return account
 }
 
+/** GET on the Instagram Graph API; throws with Meta's message on errors */
+async function igGet(token: string, path: string, params: Record<string, string> = {}) {
+  const url = new URL(`${GRAPH}/v21.0${path}`)
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
+  url.searchParams.set('access_token', token)
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok || body.error) throw new Error(body.error?.message ?? `Instagram API ${res.status}`)
+  return body
+}
+
 async function fetchAndStoreProfile(admin: SupabaseClient, userId: string, token: string, igUserId: string) {
-  const client = new InstagramClient({ accessToken: token, baseUrl: GRAPH, maxRetries: 2, timeout: 15000 })
-
-  const me = await client.auth.getMe(['user_id', 'username'])
+  // user_id is the professional account id that webhooks use (entry.id); id is app-scoped
+  const me = await igGet(token, '/me', { fields: 'user_id,username' })
   const accountId = String(me.user_id ?? me.id ?? igUserId)
-  client.setInstagramAccountId(accountId)
 
-  const profile = await client.user.getProfile([
-    'id', 'username', 'name', 'biography', 'profile_picture_url', 'account_type',
-    'followers_count', 'follows_count', 'media_count',
-  ])
+  const profile = await igGet(token, `/${accountId}`, {
+    fields: 'id,username,name,biography,profile_picture_url,account_type,followers_count,follows_count,media_count',
+  })
 
   // Recent media → average likes/comments and engagement rate
   let recent: Record<string, unknown>[] = []
   try {
-    const media = await client.media.getUserMedia({
-      limit: 12,
-      fields: ['id', 'caption', 'media_type', 'media_product_type', 'media_url', 'thumbnail_url', 'permalink', 'timestamp', 'like_count', 'comments_count'],
+    const media = await igGet(token, `/${accountId}/media`, {
+      limit: '12',
+      fields: 'id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count',
     })
     recent = (media.data ?? []) as Record<string, unknown>[]
   } catch (e) {
@@ -230,7 +237,7 @@ async function fetchAndStoreProfile(admin: SupabaseClient, userId: string, token
   // Account insights are only available for eligible professional accounts — best effort
   const insights: Record<string, number> = {}
   try {
-    const res = await client.insights.getAccountInsights({ metrics: ['reach'], period: 'days_28' })
+    const res = await igGet(token, `/${accountId}/insights`, { metric: 'reach', period: 'days_28' })
     for (const m of (res.data ?? []) as { name: string; values?: { value: number }[]; total_value?: { value: number } }[]) {
       const v = m.total_value?.value ?? m.values?.at(-1)?.value
       if (typeof v === 'number') insights[m.name] = v

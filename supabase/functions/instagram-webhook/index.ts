@@ -169,6 +169,16 @@ function makeClient(accessToken: string, igId: string) {
   return new InstagramClient({ accessToken, instagramAccountId: igId, baseUrl: GRAPH, maxRetries: 2, timeout: 10000 })
 }
 
+/** Public reply under a comment. Instagram's endpoint is /{comment-id}/replies (the SDK's reply() posts to
+ *  /comments, which fails). Best effort: the DM is what matters. */
+async function replyToComment(account: { client: ReturnType<typeof makeClient> }, commentId: string, message: string) {
+  try {
+    await account.client.http.post(`/${commentId}/replies`, { message })
+  } catch (e) {
+    console.warn('comment reply failed', errText(e))
+  }
+}
+
 function matches(rule: Rule, text: string) {
   if (!rule.keywords.length) return true // "any comment / any reply"
   const t = ` ${text.toLowerCase()} `
@@ -279,13 +289,13 @@ async function onComment(admin: SupabaseClient, account: Account, value: Record<
     if (rule.require_follow) {
       // Private reply (DM) asking them to follow first; their reply opens the messaging window
       await account.client.http.post(`/${account.ig_user_id}/messages`, { recipient: { comment_id: commentId }, message: { text: followPrompt(rule) } })
-      if (rule.comment_reply) await account.client.comments.reply(commentId, rule.comment_reply).catch(() => {})
+      if (rule.comment_reply) await replyToComment(account, commentId, rule.comment_reply)
       await finish(admin, eventId, { ...base, status: 'sent', awaiting: 'follow' })
       return
     }
     // Private reply (DM) to the commenter — allowed once per comment within 7 days
     await sendMain(account, rule, { commentId })
-    if (rule.comment_reply) await account.client.comments.reply(commentId, rule.comment_reply).catch(() => {})
+    if (rule.comment_reply) await replyToComment(account, commentId, rule.comment_reply)
     const windowUntil = fromId ? await openWindow(admin, account.owner_id, fromId) : null
     await finish(admin, eventId, {
       ...base, status: 'sent', awaiting: rule.collect ? 'collect' : null,
