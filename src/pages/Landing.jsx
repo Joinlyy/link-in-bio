@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { applySeo } from '../lib/seo'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowDown, ArrowUpRight, BellRing, CalendarDays, Check, Download, Handshake, IndianRupee,
@@ -530,7 +531,7 @@ function FinalCta() {
 
 export default function Landing() {
   useEffect(() => {
-    document.title = `${APP_NAME} — The link in bio for Indian creators`
+    applySeo({ title: `${APP_NAME}: The Link in Bio for Indian Creators | UPI, Instagram DM Automation`, description: 'One link in bio to sell, book and get paid. Take UPI payments, auto-DM every Instagram comment and get WhatsApp alerts. Free for Indian creators, in Hindi and English.', path: '/' })
     captureRef()
   }, [])
   return (

@@ -6,6 +6,7 @@ import { trackView } from '../lib/analytics'
 import { fetchMemberPage, fetchPublicPage } from '../lib/publicApi'
 import MembersGate from '../components/page/MembersGate'
 import { APP_NAME } from '../lib/config'
+import { applySeo, setJsonLd, SITE_URL } from '../lib/seo'
 
 function setMeta(name, content, attr = 'name') {
   let el = document.head.querySelector(`meta[${attr}="${name}"]`)
@@ -74,12 +75,10 @@ export default function PublicPage(props) {
     const name = page.display_name || page.username
     const title = seo.title || (sub ? `${sub.title} · ${name}` : `${name} (@${page.username}) | ${APP_NAME}`)
     const description = seo.description || page.bio || `All of ${page.display_name || page.username}'s links in one place.`
-    document.title = title
-    setMeta('description', description)
-    setMeta('og:title', title, 'property')
-    setMeta('og:description', description, 'property')
     const image = seo.image || page.avatar_url
-    if (image) setMeta('og:image', image, 'property')
+    const path = `/${page.username}${sub ? `/${sub.slug}` : ''}`
+    applySeo({ title, description, path, image: image || undefined, type: 'profile', noindex: seo.noindex === true || sub?.visibility === 'members', lang: page.language || 'en' })
+    setJsonLd({ '@context': 'https://schema.org', '@type': 'ProfilePage', mainEntity: { '@type': 'Person', name: name, description: page.bio || undefined, image: page.avatar_url || undefined, url: `${SITE_URL}/${page.username}` } })
     const bg = page.theme?.bg
     if (bg) setMeta('theme-color', bg)
     trackView(page.id)

@@ -87,13 +87,22 @@ export function SiteFooter() {
             The link in bio for Indian creators: sell, book and get paid from one link. Built in India for creators who post in Hindi, English and everything in between.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-8 text-sm sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-8 text-sm sm:grid-cols-4">
           <div className="space-y-2.5">
             <p className="eyebrow text-ink-400">Product</p>
             <a href="/#features" className="block font-medium hover:underline">Features</a>
             <a href="/#pricing" className="block font-medium hover:underline">Pricing</a>
             <Link to="/academy" className="block font-medium hover:underline">Creator guides</Link>
             <a href="/#faq" className="block font-medium hover:underline">Questions</a>
+          </div>
+          <div className="space-y-2.5">
+            <p className="eyebrow text-ink-400">Learn</p>
+            <Link to="/link-in-bio-for-indian-creators" className="block font-medium hover:underline">Link in bio for India</Link>
+            <Link to="/instagram-comment-to-dm-automation" className="block font-medium hover:underline">Comment to DM automation</Link>
+            <Link to="/sell-on-instagram-with-upi" className="block font-medium hover:underline">Sell with UPI</Link>
+            <Link to="/link-in-bio-templates" className="block font-medium hover:underline">Templates</Link>
+            <Link to="/creator-media-kit-generator" className="block font-medium hover:underline">Media kit</Link>
+            <Link to="/linktree-alternative-india" className="block font-medium hover:underline">Linktree alternative</Link>
           </div>
           <div className="space-y-2.5">
             <p className="eyebrow text-ink-400">Creators</p>

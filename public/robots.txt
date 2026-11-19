@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /order/
+Disallow: /signin
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /auth/
+Disallow: /onboarding
+Disallow: /instagram/
+Disallow: /invoices/
+Disallow: /api/
+
+Sitemap: https://www.joinlyy.com/sitemap.xml

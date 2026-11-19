@@ -44,6 +44,7 @@ const BrandDeals = lazy(() => import('./pages/dashboard/BrandDeals'))
 const Automations = lazy(() => import('./pages/dashboard/Automations'))
 const Support = lazy(() => import('./pages/dashboard/Support'))
 const AdminMessages = lazy(() => import('./pages/admin/AdminMessages'))
+const SeoLanding = lazy(() => import('./pages/SeoLanding'))
 const AdminSubscriptions = lazy(() => import('./pages/admin/AdminSubscriptions'))
 const AdminMoney = lazy(() => import('./pages/admin/AdminMoney'))
 const AdminStatus = lazy(() => import('./pages/admin/AdminStatus'))
@@ -73,6 +74,8 @@ const AdminDomains = lazy(() => import('./pages/admin/AdminDomains'))
 
 const { RequireAuth, RequireAdmin, RequireCreator, GuestOnly } = Guards
 
+import { SEO_PAGES } from './lib/seoPages'
+
 export default function App() {
   if (isCustomDomainHost()) {
     return (
@@ -89,6 +92,7 @@ export default function App() {
         <Routes>
           {/* Public, no auth bootstrapping */}
           <Route path="/" element={<Landing />} />
+          {SEO_PAGES.map((p) => <Route key={p.slug} path={`/${p.slug}`} element={<SeoLanding slug={p.slug} />} />)}
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/data-deletion" element={<DataDeletion />} />

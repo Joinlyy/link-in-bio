@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowUpRight, Clock, Lightbulb } from 'lucide-react'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
 import { APP_NAME } from '../lib/config'
+import { applySeo, setJsonLd, SITE_URL } from '../lib/seo'
 import { ARTICLES, findArticle } from '../lib/academyContent'
 
 function Block({ block }) {
@@ -144,8 +145,12 @@ export default function Academy() {
   const article = slug ? findArticle(slug) : null
 
   useEffect(() => {
-    document.title = article ? `${article.title} | ${APP_NAME} Academy` : `Creator guides | ${APP_NAME} Academy`
+    applySeo(article
+      ? { title: `${article.title} | ${APP_NAME} Academy`, description: article.summary, path: `/academy/${article.slug}`, type: 'article' }
+      : { title: `Creator guides for Indian creators | ${APP_NAME} Academy`, description: 'Practical, step-by-step guides on link in bio, Instagram automation, selling with UPI and growing as an Indian creator.', path: '/academy' })
+    setJsonLd(article ? { '@context': 'https://schema.org', '@type': 'Article', headline: article.title, description: article.summary, url: `${SITE_URL}/academy/${article.slug}`, inLanguage: 'en-IN', publisher: { '@type': 'Organization', name: APP_NAME } } : null)
     window.scrollTo(0, 0)
+    return () => setJsonLd(null)
   }, [article])
 
   if (slug && !article) return <Navigate to="/academy" replace />
