@@ -3,10 +3,11 @@
 //        creates a ticket on that order and alerts the admin by email and/or WhatsApp.
 //   POST { action: 'reply', id }       (signed-in admin with two-step login)
 //        emails the admin's reply on a ticket to the buyer.
-// Secrets: APP_ORIGIN; for email RESEND_API_KEY (+ SUPPORT_FROM, e.g. "Joinlyy <support@yourdomain>");
+// Secrets: APP_ORIGIN; for email BREVO_API_KEY and EMAIL_FROM (see _shared/email.ts);
 //          for WhatsApp WHATSAPP_TOKEN, WHATSAPP_PHONE_ID (template `admin_support_ticket`, see scripts/whatsapp-templates.mjs).
 // If neither alert channel works the ticket still lands in the admin inbox; each result is stored on the ticket.
 import { adminClient, handle, HttpError, json, requireUser } from '../_shared/utils.ts'
+import { sendEmail } from '../_shared/email.ts'
 
 const APP = (Deno.env.get('APP_ORIGIN') ?? 'https://joinlyy.com').replace(/\/$/, '')
 const GRAPH = 'https://graph.facebook.com/v21.0'
@@ -19,17 +20,6 @@ const CATEGORIES: Record<string, string> = {
 }
 const clip = (s: unknown, n: number) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
-
-async function sendEmail(to: string, subject: string, html: string): Promise<string> {
-  const key = Deno.env.get('RESEND_API_KEY')
-  if (!key) return 'skipped: email is not set up'
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: Deno.env.get('SUPPORT_FROM') ?? 'Joinlyy <onboarding@resend.dev>', to: [to], subject, html }),
-  })
-  return res.ok ? 'sent' : `failed: HTTP ${res.status}`
-}
 
 async function sendWhatsapp(to: string, params: string[]): Promise<string> {
   const token = Deno.env.get('WHATSAPP_TOKEN')
@@ -60,8 +50,11 @@ Deno.serve(handle(async (req) => {
     const { data: t } = await db.from('support_tickets').select('id, ticket_no, buyer_email, admin_reply, orders(access_token)').eq('id', String(body.id)).maybeSingle()
     if (!t?.admin_reply) throw new HttpError(400, 'Write a reply first')
     const order = Array.isArray(t.orders) ? t.orders[0] : t.orders
-    const result = await sendEmail(t.buyer_email, `Re: your support request #${t.ticket_no}`,
-      `<p>${esc(t.admin_reply).replace(/\n/g, '<br>')}</p><p><a href="${APP}/order/${order?.access_token}">Open your order</a></p>`)
+    const result = await sendEmail({
+      to: t.buyer_email,
+      subject: `Re: your support request #${t.ticket_no}`,
+      html: `<p>${esc(t.admin_reply).replace(/\n/g, '<br>')}</p><p><a href="${APP}/order/${order?.access_token}">Open your order</a></p>`,
+    })
     return json({ email: result })
   }
 
@@ -97,8 +90,12 @@ Deno.serve(handle(async (req) => {
   const notified: Record<string, string> = {}
   const jobs: Promise<void>[] = []
   if (s?.support_email) {
-    jobs.push(sendEmail(s.support_email, `${priority === 'high' ? '[High] ' : ''}Support #${ticket.ticket_no}: ${label}`,
-      `<p><b>${esc(label)}</b> (${priority} priority)</p><p>Order: ${esc(clip(order.product_title, 80))}, ₹${order.amount_inr}, ${esc(order.status)}<br>Buyer: ${esc(order.buyer_email)}</p><p>${esc(clip(message, 600))}</p><p><a href="${link}">Open in admin</a></p>`)
+    jobs.push(sendEmail({
+      to: s.support_email,
+      subject: `${priority === 'high' ? '[High] ' : ''}Support #${ticket.ticket_no}: ${label}`,
+      html: `<p><b>${esc(label)}</b> (${priority} priority)</p><p>Order: ${esc(clip(order.product_title, 80))}, ₹${order.amount_inr}, ${esc(order.status)}<br>Buyer: ${esc(order.buyer_email)}</p><p>${esc(clip(message, 600))}</p><p><a href="${link}">Open in admin</a></p>`,
+      replyTo: order.buyer_email,
+    })
       .then((r) => { notified.email = r }, (e) => { notified.email = `failed: ${clip(e?.message, 80)}` }))
   }
   if (s?.support_whatsapp) {
