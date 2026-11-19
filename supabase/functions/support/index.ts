@@ -8,6 +8,7 @@
 // If neither alert channel works the ticket still lands in the admin inbox; each result is stored on the ticket.
 import { adminClient, handle, HttpError, json, requireUser } from '../_shared/utils.ts'
 import { sendEmail } from '../_shared/email.ts'
+import { ticketReceived, ticketReply } from '../_shared/emailTemplates.ts'
 
 const APP = (Deno.env.get('APP_ORIGIN') ?? 'https://joinlyy.com').replace(/\/$/, '')
 const GRAPH = 'https://graph.facebook.com/v21.0'
@@ -50,11 +51,8 @@ Deno.serve(handle(async (req) => {
     const { data: t } = await db.from('support_tickets').select('id, ticket_no, buyer_email, admin_reply, orders(access_token)').eq('id', String(body.id)).maybeSingle()
     if (!t?.admin_reply) throw new HttpError(400, 'Write a reply first')
     const order = Array.isArray(t.orders) ? t.orders[0] : t.orders
-    const result = await sendEmail({
-      to: t.buyer_email,
-      subject: `Re: your support request #${t.ticket_no}`,
-      html: `<p>${esc(t.admin_reply).replace(/\n/g, '<br>')}</p><p><a href="${APP}/order/${order?.access_token}">Open your order</a></p>`,
-    })
+    const mail = ticketReply({ reply: t.admin_reply, orderUrl: `${APP}/order/${order?.access_token}`, ticketNo: t.ticket_no })
+    const result = await sendEmail({ to: t.buyer_email, subject: mail.subject, html: mail.html })
     return json({ email: result })
   }
 
@@ -102,7 +100,10 @@ Deno.serve(handle(async (req) => {
     jobs.push(sendWhatsapp(s.support_whatsapp, [String(ticket.ticket_no), label, clip(order.buyer_email, 60), link])
       .then((r) => { notified.whatsapp = r }, (e) => { notified.whatsapp = `failed: ${clip(e?.message, 80)}` }))
   }
-  if (!jobs.length) notified.none = 'no alert contact set in admin'
+  // The buyer gets a short receipt so they know the request arrived
+  const ack = ticketReceived({ ticketNo: ticket.ticket_no, orderUrl: `${APP}/order/${token}` })
+  jobs.push(sendEmail({ to: order.buyer_email, subject: ack.subject, html: ack.html }).then((r) => { notified.buyer_email = r }))
+  if (!s?.support_email && !s?.support_whatsapp) notified.none = 'no alert contact set in admin'
   await Promise.race([Promise.all(jobs), new Promise((r) => setTimeout(r, 15000))])
   await db.from('support_tickets').update({ notified }).eq('id', ticket.id)
 

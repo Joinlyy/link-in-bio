@@ -42,3 +42,19 @@ These come from Supabase Auth, which limits its own default mailer. In the Supab
 ## What can send email next
 
 Order confirmation to the buyer, "your plan is active" after you approve a plan payment, and a welcome email. Add them by calling `sendEmail` from the relevant function.
+
+## Automatic emails (built)
+
+The `email` function sends these, triggered by the database and recorded once each in `email_log`:
+
+| Email | Goes to | When |
+| --- | --- | --- |
+| Welcome | New creator | After sign-up (also adds them to the Brevo contact list) |
+| Order confirmed | Buyer | An order becomes paid |
+| New order | Creator | An order becomes paid |
+| Payment not found | Buyer | A creator rejects a UPI payment |
+| Plan active / payment not confirmed | Creator | You approve or reject a plan payment |
+| Plan ending in 3 days / plan ended | Creator | Daily at 09:00 IST |
+| Request received / reply | Buyer | Buyer support tickets |
+
+Secrets used: `BREVO_API_KEY`, `EMAIL_FROM`, optional `EMAIL_FROM_NAME` and `BREVO_LIST_ID` (the Brevo list new creators join).

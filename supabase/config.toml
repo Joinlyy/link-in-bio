@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.support]
 verify_jwt = false
+
+[functions.email]
+verify_jwt = false
