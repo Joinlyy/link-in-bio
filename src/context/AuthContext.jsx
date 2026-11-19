@@ -3,7 +3,6 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Button, FullScreenLoader, ToastProvider } from '../components/ui'
 import { Logo } from '../components/icons'
-import AdminSecurityGate from '../pages/admin/AdminSecurityGate'
 
 const AuthCtx = createContext(null)
 
@@ -60,8 +59,6 @@ export function AuthProvider({ children }) {
       loading: loading || Boolean(session?.user && profileFor !== session.user.id),
       isAdmin: profile?.role === 'admin' && profile?.status === 'active',
       needsMfa,
-      // Admin actions need two-step login; the database refuses them otherwise
-      adminNeedsMfa: profile?.role === 'admin' && profile?.status === 'active' && aal !== 'aal2',
       mfaPassed: () => {
         setNeedsMfa(false)
         setAal('aal2')
@@ -165,12 +162,11 @@ export function RequireAuth({ children }) {
   return children
 }
 
-/** Admin screens. Anyone who is not an active admin is sent away; admins must have passed two-step login */
+/** Admin screens. Anyone who is not an active admin is sent away */
 export function RequireAdmin({ children }) {
-  const { isAdmin, adminNeedsMfa, loading } = useAuth()
+  const { isAdmin, loading } = useAuth()
   if (loading) return <FullScreenLoader />
   if (!isAdmin) return <Navigate to="/" replace />
-  if (adminNeedsMfa) return <AdminSecurityGate />
   return children
 }
 

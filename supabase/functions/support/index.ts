@@ -48,16 +48,6 @@ async function sendWhatsapp(to: string, params: string[]): Promise<string> {
   return `failed: ${clip(body.error?.message || `HTTP ${res.status}`, 120)}`
 }
 
-/** JWT claim, to confirm the admin completed two-step login */
-function claim(token: string, name: string) {
-  try {
-    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(part + '==='.slice((part.length + 3) % 4)))[name]
-  } catch {
-    return null
-  }
-}
-
 Deno.serve(handle(async (req) => {
   const body = await req.json().catch(() => ({}))
   const db = adminClient()
@@ -65,9 +55,8 @@ Deno.serve(handle(async (req) => {
   // ---- admin: email the reply to the buyer ----
   if (body.action === 'reply') {
     const user = await requireUser(req, db)
-    const jwt = req.headers.get('Authorization')!.replace(/^Bearer\s+/i, '')
     const { data: me } = await db.from('profiles').select('role, status').eq('id', user.id).maybeSingle()
-    if (me?.role !== 'admin' || me.status !== 'active' || claim(jwt, 'aal') !== 'aal2') throw new HttpError(403, 'Not allowed')
+    if (me?.role !== 'admin' || me.status !== 'active') throw new HttpError(403, 'Not allowed')
     const { data: t } = await db.from('support_tickets').select('id, ticket_no, buyer_email, admin_reply, orders(access_token)').eq('id', String(body.id)).maybeSingle()
     if (!t?.admin_reply) throw new HttpError(400, 'Write a reply first')
     const order = Array.isArray(t.orders) ? t.orders[0] : t.orders
