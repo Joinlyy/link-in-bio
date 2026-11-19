@@ -23,6 +23,7 @@ export default function SeoLanding({ slug: fixedSlug }) {
           { '@type': 'ListItem', position: 2, name: page.kicker, item: `${SITE_URL}${path}` },
         ] },
         { '@type': 'FAQPage', mainEntity: page.faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
+        ...(page.howto ? [{ '@type': 'HowTo', name: page.howto.name, step: page.howto.steps.map(([name, text], i) => ({ '@type': 'HowToStep', position: i + 1, name, text })) }] : []),
       ],
     })
     return () => setJsonLd(null)
@@ -43,6 +44,20 @@ export default function SeoLanding({ slug: fixedSlug }) {
             <Link to="/signup" className="inline-flex h-12 items-center gap-2 rounded-full bg-lime px-6 text-sm font-semibold text-ink">Create your free page <ArrowUpRight className="size-4" /></Link>
             <Link to="/#pricing" className="inline-flex h-12 items-center rounded-full border border-ink/15 px-6 text-sm font-semibold">See pricing</Link>
           </div>
+
+          {page.howto && (
+            <section className="mt-12">
+              <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{page.howto.name}</h2>
+              <ol className="mt-5 space-y-4">
+                {page.howto.steps.map(([name, text], i) => (
+                  <li key={name} className="flex gap-4 rounded-3xl bg-white p-5 shadow-soft">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ink font-display font-bold text-lime">{i + 1}</span>
+                    <span><b className="block text-[17px]">{name}</b><span className="mt-1 block leading-relaxed text-ink-700">{text}</span></span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
           {page.sections.map((s) => (
             <section key={s.h2} className="mt-12">

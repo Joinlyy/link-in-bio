@@ -473,7 +473,7 @@ export default function PageRenderer({
 
           <footer className={`${SECTION_WIDTH} flex flex-col items-center gap-3 pb-8 text-xs`}>
             {page.show_branding !== false && (
-              <a href="/" className="inline-flex items-center gap-2 rounded-full py-1.5 pr-3.5 pl-1.5 font-semibold transition hover:scale-[1.02]" style={{ background: hexAlpha(theme.text, 0.08) }}>
+              <a href="https://www.joinlyy.com/" title="Joinlyy: free link in bio with Instagram comment to DM automation" className="inline-flex items-center gap-2 rounded-full py-1.5 pr-3.5 pl-1.5 font-semibold transition hover:scale-[1.02]" style={{ background: hexAlpha(theme.text, 0.08) }}>
                 <Logo size={22} />
                 {t(lang, 'madeWith')} {APP_NAME}
               </a>

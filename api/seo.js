@@ -61,6 +61,7 @@ async function describe(path) {
       jsonld: { '@context': 'https://schema.org', '@graph': [
         { '@type': 'WebPage', name: landing.h1, description: landing.description, url: `${SITE}${path}`, inLanguage: 'en-IN' },
         { '@type': 'FAQPage', mainEntity: landing.faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
+        ...(landing.howto ? [{ '@type': 'HowTo', name: landing.howto.name, step: landing.howto.steps.map(([name, text], i) => ({ '@type': 'HowToStep', position: i + 1, name, text })) }] : []),
       ] },
     }
   }

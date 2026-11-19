@@ -84,7 +84,7 @@ export function SiteFooter() {
         <div className="max-w-sm">
           <Brand />
           <p className="mt-4 text-sm leading-relaxed text-ink-500">
-            The link in bio for Indian creators: sell, book and get paid from one link. Built in India for creators who post in Hindi, English and everything in between.
+            Joinlyy (say "join-lee") is the link in bio for Indian creators: free Instagram comment to DM automation, and a page to sell, book and get paid from one link. Built in India for creators who post in Hindi, English and everything in between.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-8 text-sm sm:grid-cols-4">
@@ -97,15 +97,22 @@ export function SiteFooter() {
           </div>
           <div className="space-y-2.5">
             <p className="eyebrow text-ink-400">Learn</p>
+            <Link to="/instagram-comment-to-dm-automation" className="block font-medium hover:underline">Free comment to DM automation</Link>
+            <Link to="/how-to-set-up-comment-to-dm" className="block font-medium hover:underline">Set up comment to DM</Link>
+            <Link to="/instagram-dm-keywords-that-convert" className="block font-medium hover:underline">Comment keywords that work</Link>
+            <Link to="/manychat-alternative-india" className="block font-medium hover:underline">ManyChat alternative</Link>
             <Link to="/link-in-bio-for-indian-creators" className="block font-medium hover:underline">Link in bio for India</Link>
-            <Link to="/instagram-comment-to-dm-automation" className="block font-medium hover:underline">Comment to DM automation</Link>
-            <Link to="/sell-on-instagram-with-upi" className="block font-medium hover:underline">Sell with UPI</Link>
+            <Link to="/how-to-add-link-in-bio-instagram" className="block font-medium hover:underline">Add a link in bio</Link>
+            <Link to="/link-in-bio-ideas" className="block font-medium hover:underline">Link in bio ideas</Link>
+            <Link to="/best-link-in-bio-tools-india" className="block font-medium hover:underline">Choosing a tool</Link>
             <Link to="/link-in-bio-templates" className="block font-medium hover:underline">Templates</Link>
+            <Link to="/sell-on-instagram-with-upi" className="block font-medium hover:underline">Sell with UPI</Link>
             <Link to="/creator-media-kit-generator" className="block font-medium hover:underline">Media kit</Link>
             <Link to="/linktree-alternative-india" className="block font-medium hover:underline">Linktree alternative</Link>
           </div>
           <div className="space-y-2.5">
             <p className="eyebrow text-ink-400">Creators</p>
+            <Link to="/about" className="block font-medium hover:underline">About Joinlyy</Link>
             <Link to="/signup" className="block font-medium hover:underline">Create a page</Link>
             <Link to="/signin" className="block font-medium hover:underline">Sign in</Link>
           </div>

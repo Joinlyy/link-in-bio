@@ -2,7 +2,9 @@
 // the sitemap and the edge function that puts the right title and description into the first HTML.
 // Keep every claim true to what the product does today.
 
-export const SEO_PAGES = [
+import { SEO_PAGES_MORE } from './seoPagesMore.js'
+
+const BASE_PAGES = [
   {
     slug: 'link-in-bio-for-indian-creators',
     title: 'Link in Bio for Indian Creators: Sell, Book & Get Paid | Joinlyy',
@@ -32,7 +34,7 @@ export const SEO_PAGES = [
       ['Does it work in Hindi?', 'Yes. Pages, buttons and several templates are available in Hindi and English.'],
       ['Do I need to know how to code?', 'No. Pick a template, add your links and products and publish. Most creators finish in about ten minutes.'],
     ],
-    related: ['sell-on-instagram-with-upi', 'instagram-comment-to-dm-automation', 'link-in-bio-templates'],
+    related: ['how-to-add-link-in-bio-instagram', 'link-in-bio-ideas', 'best-link-in-bio-tools-india', 'link-in-bio-templates'],
   },
   {
     slug: 'instagram-comment-to-dm-automation',
@@ -63,11 +65,11 @@ export const SEO_PAGES = [
       ['Can I reply publicly as well?', 'Yes. You can post a public reply to each comment and send the DM at the same time.'],
       ['Can I use it for sales?', 'Yes. Send a product link, a booking link or a lead form and track the results from your dashboard.'],
     ],
-    related: ['link-in-bio-for-indian-creators', 'sell-on-instagram-with-upi', 'free-link-in-bio'],
+    related: ['how-to-set-up-comment-to-dm', 'instagram-auto-reply-comments', 'instagram-dm-keywords-that-convert', 'manychat-alternative-india'],
   },
   {
     slug: 'sell-on-instagram-with-upi',
-    title: 'Sell on Instagram with UPI: Digital Products, Calls & Courses | Joinlyy',
+    title: 'Sell on Instagram with UPI: Products, Calls & Courses | Joinlyy',
     description: 'Sell PDFs, presets, courses, memberships and paid calls straight from your Instagram bio. Buyers pay by UPI. WhatsApp order alerts and automatic delivery.',
     h1: 'Sell on Instagram with UPI, from your bio link',
     kicker: 'Sell online',
@@ -147,7 +149,7 @@ export const SEO_PAGES = [
   {
     slug: 'creator-media-kit-generator',
     title: 'Free Creator Media Kit Generator (PDF) | Joinlyy',
-    description: 'Create a colourful creator media kit with your Instagram stats, audience and past collaborations, then download it as a PDF to send to brands. Free for Indian creators.',
+    description: 'Create a colourful creator media kit with your Instagram stats and past work, then download it as a PDF to send to brands. Free for Indian creators.',
     h1: 'A media kit you can send to brands in one click',
     kicker: 'Media kit',
     intro: 'Brands ask for a media kit before they ask for a price. Joinlyy builds one from your profile and Instagram stats, with your rates and past work, and gives you a PDF and a shareable link.',
@@ -190,5 +192,7 @@ export const SEO_PAGES = [
     related: ['link-in-bio-for-indian-creators', 'linktree-alternative-india', 'instagram-comment-to-dm-automation'],
   },
 ]
+
+export const SEO_PAGES = [...BASE_PAGES, ...SEO_PAGES_MORE]
 
 export const findSeoPage = (slug) => SEO_PAGES.find((p) => p.slug === slug)

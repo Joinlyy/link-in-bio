@@ -142,9 +142,13 @@ function FreeAutomation() {
             ))}
           </ul>
           <p className="mt-4 text-sm text-white/55">Need story replies, DM keywords, follow-to-unlock or lead capture? Those come with Creator.</p>
-          <a href="/signup" className="mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-lime px-6 text-sm font-semibold text-ink">
-            Start free <ArrowUpRight className="size-4" />
-          </a>
+          <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <a href="/signup" className="inline-flex h-12 items-center gap-2 rounded-full bg-lime px-6 text-sm font-semibold text-ink">
+              Start free <ArrowUpRight className="size-4" />
+            </a>
+            <a href="/how-to-set-up-comment-to-dm" className="text-sm font-semibold text-white underline underline-offset-4">How comment to DM works</a>
+            <a href="/instagram-dm-keywords-that-convert" className="text-sm font-semibold text-white/70 underline underline-offset-4">20 keywords that get leads</a>
+          </div>
         </div>
         <div className="relative mx-auto w-full max-w-sm space-y-3" aria-hidden>
           <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
@@ -531,7 +535,7 @@ function FinalCta() {
 
 export default function Landing() {
   useEffect(() => {
-    applySeo({ title: `${APP_NAME}: The Link in Bio for Indian Creators | UPI, Instagram DM Automation`, description: 'One link in bio to sell, book and get paid. Take UPI payments, auto-DM every Instagram comment and get WhatsApp alerts. Free for Indian creators, in Hindi and English.', path: '/' })
+    applySeo({ title: `${APP_NAME}: Free Link in Bio + Instagram Comment to DM Automation (India)`, description: 'One link in bio to sell, book and get paid. Take UPI payments, auto-DM every Instagram comment and get WhatsApp alerts. Free for Indian creators, in Hindi and English.', path: '/' })
     captureRef()
   }, [])
   return (
