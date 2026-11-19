@@ -194,7 +194,7 @@ export function CustomDomainCard() {
             <div className="mt-5 space-y-2">
               <p className="text-sm font-semibold">Add these records at your domain provider (GoDaddy, Hostinger, Namecheap…):</p>
               <DnsRow type="CNAME" name={page.custom_domain} value={DNS_TARGET} />
-              <DnsRow type="TXT" name={`_linkinbio.${page.custom_domain}`} value={page.domain_token || '…'} />
+              <DnsRow type="TXT" name={`_joinlyy.${page.custom_domain}`} value={page.domain_token || '…'} />
               <p className="text-xs text-ink-500">DNS changes can take up to a few hours. Then click Verify. After verification our team switches it on (usually within a day).</p>
               <Button variant="outline" size="sm" loading={busy === 'verify'} onClick={verify} disabled={!canEdit || status === 'verified'}>
                 {status === 'verified' ? 'Verified' : 'Verify DNS'}

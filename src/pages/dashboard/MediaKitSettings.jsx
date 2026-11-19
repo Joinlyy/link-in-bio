@@ -4,6 +4,7 @@ import { usePage } from '../../context/PageContext'
 import MediaKitView from '../../components/MediaKitView'
 import { Alert, Button, Card, Input, Textarea, Toggle } from '../../components/ui'
 import { pageUrl, INSTAGRAM_ENABLED } from '../../lib/config'
+import { useMediaKitPdf } from '../../lib/useMediaKitPdf'
 import { PageHeading } from './DashboardLayout'
 
 function RateCardEditor({ rates, onChange }) {
@@ -37,6 +38,7 @@ export default function MediaKitSettings() {
   const [service, setService] = useState('')
   const services = kit.services || []
   const url = `${pageUrl(page.username)}/media-kit`
+  const pdf = useMediaKitPdf(page, instagram)
 
   function addService(s) {
     const v = s.trim()
@@ -53,14 +55,15 @@ export default function MediaKitSettings() {
         actions={
           <>
             <Button variant="outline" size="sm" href={url} target="_blank" rel="noreferrer"><ExternalLink className="size-4" /> Open</Button>
-            <Button size="sm" href={`${url}?print=1`} target="_blank" rel="noreferrer"><Download className="size-4" /> Download PDF</Button>
+            <Button size="sm" onClick={pdf.download} loading={pdf.busy}><Download className="size-4" /> Download PDF</Button>
           </>
         }
       >
-        Built from your page and Instagram data. Share the link with brands or save it as a PDF.
+        Built from your page and Instagram data. Share the link with brands or download it as a PDF.
       </PageHeading>
 
       {!page.is_published && <Alert tone="info">Publish your page to make the media kit link work for brands.</Alert>}
+      {pdf.error && <Alert>{pdf.error}</Alert>}
 
       <div className="grid gap-4 xl:grid-cols-[400px_minmax(0,1fr)]">
         <Card className="h-fit space-y-5 p-5 sm:p-7 xl:sticky xl:top-28">

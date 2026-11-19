@@ -51,7 +51,7 @@ const contrast = (a, b) => {
  * sections lay out their cards. Text and buttons stay readable on whatever they sit on. Stock
  * cover photos are never saved: the hero uses the creator's own cover or profile photo.
  */
-const theme = ({ bg, bg2, bgType = 'solid', text, buttonBg, buttonText, accent, font = 'dm', headingFont = 'bricolage', layout = 'classic', radius = 'pill', buttonStyle = 'fill', cardBg }) => {
+const theme = ({ bg, bg2, bgType = 'solid', text, buttonBg, buttonText, accent, font = 'dm', headingFont = 'bricolage', layout = 'classic', radius = 'pill', buttonStyle = 'fill', cardBg, pattern, linkStyle, nav }) => {
   const gradient = bgType === 'gradient' && layout !== 'card'
   // On the floating-card layout, text sits on the card, not on the page background
   const surface = layout === 'card' ? cardBg || '#FFFFFF' : bg
@@ -63,6 +63,7 @@ const theme = ({ bg, bg2, bgType = 'solid', text, buttonBg, buttonText, accent, 
     buttonBg: readableButton ? buttonBg : ink,
     buttonText: readableButton ? buttonText : (contrast(ink, '#FFFFFF') > contrast(ink, '#15161A') ? '#FFFFFF' : '#15161A'),
     radius, buttonStyle, layout, font, headingFont,
+    ...(pattern ? { pattern } : {}), ...(linkStyle ? { linkStyle } : {}), ...(nav ? { nav } : {}),
   }
 }
 
@@ -412,13 +413,73 @@ function compose(t) {
   const shop = { type: 'products', data: { title: L.shopTitle, ...t.sections.products, limit: 0, sample: true, sample_products: sampleProducts(k, t, own('webinar')) } }
   const clean = (list) => list.filter(Boolean)
 
-  t.structure = 'tabs'
-  t.blocks = clean([primary, ...tiles, trust, form, note, chat])
-  t.pages = [
-    { slug: 'shop', title: L.shop, blocks: [shop, coffee] },
-    { slug: 'content', title: L.content, blocks: clean([media, ...photos, timer, answers]) },
-    { slug: 'work', title: L.work, blocks: [brand] },
-  ]
+  const links = t.blocks.filter((b) => b.type === 'link' && !b.data.primary && !b.data.thumbnail)
+  const mode = DESIGN[t.id]?.mode || 'tabs'
+
+  t.structure = mode
+  if (mode === 'single') {
+    // One scrolling page, no menu: the classic link page
+    t.blocks = clean([primary, ...links, ...tiles, media, shop, ...photos, trust, timer, form, note, brand, chat])
+    t.pages = []
+  } else if (mode === 'duo') {
+    // The page itself plus a shop
+    t.blocks = clean([primary, ...tiles, ...links, media, trust, form, note, chat])
+    t.pages = [
+      { slug: 'shop', title: L.shop, blocks: [shop, coffee] },
+      { slug: 'work', title: L.work, blocks: clean([brand, ...photos, timer, answers]) },
+    ]
+  } else {
+    // A small website: Home, Shop, Content, Work with me
+    t.blocks = clean([primary, ...tiles, trust, form, note, chat])
+    t.pages = [
+      { slug: 'shop', title: L.shop, blocks: [shop, coffee] },
+      { slug: 'content', title: L.content, blocks: clean([media, ...photos, timer, answers]) },
+      { slug: 'work', title: L.work, blocks: [brand] },
+    ]
+  }
+}
+
+// How each template is built: how many pages it has, plus the header layout, button, links and background
+// that make it look different from its neighbours. Colours and fonts stay in the template itself.
+const C = { nav: 'none', linkStyle: 'centered' }
+// Every template has its own combination of header, button and background. No texture is used twice.
+const DESIGN = {
+  // one scrolling page, no menu
+  essentials: { mode: 'single', theme: { ...C, layout: 'stack', buttonStyle: 'fill', pattern: 'dots' } },
+  'street-drop': { mode: 'single', theme: { ...C, layout: 'stack', buttonStyle: 'outline', pattern: 'checker', radius: 'square' } },
+  'yoga-flow': { mode: 'single', theme: { ...C, layout: 'stack', buttonStyle: 'glass', pattern: 'blobs' } },
+  'player-one': { mode: 'single', theme: { nav: 'none', layout: 'stack', buttonStyle: 'gradient', pattern: 'glow' } },
+  'laugh-track': { mode: 'single', theme: { nav: 'none', layout: 'stack', buttonStyle: 'shadow', pattern: 'rays' } },
+  bento: { mode: 'single', theme: { ...C, layout: 'classic', buttonStyle: 'shadow' } },
+  'cloud-kitchen': { mode: 'single', theme: { nav: 'none', layout: 'inline', buttonStyle: 'shadow', pattern: 'stripes' } },
+  'art-studio': { mode: 'single', theme: { nav: 'none', layout: 'inline', buttonStyle: 'underline', pattern: 'lines' } },
+  'dance-studio': { mode: 'single', theme: { nav: 'none', layout: 'frame', buttonStyle: 'glass' } },
+  'launch-drop': { mode: 'single', theme: { nav: 'none', layout: 'poster', buttonStyle: 'gradient' } },
+  'maa-ki-diary': { mode: 'single', theme: { nav: 'none', layout: 'card', buttonStyle: 'soft' } },
+  shanti: { mode: 'single', theme: { layout: 'hero', buttonStyle: 'outline' } },
+  // a page plus a shop
+  spotlight: { mode: 'duo', theme: { layout: 'hero', buttonStyle: 'glass' } },
+  'iron-mode': { mode: 'duo', theme: { layout: 'hero', buttonStyle: 'shadow' } },
+  wanderlust: { mode: 'duo', theme: { layout: 'hero', buttonStyle: 'gradient' } },
+  'stage-lights': { mode: 'duo', theme: { layout: 'hero', buttonStyle: 'soft' } },
+  'frame-gallery': { mode: 'duo', theme: { layout: 'hero', buttonStyle: 'underline' } },
+  'rose-glow': { mode: 'duo', theme: { layout: 'banner', buttonStyle: 'gradient' } },
+  nourish: { mode: 'duo', theme: { layout: 'banner', buttonStyle: 'fill' } },
+  'skill-school': { mode: 'duo', theme: { layout: 'banner', buttonStyle: 'shadow' } },
+  'on-air': { mode: 'duo', theme: { layout: 'banner', buttonStyle: 'outline' } },
+  'ghar-ka-khana': { mode: 'duo', theme: { layout: 'banner', buttonStyle: 'soft' } },
+  'kitchen-stories': { mode: 'duo', theme: { layout: 'frame', buttonStyle: 'fill' } },
+  'trip-notes': { mode: 'duo', theme: { layout: 'frame', buttonStyle: 'shadow' } },
+  'exam-guru': { mode: 'duo', theme: { layout: 'left', buttonStyle: 'fill' } },
+  'skin-diary': { mode: 'duo', theme: { layout: 'card', buttonStyle: 'fill' } },
+  // a small website with a menu
+  'vogue-edit': { mode: 'tabs', theme: { layout: 'frame', buttonStyle: 'underline' } },
+  'coach-pro': { mode: 'tabs', theme: { layout: 'left', buttonStyle: 'gradient' } },
+  'study-room': { mode: 'tabs', theme: { layout: 'left', buttonStyle: 'shadow' } },
+  'dev-terminal': { mode: 'tabs', theme: { layout: 'inline', buttonStyle: 'outline', pattern: 'grid' } },
+  'money-smart': { mode: 'tabs', theme: { layout: 'poster', buttonStyle: 'fill' } },
+  'studio-site': { mode: 'tabs', theme: { layout: 'poster', buttonStyle: 'outline' } },
+  'webinar-hub': { mode: 'tabs', theme: { layout: 'card', buttonStyle: 'gradient' } },
 }
 
 // How each design lays out its cards. Unlisted designs use 2 in a row with the picture on top
@@ -429,8 +490,39 @@ const SECTION_LOOKS = {
 }
 const sectionLook = (id) => Object.values(SECTION_LOOKS).find((g) => g.ids.includes(id))?.look || { columns: 2, style: 'image' }
 
+// Colourful gradient backgrounds and the type that goes with them (bold, tall, mono or pixel)
+const g = (bg, bg2, text, buttonBg, buttonText, accent, more = {}) => ({ bgType: 'gradient', bg, bg2, text, buttonBg, buttonText, accent, ...more })
+const LOOK = {
+  essentials: g('#FFE5F1', '#D7E3FF', '#15161A', '#1F5F4A', '#FFFFFF', '#FF8FB8', { font: 'mono', headingFont: 'mono', radius: 'pill' }),
+  'street-drop': g('#1B1035', '#0A0A12', '#FFFFFF', '#FFFFFF', '#15161A', '#F26B5B', { headingFont: 'anton', caps: true, linkStyle: 'bigtype' }),
+  'laugh-track': g('#D5F05C', '#38D9A9', '#15161A', '#15161A', '#D5F05C', '#FF6B9D', { headingFont: 'anton', caps: true, layout: 'block', linkStyle: 'bigtype' }),
+  'player-one': { headingFont: 'pixel', caps: true },
+  'studio-site': g('#8E4DD6', '#F06CB3', '#FFFFFF', '#FFFFFF', '#15161A', '#FEE440', { headingFont: 'anton', caps: true, layout: 'block', linkStyle: 'bigtype' }),
+  'launch-drop': g('#4C1D95', '#0B0118', '#FFFFFF', '#D5F05C', '#15161A', '#D5F05C', { headingFont: 'anton', caps: true }),
+  'money-smart': g('#052E16', '#0F766E', '#ECFDF5', '#D5F05C', '#052E16', '#D5F05C', { headingFont: 'anton', caps: true }),
+  'dev-terminal': g('#0D1117', '#0B2A1F', '#E6EDF3', '#238636', '#FFFFFF', '#3FB950', { font: 'mono', headingFont: 'mono' }),
+  'cloud-kitchen': g('#FEF3C7', '#FDBA74', '#422006', '#B45309', '#FFFFFF', '#F59E0B'),
+  'art-studio': g('#FBCFE8', '#FDE68A', '#1F2937', '#DB2777', '#FFFFFF', '#F9A8D4'),
+  'rose-glow': g('#FFE4E6', '#FBCFE8', '#4C0519', '#E11D48', '#FFFFFF', '#FDA4AF'),
+  nourish: g('#ECFCCB', '#BBF7D0', '#1E3A1A', '#3F7D2C', '#FFFFFF', '#D5F05C'),
+  'skill-school': g('#FEF3C7', '#FDE68A', '#292524', '#292524', '#FFFFFF', '#FCD34D'),
+  'on-air': g('#3B2306', '#1C1917', '#FAFAF9', '#F59E0B', '#1C1917', '#F59E0B'),
+  'ghar-ka-khana': g('#FFEDD5', '#FED7AA', '#431407', '#C2410C', '#FFFFFF', '#FDBA74'),
+  'kitchen-stories': g('#FFEDD5', '#FECACA', '#3B1F0B', '#C2410C', '#FFFFFF', '#FDBA74'),
+  'trip-notes': g('#BAE6FD', '#C7D2FE', '#0C2A3A', '#0369A1', '#FFFFFF', '#7DD3FC'),
+  'exam-guru': g('#DBEAFE', '#C7D2FE', '#172554', '#1D4ED8', '#FFFFFF', '#93C5FD'),
+  'vogue-edit': g('#FFFFFF', '#F5E1D3', '#15161A', '#15161A', '#FFFFFF', '#E8D5C4'),
+  'coach-pro': g('#F3E8FF', '#FBCFE8', '#3B0764', '#7E22CE', '#FFFFFF', '#D8B4FE'),
+  'study-room': g('#E0E7FF', '#A5F3FC', '#1E1B4B', '#4338CA', '#FFFFFF', '#A5B4FC'),
+  spotlight: g('#15161A', '#3B2A6B', '#FFFFFF', '#FFFFFF', '#15161A', '#D5F05C'),
+  'iron-mode': g('#15161A', '#4A0E0E', '#FFFFFF', '#EF4444', '#FFFFFF', '#EF4444'),
+  wanderlust: g('#0C2A3A', '#0B6E7A', '#FFFFFF', '#FFFFFF', '#0C2A3A', '#7DD3FC'),
+  'stage-lights': g('#18080F', '#5B1238', '#FFFFFF', '#F43F5E', '#FFFFFF', '#FDA4AF'),
+}
+
 for (const t of TEMPLATES) {
   delete t.pages
+  if (DESIGN[t.id]) t.theme = { ...t.theme, ...DESIGN[t.id].theme, ...LOOK[t.id] }
   const look = sectionLook(t.id)
   t.sections = { products: look, cards: look }
   compose(t)

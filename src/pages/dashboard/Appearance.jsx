@@ -66,7 +66,7 @@ export default function Appearance() {
         <Card className="p-5 sm:p-7">
           <h2 className="text-lg font-bold">Layout</h2>
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {[['classic', 'Centered'], ['hero', 'Full photo'], ['banner', 'Banner + photo'], ['left', 'Text + picture'], ['poster', 'Big name'], ['card', 'Floating panel']].map(([v, l]) => (
+            {[['classic', 'Centered'], ['hero', 'Full photo'], ['banner', 'Banner + photo'], ['left', 'Text + picture'], ['poster', 'Big name'], ['card', 'Floating panel'], ['stack', 'Narrow column'], ['inline', 'Compact profile']].map(([v, l]) => (
               <Choice key={v} active={(theme.layout || 'classic') === v} onClick={() => setTheme({ layout: v })}>{l}</Choice>
             ))}
           </div>
@@ -107,7 +107,7 @@ export default function Appearance() {
         <Card className="p-5 sm:p-7">
           <h2 className="text-lg font-bold">Buttons</h2>
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[['fill', 'Filled'], ['outline', 'Outline'], ['soft', 'Soft'], ['shadow', 'Hard shadow']].map(([v, l]) => (
+            {[['fill', 'Filled'], ['outline', 'Outline'], ['soft', 'Soft'], ['shadow', 'Hard shadow'], ['glass', 'Glass'], ['underline', 'Underline'], ['gradient', 'Gradient']].map(([v, l]) => (
               <Choice key={v} active={theme.buttonStyle === v} onClick={() => setTheme({ buttonStyle: v })}>
                 <span className="mb-2 block h-7 w-full" style={{ ...buttonCss({ ...theme, buttonStyle: v }), boxShadow: v === 'shadow' ? `3px 3px 0 ${theme.text}` : undefined }} />
                 {l}

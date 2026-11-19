@@ -8,6 +8,9 @@ export const FONTS = {
   space: { label: 'Space Grotesk', css: '"Space Grotesk", "Noto Sans Devanagari", sans-serif', google: 'Space+Grotesk:wght@400;500;600;700' },
   mukta: { label: 'Mukta (हिंदी)', css: '"Mukta", "Noto Sans Devanagari", sans-serif', google: 'Mukta:wght@400;500;600;700' },
   outfit: { label: 'Outfit', css: '"Outfit", "Noto Sans Devanagari", sans-serif', google: 'Outfit:wght@400;500;600;700' },
+  anton: { label: 'Anton (tall)', css: '"Anton", "Noto Sans Devanagari", sans-serif', google: 'Anton' },
+  mono: { label: 'Space Mono', css: '"Space Mono", ui-monospace, monospace', google: 'Space+Mono:wght@400;700' },
+  pixel: { label: 'Silkscreen (pixel)', css: '"Silkscreen", "Space Grotesk", sans-serif', google: 'Silkscreen:wght@400;700' },
 }
 
 export const PRESETS = {
@@ -83,12 +86,40 @@ export function ensureFont(key) {
   document.head.appendChild(link)
 }
 
-export function backgroundCss(t, preview = false) {
-  if (t.bgType === 'image' && t.bgImage) {
-    return `linear-gradient(rgba(0,0,0,${t.bgDim ?? 0.25}), rgba(0,0,0,${t.bgDim ?? 0.25})), url("${t.bgImage}") center/cover ${preview ? '' : 'fixed'}`
+/** A subtle texture drawn over the page colour */
+export const PATTERNS = { dots: 'Dots', grid: 'Grid', stripes: 'Stripes', glow: 'Glow', blobs: 'Blobs', checker: 'Checker', rays: 'Rays', lines: 'Notebook' }
+
+function patternLayer(t) {
+  const c = hexAlpha(t.text, 0.12)
+  switch (t.pattern) {
+    case 'dots': return `radial-gradient(${hexAlpha(t.text, 0.2)} 1.3px, transparent 1.5px) 0 0 / 22px 22px`
+    case 'grid': return `linear-gradient(${c} 1px, transparent 1px) 0 0 / 30px 30px, linear-gradient(90deg, ${c} 1px, transparent 1px) 0 0 / 30px 30px`
+    case 'stripes': return `repeating-linear-gradient(135deg, ${hexAlpha(t.text, 0.07)} 0 2px, transparent 2px 16px)`
+    case 'glow': return `radial-gradient(70% 45% at 50% 0%, ${hexAlpha(t.accent || t.buttonBg, 0.38)}, transparent 70%)`
+    case 'blobs': return `radial-gradient(40% 30% at 12% 8%, ${hexAlpha(t.accent || t.buttonBg, 0.5)}, transparent 70%), radial-gradient(45% 35% at 95% 55%, ${hexAlpha(t.buttonBg, 0.28)}, transparent 70%), radial-gradient(40% 30% at 10% 95%, ${hexAlpha(t.accent || t.buttonBg, 0.4)}, transparent 70%)`
+    case 'checker': return `conic-gradient(${hexAlpha(t.text, 0.07)} 25%, transparent 0 50%, ${hexAlpha(t.text, 0.07)} 0 75%, transparent 0) 0 0 / 56px 56px`
+    case 'rays': return `repeating-conic-gradient(from 0deg at 50% 18%, ${hexAlpha(t.text, 0.07)} 0 7deg, transparent 7deg 14deg)`
+    case 'lines': return `repeating-linear-gradient(180deg, transparent 0 31px, ${hexAlpha(t.text, 0.14)} 31px 32px)`
+    default: return null
   }
-  if (t.bgType === 'gradient') return `linear-gradient(160deg, ${t.bg} 0%, ${t.bg2 || t.bg} 100%)`
-  return t.bg
+}
+
+/** A darker or lighter version of a colour, for gradients that stay readable */
+function shade(hex, amount) {
+  const h = (hex || '#000000').replace('#', '')
+  const n = parseInt((h.length === 3 ? h.split('').map((c) => c + c).join('') : h).slice(0, 6), 16)
+  const f = (v) => Math.max(0, Math.min(255, Math.round(amount < 0 ? v * (1 + amount) : v + (255 - v) * amount)))
+  return `rgb(${f((n >> 16) & 255)}, ${f((n >> 8) & 255)}, ${f(n & 255)})`
+}
+
+export function backgroundCss(t, preview = false) {
+  const pattern = patternLayer(t)
+  const lead = pattern ? `${pattern}, ` : ''
+  if (t.bgType === 'image' && t.bgImage) {
+    return `${lead}linear-gradient(rgba(0,0,0,${t.bgDim ?? 0.25}), rgba(0,0,0,${t.bgDim ?? 0.25})), url("${t.bgImage}") center/cover ${preview ? '' : 'fixed'}`
+  }
+  if (t.bgType === 'gradient') return `${lead}linear-gradient(160deg, ${t.bg} 0%, ${t.bg2 || t.bg} 100%)`
+  return `${lead}${t.bg}`
 }
 
 /** Inline style for buttons rendered on a creator page */
@@ -102,6 +133,12 @@ export function buttonCss(t) {
       return { ...base, background: hexAlpha(t.buttonBg, 0.22), color: t.text, border: `1px solid ${hexAlpha(t.buttonBg, 0.35)}`, backdropFilter: 'blur(8px)' }
     case 'shadow':
       return { ...base, background: t.buttonBg, color: t.buttonText, border: `2px solid ${t.text}`, boxShadow: `4px 4px 0 ${t.text}` }
+    case 'glass':
+      return { ...base, background: hexAlpha(t.text, 0.1), color: t.text, border: `1px solid ${hexAlpha(t.text, 0.28)}`, backdropFilter: 'blur(14px)', boxShadow: `0 8px 24px ${hexAlpha(t.text, 0.08)}` }
+    case 'underline':
+      return { ...base, borderRadius: 0, background: 'transparent', color: t.text, border: '0', borderBottom: `2px solid ${hexAlpha(t.text, 0.85)}` }
+    case 'gradient':
+      return { ...base, background: `linear-gradient(100deg, ${t.buttonBg}, ${shade(t.buttonBg, -0.42)})`, color: t.buttonText, border: '2px solid transparent' }
     default:
       return { ...base, background: t.buttonBg, color: t.buttonText, border: '2px solid transparent' }
   }

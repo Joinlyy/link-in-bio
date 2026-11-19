@@ -25,6 +25,41 @@ function useClick(ctx, blockId) {
 }
 
 function LinkButton({ href, dataUrl, onClick, theme, children, icon, highlight, primary, newTab = true }) {
+  // "Big type" links are huge uppercase rows split by thin lines, with no button box
+  if (theme.linkStyle === 'bigtype') {
+    return (
+      <a
+        href={href}
+        data-url={dataUrl}
+        onClick={onClick}
+        target={newTab ? '_blank' : undefined}
+        rel="noopener noreferrer nofollow"
+        className={`group flex w-full cursor-pointer items-center gap-3 border-b py-4 text-left uppercase transition hover:translate-x-1 ${highlight ? 'animate-[pulse_2.4s_ease-in-out_3]' : ''}`}
+        style={{ borderColor: hexAlpha(theme.text, 0.4), fontFamily: FONTS[theme.headingFont]?.css, color: theme.text }}
+      >
+        {icon && <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full">{icon}</span>}
+        <span className="min-w-0 flex-1 text-[26px] leading-[1.05] font-bold tracking-tight break-words">{children}</span>
+        <ArrowUpRightIcon size={26} className="shrink-0 opacity-70 transition group-hover:opacity-100" />
+      </a>
+    )
+  }
+  // "Centered" links drop the arrow and centre the label, the way most link pages do
+  if (theme.linkStyle === 'centered') {
+    return (
+      <a
+        href={href}
+        data-url={dataUrl}
+        onClick={onClick}
+        target={newTab ? '_blank' : undefined}
+        rel="noopener noreferrer nofollow"
+        className={`group relative flex ${primary ? 'min-h-[64px]' : 'min-h-[52px]'} w-full cursor-pointer items-center justify-center px-12 py-3 text-[15px] font-semibold transition duration-200 hover:scale-[1.015] active:scale-100 ${highlight ? 'animate-[pulse_2.4s_ease-in-out_3]' : ''}`}
+        style={buttonCss(theme)}
+      >
+        {icon && <span className="absolute left-3 grid size-9 place-items-center overflow-hidden rounded-full">{icon}</span>}
+        <span className="min-w-0 text-center leading-snug break-words">{children}</span>
+      </a>
+    )
+  }
   return (
     <a
       href={href}

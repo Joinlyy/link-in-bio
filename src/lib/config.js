@@ -1,6 +1,6 @@
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 export const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-export const APP_NAME = import.meta.env.VITE_APP_NAME || 'LinkInBio'
+export const APP_NAME = import.meta.env.VITE_APP_NAME || 'Joinlyy'
 /** The site's own domain, once one is set (VITE_PUBLIC_DOMAIN) */
 export const CONFIGURED_DOMAIN = import.meta.env.VITE_PUBLIC_DOMAIN || ''
 /** The address creators share. Until a domain is set it's the address the app runs on, so it always works */

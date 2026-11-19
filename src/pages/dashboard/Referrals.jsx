@@ -38,7 +38,7 @@ export default function Referrals() {
   const progress = (stats.credits || 0) % 3
   const tier = ambassadorTier(stats.published || 0)
   const nextTier = AMBASSADOR_TIERS.find((t) => (stats.published || 0) < t.min)
-  const shareText = `I build my link-in-bio page on ${APP_NAME} — sell products, collect leads & track clicks, made for Indian creators. Start free: ${link}`
+  const shareText = `I run my link in bio on ${APP_NAME}: sell, book calls and get paid by UPI from one link. Made for Indian creators. Start free: ${link}`
 
   async function copy() {
     await navigator.clipboard.writeText(link).catch(() => {})

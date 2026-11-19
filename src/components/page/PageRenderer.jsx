@@ -125,7 +125,7 @@ function Hero({ page, theme, preview, device, cta, ctaRef, thumbnail }) {
   const layout = theme.layout || 'classic'
   const heading = { fontFamily: FONTS[theme.headingFont]?.css }
   const name = page.display_name || `@${page.username}`
-  const center = layout === 'classic' || layout === 'card'
+  const center = layout === 'classic' || layout === 'card' || layout === 'stack'
 
   const details = (onPhoto) => (
     <>
@@ -178,6 +178,78 @@ function Hero({ page, theme, preview, device, cta, ctaRef, thumbnail }) {
           {details(false)}
         </div>
         {picture && <img src={optimizedImage(picture, 1000)} alt="" className={`${theme.cover ? '' : 'hidden @3xl:block'} aspect-[4/3] w-full rounded-3xl object-cover`} />}
+      </section>
+    )
+  }
+
+  // A narrow, centred profile: photo with a ring, name, links to social profiles right under it
+  if (layout === 'stack') {
+    return (
+      <section className="mx-auto flex w-full flex-col items-center px-5 pt-10 pb-2 text-center">
+        <div className="rounded-full p-1" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${hexAlpha(theme.accent, 0.2)})` }}>
+          <div className="rounded-full p-1" style={{ background: theme.bg }}><Avatar page={page} theme={theme} size={104} /></div>
+        </div>
+        <h1 className="mt-4 text-[28px] leading-tight font-bold tracking-tight break-words" style={heading}>{name}</h1>
+        {theme.tagline && <span className="mt-1.5 text-[13px] font-semibold opacity-70">{theme.tagline}</span>}
+        {page.bio && <p className="mt-3 max-w-[40ch] text-[15px] leading-relaxed whitespace-pre-line opacity-85">{page.bio}</p>}
+        <div className="mt-4 empty:hidden"><Socials page={page} theme={theme} preview={preview} center /></div>
+        {cta && <div ref={ctaRef} className="mt-5 w-full">{cta}</div>}
+      </section>
+    )
+  }
+
+  // A colour block: small caps line, rounded photo and a big name, like a poster
+  if (layout === 'block') {
+    const picture = theme.cover || page.avatar_url
+    return (
+      <section className="mx-auto w-full max-w-3xl px-4 pt-3 @3xl:pt-8">
+        <div className="overflow-hidden rounded-[32px] p-4 text-center @3xl:p-8" style={{ background: theme.accent, color: '#15161A' }}>
+          {theme.tagline && <p className="mb-3 text-[13px] font-bold tracking-wide uppercase">{theme.tagline}</p>}
+          {picture && <img src={optimizedImage(picture, 1000)} alt="" className="aspect-[4/3] w-full rounded-[26px] object-cover" />}
+          <h1 className="mt-4 text-[46px] leading-[0.98] font-bold tracking-tight break-words uppercase @3xl:text-[84px]" style={heading}>{name}</h1>
+          {page.bio && <p className="mx-auto mt-2 max-w-[44ch] text-[14px] leading-snug font-semibold uppercase opacity-80">{page.bio}</p>}
+          <div className="mt-3 empty:hidden"><Socials page={page} theme={{ ...theme, text: '#15161A' }} preview={preview} center /></div>
+        </div>
+        {cta && <div ref={ctaRef} className="mt-4 flex justify-center">{cta}</div>}
+      </section>
+    )
+  }
+
+  // A big framed portrait with the name underneath, like a profile card
+  if (layout === 'frame') {
+    const picture = theme.cover || page.avatar_url
+    return (
+      <section className={`${SECTION_WIDTH} grid items-end gap-5 py-6 @3xl:grid-cols-2 @3xl:gap-12 @3xl:py-14`}>
+        {picture ? (
+          <img src={optimizedImage(picture, 1000)} alt="" className="aspect-square w-full rounded-[28px] object-cover @3xl:aspect-[4/5]" style={{ boxShadow: `10px 10px 0 ${hexAlpha(theme.accent || theme.text, 0.9)}` }} />
+        ) : (
+          <div className="aspect-square w-full rounded-[28px]" style={{ background: theme.accent }} />
+        )}
+        <div className="min-w-0">
+          {theme.tagline && <span className="mb-2 inline-flex rounded-full px-3 py-1 text-xs font-bold" style={{ background: theme.accent, color: '#15161A' }}>{theme.tagline}</span>}
+          <h1 className="text-[36px] leading-[1.02] font-bold tracking-tight break-words @3xl:text-[64px]" style={heading}>{name}</h1>
+          {page.bio && <p className="mt-3 max-w-[48ch] text-[15px] leading-relaxed whitespace-pre-line opacity-85 @3xl:text-[17px]">{page.bio}</p>}
+          <div className="mt-3 empty:hidden"><Socials page={page} theme={theme} preview={preview} /></div>
+          {cta && <div ref={ctaRef} className="mt-5 max-w-full">{cta}</div>}
+        </div>
+      </section>
+    )
+  }
+
+  // Compact and left-aligned, like a one-page CV: small photo beside the name
+  if (layout === 'inline') {
+    return (
+      <section className={`${SECTION_WIDTH} py-8 @3xl:py-14`}>
+        <div className="flex items-center gap-4">
+          <Avatar page={page} theme={theme} size={preview && device !== 'desktop' ? 64 : 80} />
+          <div className="min-w-0">
+            <h1 className="text-[28px] leading-tight font-bold tracking-tight break-words @3xl:text-[44px]" style={heading}>{name}</h1>
+            {theme.tagline && <span className="mt-0.5 block text-[13px] font-semibold opacity-65">{theme.tagline}</span>}
+          </div>
+        </div>
+        {page.bio && <p className="mt-4 max-w-[56ch] text-[16px] leading-relaxed whitespace-pre-line opacity-85 @3xl:text-[18px]">{page.bio}</p>}
+        <div className="mt-4 empty:hidden"><Socials page={page} theme={theme} preview={preview} /></div>
+        {cta && <div ref={ctaRef} className="mt-5 max-w-full">{cta}</div>}
       </section>
     )
   }
@@ -306,10 +378,11 @@ export default function PageRenderer({
       <ArrowUpRightIcon size={16} className="shrink-0" />
     </>
   )
+  const stack = theme.layout === 'stack'
   const solid = buttonCss({ ...theme, buttonStyle: theme.buttonStyle === 'shadow' ? 'shadow' : 'fill' })
   const heroCta = primary && (
-    <span className={`inline-flex max-w-full flex-col gap-1 ${['classic', 'card'].includes(theme.layout || 'classic') ? 'items-center' : 'items-start'}`}>
-      <a {...ctaProps} role="button" className="inline-flex h-13 max-w-full cursor-pointer items-center gap-2 px-6 text-[15px] font-bold transition hover:-translate-y-0.5" style={solid}>{ctaLabel}</a>
+    <span className={`inline-flex max-w-full flex-col gap-1 ${stack ? 'w-full' : ''} ${['classic', 'card', 'stack'].includes(theme.layout || 'classic') ? 'items-center' : 'items-start'}`}>
+      <a {...ctaProps} role="button" className={`inline-flex h-13 max-w-full cursor-pointer items-center justify-center gap-2 px-6 text-[15px] font-bold transition hover:-translate-y-0.5 ${stack ? 'w-full' : ''}`} style={solid}>{ctaLabel}</a>
       {primary.data.subtitle && <span className="text-xs opacity-70">{primary.data.subtitle}</span>}
       <span className="flex items-center gap-1.5 empty:hidden">
         {markSamples && primary.data.sample && <span className="rounded-full bg-ink px-2.5 py-0.5 text-[11px] font-bold text-white">Example</span>}
@@ -366,12 +439,22 @@ export default function PageRenderer({
     <div
       lang={lang}
       onClickCapture={preview && !thumbnail ? onPreviewClick : undefined}
-      className={`relative flex w-full flex-col ${preview ? 'min-h-full' : 'min-h-dvh'} ${className}`}
+      className={`relative flex w-full flex-col ${preview ? 'min-h-full' : 'min-h-dvh'} ${theme.caps ? '[&_h1]:uppercase' : ''} ${className}`}
       style={{ background: backgroundCss(theme, preview), color: theme.text, fontFamily: FONTS[theme.font]?.css }}
     >
-      <div className="@container w-full flex-1">
+      <div className={`@container w-full flex-1 ${stack ? 'mx-auto max-w-[540px]' : ''}`}>
         <div className={panel ? 'mx-auto my-3 max-w-6xl overflow-clip rounded-[28px] shadow-lift @3xl:my-6' : ''} style={panel ? { background: theme.cardBg || '#FFFFFF', width: 'calc(100% - 1.5rem)' } : undefined}>
-          <SiteBar page={page} theme={theme} nav={nav} active={sitePage?.slug} base={base} preview={preview} device={device} onNavigate={onNavigate} onShare={() => setSheet('share')} cta={barCta} thumbnail={thumbnail} surface={surface} />
+          {theme.nav === 'none' && !sitePage ? (
+            !thumbnail && (
+              <div className={`flex justify-end px-4 pt-4 ${preview && device !== 'desktop' ? 'pt-10' : ''}`}>
+                <button type="button" onClick={() => setSheet('share')} className="grid size-10 place-items-center rounded-full" style={{ background: hexAlpha(theme.text, 0.1) }} aria-label={t(page.language || 'en', 'share')}>
+                  <ShareIcon size={17} />
+                </button>
+              </div>
+            )
+          ) : (
+            <SiteBar page={page} theme={theme} nav={nav} active={sitePage?.slug} base={base} preview={preview} device={device} onNavigate={onNavigate} onShare={() => setSheet('share')} cta={barCta} thumbnail={thumbnail} surface={surface} />
+          )}
 
           {sitePage ? (
             <div className={`${SECTION_WIDTH} pt-8 @3xl:pt-14`}>

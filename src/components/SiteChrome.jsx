@@ -84,7 +84,7 @@ export function SiteFooter() {
         <div className="max-w-sm">
           <Brand />
           <p className="mt-4 text-sm leading-relaxed text-ink-500">
-            Your own website, ready in minutes. Built in India for creators who post in Hindi, English and everything in between.
+            The link in bio for Indian creators: sell, book and get paid from one link. Built in India for creators who post in Hindi, English and everything in between.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-8 text-sm sm:grid-cols-3">

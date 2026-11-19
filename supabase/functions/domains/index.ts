@@ -1,6 +1,6 @@
 // Custom domain verification.
 // POST { action: 'verify', page_id } with the creator's session.
-//   1) TXT  _linkinbio.<domain>  must contain pages.domain_token (proves ownership)
+//   1) TXT  _joinlyy.<domain>  must contain pages.domain_token (proves ownership); _linkinbio.<domain> still works
 //   2) <domain> must point at us via CNAME (subdomains) or A (apex)
 // Lookups use DNS-over-HTTPS (Google, Cloudflare fallback). On success the page is marked
 // domain_status = 'verified'; an admin then activates it once the domain is added to hosting.
@@ -33,13 +33,14 @@ Deno.serve(handle(async (req) => {
   if (!page.custom_domain || !page.domain_token) throw new HttpError(400, 'Add a custom domain first')
 
   const domain = String(page.custom_domain)
-  const [txt, cname, a] = await Promise.all([
+  const [txt, legacyTxt, cname, a] = await Promise.all([
+    resolve(`_joinlyy.${domain}`, 'TXT'),
     resolve(`_linkinbio.${domain}`, 'TXT'),
     resolve(domain, 'CNAME'),
     resolve(domain, 'A'),
   ])
 
-  const txtValues = txt.map((v) => v.replace(/^"|"$/g, '').replace(/"\s*"/g, ''))
+  const txtValues = [...txt, ...legacyTxt].map((v) => v.replace(/^"|"$/g, '').replace(/"\s*"/g, ''))
   const txt_ok = txtValues.some((v) => v.trim() === page.domain_token)
   const cnames = cname.map((v) => v.toLowerCase().replace(/\.$/, ''))
   const dns_ok = cnames.length > 0 || a.length > 0
@@ -49,8 +50,8 @@ Deno.serve(handle(async (req) => {
   const problems: string[] = []
   if (!txt_ok) {
     problems.push(txtValues.length
-      ? `The TXT record _linkinbio.${domain} doesn’t match your verification code.`
-      : `No TXT record found at _linkinbio.${domain} yet.`)
+      ? `The TXT record _joinlyy.${domain} doesn’t match your verification code.`
+      : `No TXT record found at _joinlyy.${domain} yet.`)
   }
   if (!dns_ok) problems.push(`${domain} has no CNAME or A record. Add a CNAME to ${TARGET}.`)
 

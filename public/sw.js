@@ -3,9 +3,9 @@
 //   navigations    → network-first, offline fallback to the cached /index.html
 //   everything else (Supabase & other cross-origin calls, /api/*, non-GET) → straight to the network, never cached
 // Bump VERSION to drop old caches on the next activation.
-const VERSION = 'v1'
-const CACHE = `linkinbio-shell-${VERSION}`
-const SHELL = ['/index.html', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png']
+const VERSION = 'v2'
+const CACHE = `joinlyy-shell-${VERSION}`
+const SHELL = ['/index.html', '/manifest.webmanifest', '/favicon.png', '/logo.png', '/icons/icon-192.png', '/icons/icon-512.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -18,7 +18,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('linkinbio-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => /^(linkinbio|joinlyy)-/.test(k) && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   )
 })

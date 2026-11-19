@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowDown, ArrowUpRight, BarChart3, CalendarDays, Check, FileText, Languages, Mail, MessageCircle,
-  Palette, QrCode, ShieldCheck, Smartphone, Sparkles, Zap,
+  ArrowDown, ArrowUpRight, BellRing, CalendarDays, Check, Download, Handshake, IndianRupee,
+  MessageCircle, Minus, Palette, ShieldCheck, Sparkles, X, Zap,
 } from 'lucide-react'
 import PageRenderer from '../components/page/PageRenderer'
 import PhoneFrame from '../components/PhoneFrame'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
-import { InstagramIcon, YoutubeIcon } from '../components/icons'
+import { InstagramIcon } from '../components/icons'
 import { APP_NAME, INSTAGRAM_ENABLED, PUBLIC_DOMAIN, SUPABASE_KEY, SUPABASE_URL } from '../lib/config'
-import { featureList } from '../lib/plans'
+import { COMPARE, shortFeatures } from '../lib/plans'
 import { captureRef } from '../lib/referral'
 
 const inTenDays = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10)
@@ -66,27 +66,32 @@ function Hero() {
     <section className="card relative overflow-hidden mt-6">
       <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.2fr_0.8fr] lg:gap-6 lg:p-14">
         <div className="relative z-10 flex flex-col">
-          <span className="inline-flex w-fit items-center rounded-full bg-lilac-100 px-3.5 py-1.5 text-[13px] font-semibold">
-            Your own website · Made for Indian creators
-          </span>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex w-fit items-center rounded-full bg-lilac-100 px-3.5 py-1.5 text-[13px] font-semibold">The link in bio made for Indian creators</span>
+            {INSTAGRAM_ENABLED && (
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-lime px-3.5 py-1.5 text-[13px] font-semibold">
+                <MessageCircle className="size-3.5" /> Free DM &amp; comment automation
+              </span>
+            )}
+          </div>
           <h1 className="display-xl mt-6">
-            Your website.
+            One link in bio.
             <br />
-            <span className="display-italic">Ready in minutes.</span>
+            <span className="display-italic">Built to get you paid.</span>
           </h1>
           <div className="relative mt-8 overflow-hidden rounded-3xl bg-lilac-100 p-6 sm:p-8 lg:mt-auto">
             <svg className="pointer-events-none absolute -right-10 -bottom-6 w-[420px] text-white/70" viewBox="0 0 400 120" fill="none" aria-hidden>
               <path d="M0 90 C 80 10, 140 130, 220 60 S 340 20, 400 70" stroke="currentColor" strokeWidth="14" strokeLinecap="round" />
             </svg>
             <p className="relative max-w-lg text-[16px] leading-relaxed text-ink-700 sm:text-[17px]">
-              A complete site with pages, products, 1:1 sessions and payments, all from your phone. Pick a template, change anything, and share one address.
-              Hindi and English. Free to start.
+              Sell products, courses and 1:1 calls, take UPI payments straight to your bank
+              {INSTAGRAM_ENABLED ? ', auto-reply to every comment with a DM' : ''} and get a WhatsApp ping for every order. In Hindi and English.
             </p>
             <div className="relative mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               <ClaimBox />
             </div>
             <p className="relative mt-3 flex items-center gap-2 text-sm text-ink-500">
-              <ArrowDown className="size-4" /> Takes 2 minutes. No card needed.
+              <ArrowDown className="size-4" /> Free to start. Live in 2 minutes. No card needed.
             </p>
           </div>
         </div>
@@ -95,44 +100,116 @@ function Hero() {
           <PhoneFrame height={600} className="relative">
             <PageRenderer page={DEMO.page} blocks={DEMO.blocks} preview />
           </PhoneFrame>
+          <div className="absolute top-20 -left-2 z-10 hidden items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-lift ring-1 ring-ink/5 sm:flex lg:-left-12" aria-hidden>
+            <span className="grid size-9 place-items-center rounded-full bg-lime"><IndianRupee className="size-4" /></span>
+            <span className="text-left">
+              <span className="block text-sm font-bold">₹299 received</span>
+              <span className="block text-xs text-ink-500">Festive cookbook · UPI</span>
+            </span>
+          </div>
         </div>
       </div>
     </section>
   )
 }
 
-function Stats() {
-  const items = [
-    { big: '2 min', small: 'from sign-up to a live page', cls: 'bg-white' },
-    { big: 'हिंदी + EN', small: 'pages in the language your audience speaks', cls: 'bg-lilac-100' },
-    { big: '₹0', small: 'free plan, forever. No ads on your page', cls: 'bg-lime' },
-    { big: '<1s', small: 'load time on 4G — built for scale', cls: 'bg-ink text-white' },
+/** Free DM and comment automation, shown front and centre */
+function FreeAutomation() {
+  if (!INSTAGRAM_ENABLED) return null
+  const points = [
+    'Comment “GUIDE” on any post or Reel, and the link lands in their DMs',
+    'A friendly public reply under the comment, written by you',
+    '10 automations and 1,000 DMs a month, free forever',
   ]
   return (
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {items.map((i) => (
-        <div key={i.big} className={`rounded-3xl p-6 shadow-soft sm:p-7 ${i.cls}`}>
-          <p className="font-display text-4xl font-bold tracking-tight sm:text-[44px]">{i.big}</p>
-          <p className={`mt-3 text-[15px] ${i.cls.includes('text-white') ? 'text-white/70' : 'text-ink-600'}`}>{i.small}</p>
+    <section className="relative overflow-hidden rounded-3xl bg-ink p-7 text-white sm:p-12">
+      <div className="absolute -top-20 -right-16 size-72 rounded-full bg-lilac/40" aria-hidden />
+      <div className="relative grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
+        <div>
+          <span className="inline-flex items-center rounded-full bg-lime px-3 py-1 text-xs font-bold text-ink">FREE ON EVERY PLAN</span>
+          <h2 className="display-lg mt-4">
+            Auto-reply to every comment.
+            <br />
+            <span className="italic font-medium text-white/60">Free DM automation.</span>
+          </h2>
+          <ul className="mt-6 space-y-3 text-[15px]">
+            {points.map((p) => (
+              <li key={p} className="flex items-start gap-2.5">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-lime text-ink"><Check className="size-3" strokeWidth={3} /></span>
+                <span className="text-white/85">{p}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-sm text-white/55">Need story replies, DM keywords, follow-to-unlock or lead capture? Those come with Creator.</p>
+          <a href="/signup" className="mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-lime px-6 text-sm font-semibold text-ink">
+            Start free <ArrowUpRight className="size-4" />
+          </a>
         </div>
-      ))}
+        <div className="relative mx-auto w-full max-w-sm space-y-3" aria-hidden>
+          <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
+            <p className="text-xs text-white/50">New comment · your Reel</p>
+            <p className="mt-1 text-[15px]"><span className="font-semibold">@aman.fit</span> guide 🙏</p>
+          </div>
+          <div className="ml-6 rounded-2xl bg-lime p-4 text-ink">
+            <p className="text-xs font-semibold text-ink/60">Public reply</p>
+            <p className="mt-1 text-[15px]">Sent! Check your DMs 📩</p>
+          </div>
+          <div className="rounded-2xl bg-white p-4 text-ink">
+            <p className="text-xs font-semibold text-ink/50">Instant DM from you</p>
+            <p className="mt-1 text-[15px]">Hey Aman! Here’s the free guide 👇</p>
+            <span className="mt-3 inline-flex rounded-full bg-ink px-4 py-1.5 text-sm font-semibold text-white">Get the guide</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Features() {
+  const items = [
+    { icon: IndianRupee, title: 'Get paid by UPI', text: 'Buyers pay your UPI ID from GPay, PhonePe or Paytm. You confirm in a tap and their access opens. No cut taken on direct UPI payments.', cls: 'bg-lilac-100' },
+    { icon: Download, title: 'Digital products', text: 'PDFs, presets, templates and bundles, delivered through secure, expiring download links.', cls: 'bg-white' },
+    { icon: Sparkles, title: 'Courses & brand picks', text: 'List your course or a product you recommend with its price and a buy link. Buyers pay on your platform or the brand’s site.', cls: 'bg-white' },
+    { icon: CalendarDays, title: '1:1 calls & webinars', text: 'Paid sessions with IST time slots and meeting links, or webinars with limited seats.', cls: 'bg-lime' },
+    { icon: BellRing, title: 'WhatsApp alerts', text: 'A message the moment someone pays, books, joins your list or sends a brand enquiry.', cls: 'bg-white' },
+    { icon: Handshake, title: 'Brand deals & media kit', text: INSTAGRAM_ENABLED ? 'An enquiry form, a deal tracker, GST invoices and a colourful media kit PDF built from your Instagram stats.' : 'An enquiry form, a deal tracker, GST invoices and a colourful media kit PDF with your rates.', cls: 'bg-white' },
+  ]
+  return (
+    <section id="features" className="scroll-mt-28 space-y-4">
+      <div className="px-2 pt-8 pb-4">
+        <p className="eyebrow text-ink-500">What you can do</p>
+        <h2 className="display-lg mt-3">
+          Sell, grow and run it all
+          <br />
+          <span className="display-italic">from one link.</span>
+        </h2>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((f) => (
+          <div key={f.title} className={`rounded-3xl p-7 shadow-soft ${f.cls}`}>
+            <span className="grid size-11 place-items-center rounded-full bg-ink text-white"><f.icon size={18} className="size-[18px]" /></span>
+            <h3 className="mt-8 text-lg font-bold">{f.title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-ink-600">{f.text}</p>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }
 
 function HowItWorks() {
   const steps = [
-    { n: '01', icon: Sparkles, title: 'Claim your username', text: `Pick ${PUBLIC_DOMAIN}/yourname, choose your niche and language.`, cls: 'bg-cream-200' },
+    { n: '01', icon: Sparkles, title: 'Claim your name', text: `Pick ${PUBLIC_DOMAIN}/yourname, your niche and language. Free, with no card.`, cls: 'bg-cream-200' },
     INSTAGRAM_ENABLED
-      ? { n: '02', icon: InstagramIcon, title: 'Connect Instagram', text: 'We import your photo, name and bio through Meta’s official API and build a starter page.', cls: 'bg-lilac-100' }
-      : { n: '02', icon: Palette, title: 'Pick a design', text: 'Choose one of 33 designs. Add your products, videos and forms; switch designs any time without losing anything.', cls: 'bg-lilac-100' },
-    { n: '03', icon: Zap, title: 'Paste it in your bio', text: 'Add links, Reels, WhatsApp and webinars. Share the link — watch the clicks roll in.', cls: 'bg-lime' },
+      ? { n: '02', icon: InstagramIcon, title: 'Build your page', text: 'Import your photo and bio from Instagram in one tap, or start from one of 33 designs. Add products and your UPI ID.', cls: 'bg-lilac-100' }
+      : { n: '02', icon: Palette, title: 'Build your page', text: 'Choose one of 33 designs. Add products, a lead form and your UPI ID, and switch designs any time without losing anything.', cls: 'bg-lilac-100' },
+    { n: '03', icon: Zap, title: 'Paste it in your bio', text: 'Put one link in your Instagram, YouTube and WhatsApp bios. Orders, leads and brand enquiries reach you on WhatsApp.', cls: 'bg-lime' },
   ]
   return (
     <section id="how" className="card scroll-mt-28 p-6 sm:p-12">
       <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <h2 className="display-lg">
-          Set up once.
+          Live in three steps.
           <br />
           <span className="display-italic">Then just post.</span>
         </h2>
@@ -141,16 +218,16 @@ function HowItWorks() {
         </a>
       </div>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
-        {steps.map((s) => (
-          <div key={s.n} className={`rounded-3xl p-6 sm:p-7 ${s.cls}`}>
+        {steps.map((st) => (
+          <div key={st.n} className={`rounded-3xl p-6 sm:p-7 ${st.cls}`}>
             <div className="flex items-start justify-between">
               <span className="grid size-11 place-items-center rounded-full bg-ink text-white">
-                <s.icon size={18} className="size-[18px]" />
+                <st.icon size={18} className="size-[18px]" />
               </span>
-              <span className="font-display text-4xl font-bold text-ink/15">{s.n}</span>
+              <span className="font-display text-4xl font-bold text-ink/15">{st.n}</span>
             </div>
-            <h3 className="mt-10 text-xl font-bold">{s.title}</h3>
-            <p className="mt-3 text-[15px] leading-relaxed text-ink-600">{s.text}</p>
+            <h3 className="mt-10 text-xl font-bold">{st.title}</h3>
+            <p className="mt-3 text-[15px] leading-relaxed text-ink-600">{st.text}</p>
           </div>
         ))}
       </div>
@@ -158,45 +235,17 @@ function HowItWorks() {
   )
 }
 
-function Features() {
+/** Who it's for, as one strip */
+function WhoItsFor() {
+  const people = ['🎬 Instagram creators', '💪 Coaches & trainers', '📚 Educators', '🎵 Artists & musicians', '🛍️ Small businesses', '🤝 Influencers']
   return (
-    <section id="features" className="scroll-mt-28 space-y-4">
-      <div className="px-2 pt-8 pb-4">
-        <p className="eyebrow text-ink-500">Everything in one place</p>
-        <h2 className="display-lg mt-3">
-          Built for how India
-          <br />
-          <span className="display-italic">actually creates.</span>
-        </h2>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-3xl bg-lilac-100 p-7 shadow-soft sm:p-9 lg:col-span-2">
-          <span className="grid size-11 place-items-center rounded-full bg-ink text-white"><MessageCircle className="size-5" /></span>
-          <h3 className="mt-8 text-2xl font-bold">WhatsApp-first, because your fans are there</h3>
-          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-600">
-            One-tap chat and call buttons with a pre-filled message. Collect WhatsApp numbers and emails with proper consent — they land in your dashboard, not a spreadsheet.
-          </p>
-        </div>
-        <div className="rounded-3xl bg-ink p-7 text-white shadow-soft sm:p-9">
-          <span className="grid size-11 place-items-center rounded-full bg-lime text-ink"><Languages className="size-5" /></span>
-          <h3 className="mt-8 text-2xl font-bold">हिंदी हो या English</h3>
-          <p className="mt-3 text-[15px] leading-relaxed text-white/70">Write your page in Hindi, English or both. Fonts that render Devanagari beautifully.</p>
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { icon: YoutubeIcon, title: 'Reels, YouTube & Spotify', text: 'Embeds that load only when tapped — fast pages, happy fans.', cls: 'bg-white' },
-          { icon: CalendarDays, title: 'Webinar links', text: 'Show your next Zoom webinar with date, IST time and a register button.', cls: 'bg-lime' },
-          { icon: FileText, title: 'Media kit + PDF', text: INSTAGRAM_ENABLED ? 'Auto-built from your Instagram stats. Share a link or download a PDF for brands.' : 'Built from your page, with your rates. Share a link or download a PDF for brands.', cls: 'bg-white' },
-          { icon: QrCode, title: 'QR code for events', text: 'Print it on packaging, standees and business cards.', cls: 'bg-white' },
-        ].map((f) => (
-          <div key={f.title} className={`rounded-3xl p-7 shadow-soft ${f.cls}`}>
-            <span className="grid size-11 place-items-center rounded-full bg-ink text-white"><f.icon size={18} className="size-[18px]" /></span>
-            <h3 className="mt-8 text-lg font-bold">{f.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-ink-600">{f.text}</p>
-          </div>
+    <section className="card p-6 sm:p-10">
+      <h2 className="display-md">Made for every kind of Indian creator</h2>
+      <ul className="mt-5 flex flex-wrap gap-2.5">
+        {people.map((p) => (
+          <li key={p} className="rounded-full bg-cream px-4 py-2.5 text-[15px] font-medium">{p}</li>
         ))}
-      </div>
+      </ul>
     </section>
   )
 }
@@ -215,35 +264,23 @@ function AnalyticsShowcase() {
             <span className="italic font-medium text-white/60">Post more of it.</span>
           </h2>
           <p className="mt-6 max-w-md text-[16px] leading-relaxed text-white/70">
-            Page views, unique visitors, clicks per link, and where your traffic comes from — Instagram, YouTube, WhatsApp or direct. No cookies, no creepy tracking.
+            Views, clicks on every link, sales per product and where visitors come from: Instagram, YouTube, WhatsApp or direct. No cookies, no creepy tracking.
           </p>
-          <ul className="mt-8 grid gap-3 text-[15px] sm:grid-cols-2">
-            {['Clicks per link', 'Traffic sources', 'Devices & browsers', 'Daily & date ranges'].map((x) => (
-              <li key={x} className="flex items-center gap-2.5">
-                <span className="grid size-5 place-items-center rounded-full bg-lime text-ink"><Check className="size-3" strokeWidth={3} /></span>
-                {x}
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
-      <div className="card p-7 sm:p-10">
+      <div className="card hidden p-7 sm:p-10 lg:block">
         <p className="eyebrow text-ink-500">Page views this week</p>
         <div className="mt-3 flex items-end justify-between gap-4">
           <p className="font-display text-5xl font-bold tracking-tight">24,350</p>
           <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-lime px-3 py-1 text-sm font-semibold">▲ 12%</span>
         </div>
-        <div className="mt-10 flex h-44 items-end gap-2 sm:gap-3">
+        <div className="mt-10 flex h-44 items-end gap-3">
           {bars.map((h, i) => (
             <div key={i} className={`flex-1 rounded-full ${i === 5 ? 'bg-lime' : 'bg-ink'}`} style={{ height: `${h}%` }} />
           ))}
         </div>
         <div className="mt-8 space-y-2.5">
-          {[
-            ['Instagram', '68%'],
-            ['WhatsApp', '17%'],
-            ['YouTube', '11%'],
-          ].map(([k, v]) => (
+          {[['Instagram', '68%'], ['WhatsApp', '17%'], ['YouTube', '11%']].map(([k, v]) => (
             <div key={k} className="flex items-center justify-between rounded-2xl bg-cream px-4 py-3 text-sm">
               <span className="text-ink-600">{k}</span>
               <span className="font-semibold">{v}</span>
@@ -267,100 +304,182 @@ function usePlans() {
   return plans
 }
 
+const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`
+
+/** Every feature of every plan, in a pop-up table */
+function CompareModal({ plans, period, onClose }) {
+  const closeRef = useRef(null)
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previous
+    }
+  }, [onClose])
+
+  const cell = (v) =>
+    v === true ? <Check className="mx-auto size-4" strokeWidth={3} aria-label="Included" />
+    : v === false ? <Minus className="mx-auto size-4 text-ink-300" aria-label="Not included" />
+    : <span className="font-semibold">{v}</span>
+
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label="Compare all plan features">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-ink/50 backdrop-blur-sm" tabIndex={-1} />
+      <div className="relative flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-lift">
+        <div className="flex items-center justify-between gap-3 border-b border-ink/10 px-5 py-4 sm:px-7">
+          <h2 className="font-display text-xl font-bold tracking-tight">All features, side by side</h2>
+          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full bg-cream hover:bg-cream-300">
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="overflow-auto">
+          <table className="w-full table-fixed border-collapse text-[13px] sm:text-sm">
+            <colgroup>
+              <col />
+              {plans.map((p) => <col key={p.id} className="w-[66px] sm:w-24" />)}
+            </colgroup>
+            <thead className="sticky top-0 z-10 bg-white">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-ink-500 sm:px-7" scope="col">Feature</th>
+                {plans.map((p) => (
+                  <th key={p.id} scope="col" className="px-1 py-3 text-center">
+                    <span className="block font-display text-sm font-bold sm:text-base">{p.name}</span>
+                    <span className="block text-[11px] font-medium text-ink-500 sm:text-xs">
+                      {p.price_monthly_inr ? `${inr(period === 'year' ? p.price_yearly_inr : p.price_monthly_inr)}/${period === 'year' ? 'yr' : 'mo'}` : 'Free'}
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARE.map((g) => (
+                <Fragment key={g.group}>
+                  <tr>
+                    <th colSpan={plans.length + 1} className="bg-cream px-4 py-2 text-left text-[11px] font-semibold tracking-[0.14em] text-ink-500 uppercase sm:px-7" scope="colgroup">{g.group}</th>
+                  </tr>
+                  {g.rows.map(([label, value]) => (
+                    <tr key={label} className="border-b border-ink/5">
+                      <th scope="row" className="px-4 py-2.5 text-left font-medium sm:px-7">{label}</th>
+                      {plans.map((p) => (
+                        <td key={p.id} className="px-1 py-2.5 text-center">{cell(value(p.features || {}))}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-ink/10 px-5 py-3 text-center text-xs text-ink-500 sm:px-7">
+          Direct UPI payments from your buyers go straight to you with no fee from us.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Pricing() {
   const plans = usePlans()
   const [period, setPeriod] = useState('month')
+  const [open, setOpen] = useState(false)
   return (
     <section id="pricing" className="card scroll-mt-28 p-6 sm:p-12">
-      <h2 className="display-lg">
-        Simple.
-        <br />
-        <span className="display-italic">Free while you grow.</span>
-      </h2>
-      <div className="mt-8 flex w-fit gap-1 rounded-full bg-cream-200 p-1" role="group" aria-label="Billing period">
-        {[['month', 'Monthly'], ['year', 'Yearly · 2 months free']].map(([v, l]) => (
-          <button key={v} type="button" aria-pressed={period === v} onClick={() => setPeriod(v)} className={`h-10 rounded-full px-4 text-sm font-semibold ${period === v ? 'bg-ink text-white' : 'text-ink-600'}`}>{l}</button>
-        ))}
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <h2 className="display-lg">
+          Start free.
+          <br />
+          <span className="display-italic">Upgrade when you earn.</span>
+        </h2>
+        <div className="flex w-fit gap-1 rounded-full bg-cream-200 p-1" role="group" aria-label="Billing period">
+          {[['month', 'Monthly'], ['year', 'Yearly · 2 months free']].map(([v, l]) => (
+            <button key={v} type="button" aria-pressed={period === v} onClick={() => setPeriod(v)} className={`h-10 rounded-full px-4 text-sm font-semibold ${period === v ? 'bg-ink text-white' : 'text-ink-600'}`}>{l}</button>
+          ))}
+        </div>
       </div>
       {plans === null ? (
         <div className="mt-10 h-72 animate-pulse rounded-3xl bg-cream-200" />
       ) : (
-        <div className={`mt-10 grid gap-4 ${plans.length > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
-          {plans.map((p, i) => {
-            const dark = i === 1
-            return (
-              <div key={p.id} className={`flex flex-col rounded-3xl p-7 sm:p-9 ${dark ? 'bg-ink text-white' : 'bg-cream-200'}`}>
-                <p className={`eyebrow ${dark ? 'text-lime' : 'text-ink-500'}`}>{p.name}</p>
-                <p className="mt-4 font-display text-5xl font-bold">
-                  ₹{((period === 'year' ? p.price_yearly_inr : p.price_monthly_inr) || 0).toLocaleString('en-IN')}
-                  <span className={`text-lg font-medium ${dark ? 'text-white/50' : 'text-ink-500'}`}>{p.price_monthly_inr ? (period === 'year' ? ' / year' : ' / month') : ' / forever'}</span>
-                </p>
-                {period === 'year' && p.price_yearly_inr > 0 && (
-                  <p className={`mt-1 text-sm font-semibold ${dark ? 'text-lime' : 'text-ink-600'}`}>
-                    ₹{Math.round(p.price_yearly_inr / 12).toLocaleString('en-IN')} a month, save ₹{(p.price_monthly_inr * 12 - p.price_yearly_inr).toLocaleString('en-IN')}
+        <>
+          <div className={`mt-10 grid gap-4 ${plans.length > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+            {plans.map((p, i) => {
+              const dark = i === 1
+              const price = period === 'year' ? p.price_yearly_inr : p.price_monthly_inr
+              return (
+                <div key={p.id} className={`flex flex-col rounded-3xl p-7 sm:p-9 ${dark ? 'bg-ink text-white' : 'bg-cream-200'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={`eyebrow ${dark ? 'text-lime' : 'text-ink-500'}`}>{p.name}</p>
+                    {dark && <span className="rounded-full bg-lime px-2.5 py-0.5 text-[11px] font-bold text-ink">Most popular</span>}
+                  </div>
+                  <p className="mt-4 font-display text-5xl font-bold">
+                    {inr(price)}
+                    <span className={`text-lg font-medium ${dark ? 'text-white/50' : 'text-ink-500'}`}>{p.price_monthly_inr ? (period === 'year' ? ' / year' : ' / month') : ' / forever'}</span>
                   </p>
-                )}
-                {p.description && <p className={`mt-2 text-sm ${dark ? 'text-white/70' : 'text-ink-600'}`}>{p.description}</p>}
-                <ul className="mt-8 space-y-3 text-[15px]">
-                  {featureList(p.features || {}).map((f) => (
-                    <li key={f.text} className={`flex items-center gap-2.5 ${f.on ? '' : 'opacity-50 line-through'}`}>
-                      <Check className="size-4 shrink-0" strokeWidth={3} />
-                      {f.text}
-                    </li>
-                  ))}
-                </ul>
-                <a href="/signup" className={`mt-auto inline-flex h-12 items-center justify-center gap-2 rounded-full pt-0 text-sm font-semibold ${dark ? 'bg-lime text-ink' : 'bg-ink text-white'}`} style={{ marginTop: '2.5rem' }}>
-                  {p.price_monthly_inr ? 'Start free, upgrade later' : 'Start free'} <ArrowUpRight className="size-4" />
-                </a>
-              </div>
-            )
-          })}
-        </div>
+                  <p className={`mt-1 min-h-5 text-sm ${dark ? 'text-white/70' : 'text-ink-600'}`}>
+                    {period === 'year' && p.price_yearly_inr > 0 ? `${inr(Math.round(p.price_yearly_inr / 12))} a month, save ${inr(p.price_monthly_inr * 12 - p.price_yearly_inr)}` : p.description}
+                  </p>
+                  <ul className="mt-7 space-y-3 text-[15px]">
+                    {shortFeatures(p.features || {}).map((f) => (
+                      <li key={f.text} className={`flex items-start gap-2.5 ${f.on ? '' : 'opacity-45'}`}>
+                        {f.on ? <Check className="mt-0.5 size-4 shrink-0" strokeWidth={3} /> : <Minus className="mt-0.5 size-4 shrink-0" />}
+                        {f.text}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-auto pt-8">
+                    <a href="/signup" className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold ${dark ? 'bg-lime text-ink' : 'bg-ink text-white'}`}>
+                      {p.price_monthly_inr ? 'Start free, upgrade anytime' : 'Start free'} <ArrowUpRight className="size-4" />
+                    </a>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-6 flex flex-col items-center justify-between gap-3 sm:flex-row">
+            <p className="text-sm text-ink-500">Every plan has your own website, products, bookings, lead forms and media kit. No setup fees.</p>
+            <button type="button" onClick={() => setOpen(true)} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-ink/15 px-5 text-sm font-semibold hover:border-ink/40">
+              Compare all features <ArrowUpRight className="size-4" />
+            </button>
+          </div>
+          {open && <CompareModal plans={plans} period={period} onClose={() => setOpen(false)} />}
+        </>
       )}
-      <p className="mt-5 text-sm text-ink-500">Every plan includes your website, products, bookings, lead forms, analytics and media kit.</p>
     </section>
   )
 }
 
 function Trust() {
   return (
-    <section className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-      <div className="rounded-3xl bg-lime p-7 sm:p-10">
-        <span className="grid size-12 place-items-center rounded-full bg-ink text-lime"><ShieldCheck className="size-5" /></span>
-        <h2 className="display-md mt-8">Safe for you. Safe for your fans.</h2>
-        <p className="mt-4 text-[15px] leading-relaxed text-ink-700">
-          Every link is checked against a blocklist of phishing and scam domains. Visitors can report pages, and our team reviews every report.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold underline underline-offset-4">
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms</a>
+    <section className="flex flex-col gap-5 rounded-3xl bg-lime p-7 sm:flex-row sm:items-center sm:justify-between sm:p-10">
+      <div className="flex items-start gap-4">
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-ink text-lime"><ShieldCheck className="size-5" /></span>
+        <div>
+          <h2 className="display-md">Safe for you. Safe for your fans.</h2>
+          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-700">
+            Every link is checked against a blocklist of phishing and scam domains. Visitors can report pages, and our team reviews every report.
+          </p>
         </div>
       </div>
-      <div className="card grid gap-8 p-7 sm:grid-cols-2 sm:p-10">
-        {[
-          { icon: Smartphone, t: 'Mobile-first', d: 'Designed for the 6-inch screen your followers use.' },
-          { icon: Palette, t: 'Your style', d: '33 designs, plus your own colours, fonts and button shapes.' },
-          { icon: BarChart3, t: 'Privacy-friendly analytics', d: 'No third-party cookies on your page.' },
-          { icon: Mail, t: 'Consent built in', d: 'Lead forms record consent, as Indian data law expects.' },
-        ].map((x) => (
-          <div key={x.t}>
-            <x.icon className="size-5" />
-            <h3 className="mt-3 font-bold">{x.t}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-ink-600">{x.d}</p>
-          </div>
-        ))}
+      <div className="flex shrink-0 gap-x-5 text-sm font-semibold underline underline-offset-4">
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms</a>
       </div>
     </section>
   )
 }
 
 const FAQ = [
-  ['Is it really free?', 'Yes. The free plan includes your website, products, bookings, lead capture, analytics and media kit, up to the limits shown in Pricing. Paid plans raise those limits.'],
-  ...(INSTAGRAM_ENABLED ? [['Do I need an Instagram business account?', 'To import your profile and stats you need an Instagram Professional (Creator or Business) account. You can still build and publish a page without connecting Instagram.']] : []),
-  ['Can I write my page in Hindi?', 'Absolutely. Your page can be in Hindi, English or a mix — choose the page language and we’ll translate buttons like “Share” and “Register” for your visitors.'],
-  ['How do webinar links work?', 'Create your webinar in your own Zoom account, then paste the registration link into a Webinar block with the date and time. We show it beautifully and hide it after it ends.'],
-  ['What happens to the leads I collect?', 'They’re stored securely and only you can see them. Every lead records the consent text the visitor agreed to. You can export or delete them anytime.'],
-  ['Can I delete my account?', 'Yes — from Settings you can export all your data and permanently delete your account and page.'],
+  ['What is a link in bio?', 'One link you put in your Instagram, YouTube or WhatsApp bio. It opens a page with everything you want to share: products, bookings, videos, WhatsApp chat and more.'],
+  ['Is it really free?', `Yes. The free plan includes your website, products, bookings, lead capture, analytics and media kit${INSTAGRAM_ENABLED ? ', plus up to 10 comment-to-DM automations' : ''}. Paid plans raise the limits and add extras like WhatsApp alerts and your own domain.`],
+  ['How do I get paid, and do you take a cut?', 'Buyers pay your UPI ID directly, you confirm in Sales and their access opens. The money never passes through us, so there’s no cut on direct UPI. Sales through our upcoming card checkout carry a small fee that gets lower on paid plans.'],
+  ...(INSTAGRAM_ENABLED
+    ? [['How does comment-to-DM work?', 'Connect your Instagram Creator or Business account, pick a keyword like “GUIDE” and write your message. When someone comments it, they get a DM with your link. We follow Instagram’s rules: one private reply per comment, within seven days.']]
+    : []),
+  ['Can I sell my course or other brands’ products?', 'Yes. Add the details and price, and paste the link where it’s sold. Visitors pay on that site (Graphy, Udemy, Amazon or your own), so you never handle that payment.'],
+  ['Can I write my page in Hindi?', 'Absolutely: Hindi, English or a mix. We translate buttons like “Share” and “Register” for your visitors.'],
 ]
 
 function Faq() {
@@ -396,11 +515,11 @@ function FinalCta() {
       <div className="absolute -top-16 -right-10 size-48 rounded-full bg-lime/70" aria-hidden />
       <div className="relative mx-auto flex max-w-2xl flex-col items-center">
         <h2 className="display-lg">
-          Your page is
+          Your link in bio is
           <br />
           <span className="display-italic">one username away.</span>
         </h2>
-        <p className="mt-5 text-[17px] text-ink-600">Join creators across India running their business from their own website.</p>
+        <p className="mt-5 text-[17px] text-ink-600">Claim your name, add your first link and start getting paid. Free, in about two minutes.</p>
         <div className="mt-8 flex w-full justify-center">
           <ClaimBox />
         </div>
@@ -411,7 +530,7 @@ function FinalCta() {
 
 export default function Landing() {
   useEffect(() => {
-    document.title = `${APP_NAME} — Your website, made for Indian creators`
+    document.title = `${APP_NAME} — The link in bio for Indian creators`
     captureRef()
   }, [])
   return (
@@ -419,9 +538,10 @@ export default function Landing() {
       <SiteHeader />
       <main className="container-page mt-4 space-y-4">
         <Hero />
-        <Stats />
-        <HowItWorks />
+        <FreeAutomation />
         <Features />
+        <HowItWorks />
+        <WhoItsFor />
         <AnalyticsShowcase />
         <Pricing />
         <Trust />

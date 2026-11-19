@@ -44,11 +44,11 @@ function DefaultPanel() {
       <div className="absolute -top-28 -right-28 size-[340px] rounded-full bg-lilac" aria-hidden />
       <div className="absolute -right-16 -bottom-16 size-56 rounded-full bg-ink-700" aria-hidden />
       <div className="relative">
-        <p className="eyebrow text-lime">Your page, live in minutes</p>
+        <p className="eyebrow text-lime">Your link in bio, live in minutes</p>
         <h2 className="mt-4 font-display text-[44px] leading-[1.05] font-bold tracking-tight">
           One link.
           <br />
-          Every follower.
+          Every way you earn.
         </h2>
       </div>
       <div className="relative mt-16 max-w-[420px] rounded-3xl bg-white p-7 text-ink">

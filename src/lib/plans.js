@@ -31,3 +31,52 @@ export function featureList(f) {
     { on: true, text: f.support === 'priority' ? 'Priority support' : f.support === 'email' ? 'Email support' : 'Help centre' },
   ]
 }
+
+/** Five short lines for a compact pricing card */
+export function shortFeatures(f) {
+  const lim = (v, one, many) => (UNLIMITED(v) ? `Unlimited ${many}` : v === 1 ? `1 ${one}` : `${fmt(v ?? 0)} ${many}`)
+  const dm = UNLIMITED(f.max_automations) ? 'Unlimited DM automations' : `${f.max_automations} comment → DM automations, free`
+  const days = (f.analytics_days ?? 7) >= 365 ? '1 year' : `${f.analytics_days ?? 7} days`
+  return [
+    { on: true, text: `${lim(f.max_pages, 'bio page', 'bio pages')} · ${lim(f.max_products, 'product', 'products')}` },
+    { on: true, text: dm },
+    { on: !!f.whatsapp, text: 'WhatsApp alerts for you and buyers' },
+    { on: !!(f.custom_domain && f.remove_branding), text: 'Your own domain, no branding' },
+    { on: true, text: `Analytics: ${days} of history` },
+  ]
+}
+
+/** Every feature, grouped, for the "Compare all features" table. A value is true/false or a short string */
+export const COMPARE = [
+  { group: 'Your page', rows: [
+    ['Bio pages', (f) => String(f.max_pages ?? 1)],
+    ['Sub-pages per page', (f) => String(f.max_site_pages ?? 0)],
+    ['Remove our branding', (f) => !!f.remove_branding],
+    ['Custom domain', (f) => !!f.custom_domain],
+  ] },
+  { group: 'Selling', rows: [
+    ['Live products', (f) => (UNLIMITED(f.max_products) ? 'Unlimited' : String(f.max_products))],
+    ['Digital products, 1:1 calls, webinars, courses', () => true],
+    ['Coupons, offers, pay what you want', (f) => !!f.sales_tools],
+    ['Bundles, memberships, upsells', (f) => !!f.advanced_products],
+    ['GST invoices', (f) => !!f.gst_invoices],
+    ['Fee on sales through our checkout', (f) => (f.commission_pct != null ? `${f.commission_pct}%` : '—')],
+  ] },
+  { group: 'Instagram', rows: [
+    ['Comment → DM automations', (f) => (UNLIMITED(f.max_automations) ? 'Unlimited' : `${f.max_automations} free`)],
+    ['DMs per month', (f) => (UNLIMITED(f.dm_monthly_limit) ? 'Unlimited' : fmt(f.dm_monthly_limit))],
+    ['Story-reply and DM-keyword automations', (f) => !Array.isArray(f.dm_triggers) || f.dm_triggers.length > 1],
+    ['Follow to unlock, lead capture, follow-ups', (f) => !!f.dm_advanced],
+    ['Profile import, media kit, latest Reel', () => true],
+  ] },
+  { group: 'Alerts & audience', rows: [
+    ['WhatsApp alerts for you and your buyers', (f) => !!f.whatsapp],
+    ['Analytics history', (f) => ((f.analytics_days ?? 7) >= 365 ? '1 year' : `${f.analytics_days ?? 7} days`)],
+    ['Export leads and audience (CSV)', (f) => !!f.leads_export],
+    ['Meta Pixel, Google Analytics, UTM links', (f) => !!f.tracking],
+  ] },
+  { group: 'Team & support', rows: [
+    ['Team members', (f) => (f.max_team ? String(f.max_team) : '—')],
+    ['Support', (f) => (f.support === 'priority' ? 'Priority' : f.support === 'email' ? 'Email' : 'Help centre')],
+  ] },
+]

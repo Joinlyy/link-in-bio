@@ -4,7 +4,7 @@
 // Meta POSTs a form field `signed_request` = base64url(HMAC-SHA256 signature) "." base64url(JSON payload),
 // signed with the Instagram app secret. The payload's user_id is the Instagram user who removed the app.
 //
-// deauthorize: the creator removed JOINLYY from Instagram → drop the connection (token + profile data).
+// deauthorize: the creator removed Joinlyy from Instagram → drop the connection (token + profile data).
 // delete:      the creator asked Meta to delete their data → also delete their DM automation history, and
 //              answer with a status URL and confirmation code, as Meta requires.
 // Secrets: INSTAGRAM_APP_SECRET, APP_ORIGIN

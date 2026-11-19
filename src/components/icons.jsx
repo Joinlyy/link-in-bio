@@ -121,13 +121,14 @@ export const CheckIcon = I(<path d="M5 12.5l4.5 4.5L19 7.5" />)
 
 export function Logo({ size = 40, className = '' }) {
   return (
-    <span
-      className={`inline-grid place-items-center rounded-full bg-ink text-lime ${className}`}
+    <img
+      src="/logo.png"
+      alt=""
+      width={size}
+      height={size}
+      decoding="async"
+      className={`inline-block shrink-0 rounded-full bg-black ${className}`}
       style={{ width: size, height: size }}
-    >
-      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-        <path d="M9.5 14.5l5-5M8.2 11.6l-1.4 1.4a3.5 3.5 0 005 5l1.4-1.4M15.8 12.4l1.4-1.4a3.5 3.5 0 00-5-5l-1.4 1.4" />
-      </svg>
-    </span>
+    />
   )
 }
