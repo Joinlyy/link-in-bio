@@ -30,7 +30,18 @@ export default function SignUp() {
       {googleEnabled === false ? (
         <Alert>Sign-up isn’t available right now. Please try again a little later.</Alert>
       ) : (
-        <GoogleButton onClick={() => signInWithGoogle('/onboarding')} loading={googleEnabled === null} />
+        <GoogleButton
+          onClick={() => {
+            // The callback uses this to tell a new account from an email that is already registered
+            try {
+              sessionStorage.setItem('lib_signup_flow', '1')
+            } catch {
+              /* ignore */
+            }
+            return signInWithGoogle('/onboarding')
+          }}
+          loading={googleEnabled === null}
+        />
       )}
       <p className="mt-4 text-center text-sm text-ink-500">No form to fill. You can create a password later from your dashboard.</p>
       <p className="mt-8 text-center text-[15px] text-ink-600">

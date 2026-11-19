@@ -43,6 +43,11 @@ const TEMPLATES = [
     example: ['Ayush Kumar', 'Instagram growth call', 'https://joinlyy.com/order/abc123'],
   },
   {
+    name: 'admin_support_ticket',
+    text: 'New support request #{{1}}: {{2}}, from {{3}}. Open it in your admin at {{4}}.',
+    example: ['12', 'Payment failed or pending', 'priya@example.com', 'https://joinlyy.com/admin/support'],
+  },
+  {
     name: 'creator_alerts_on',
     text: 'WhatsApp alerts are on for your page. You will get messages here about new orders, UPI payments to confirm, leads and brand enquiries.',
     example: [],

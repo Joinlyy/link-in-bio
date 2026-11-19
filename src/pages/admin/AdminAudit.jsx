@@ -16,10 +16,24 @@ const LABELS = {
   report_open: 'Reopened report',
   domain_blocked: 'Blocked domain',
   domain_unblocked: 'Unblocked domain',
+  admin_login: 'Admin signed in',
+  viewed_buyer_details: 'Opened buyer details',
+  opened_order_from_ticket: 'Opened an order from a ticket',
+  ticket_open: 'Reopened a support request',
+  ticket_in_progress: 'Support request: waiting',
+  ticket_resolved: 'Resolved a support request',
+  plan_changed: 'Changed a plan',
+  plan_extended: 'Extended a plan',
+  support_contacts_changed: 'Changed support alert contacts',
 }
 
 function describe(row) {
   const d = row.details || {}
+  if (row.action === 'plan_changed') return `${d.email}: ${d.from_plan} to ${d.to_plan}. ${d.reason}`
+  if (row.action === 'plan_extended') return `${d.email}: +${d.days} days. ${d.reason}`
+  if (row.action?.startsWith('ticket_')) return `Request #${row.target_id}`
+  if (row.action === 'viewed_buyer_details' || row.action === 'opened_order_from_ticket') return `${row.target_table} #${row.target_id}`
+  if (row.action === 'admin_login') return 'Sign-in'
   return d.email || d.username || (row.target_table === 'blocked_domains' ? row.target_id : d.reason) || row.target_id
 }
 
@@ -47,7 +61,7 @@ export default function AdminAudit() {
 
   return (
     <div className="space-y-4">
-      <PageHeading title="Audit log." italic="Who did what.">Every moderation action by an admin is recorded here and can’t be edited.</PageHeading>
+      <PageHeading title="Audit log." italic="Who did what.">Every admin action and sign-in is recorded here, with who, when and why. It can’t be edited.</PageHeading>
       <ViewToggle value={view} onChange={setView} />
       {rows === null ? (
         <div className="grid h-60 place-items-center"><Spinner /></div>

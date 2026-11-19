@@ -1,26 +1,64 @@
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { ArrowLeft, Ban, Crown, Flag, Gauge, LogOut, MessagesSquare, Receipt, Scale, ScrollText, ShieldAlert, Users, IndianRupee } from 'lucide-react'
+import { Activity, Ban, LifeBuoy, Wallet, Crown, Flag, Gauge, LogOut, MessagesSquare, Receipt, Scale, ScrollText, ShieldAlert, Users, IndianRupee } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Logo } from '../../components/icons'
 import { APP_NAME } from '../../lib/config'
+import { supabase } from '../../lib/supabase'
 import PasswordBanner from '../../components/SetPassword'
 
 const NAV = [
   { to: '/admin', label: 'Overview', icon: Gauge, end: true },
   { to: '/admin/creators', label: 'Creators', icon: Users },
+  { to: '/admin/support', label: 'Buyer support', icon: LifeBuoy, badge: 'tickets' },
   { to: '/admin/reports', label: 'Reports', icon: Flag },
-  { to: '/admin/messages', label: 'Messages', icon: MessagesSquare },
+  { to: '/admin/messages', label: 'Creator messages', icon: MessagesSquare },
   { to: '/admin/orders', label: 'Orders', icon: Receipt },
+  { to: '/admin/money', label: 'Money', icon: Wallet },
+  { to: '/admin/subscriptions', label: 'Subscriptions', icon: Crown },
   { to: '/admin/disputes', label: 'Disputes', icon: Scale },
   { to: '/admin/fraud', label: 'Fraud flags', icon: ShieldAlert },
   { to: '/admin/plans', label: 'Plans & pricing', icon: Crown },
   { to: '/admin/payments', label: 'Plan payments', icon: IndianRupee },
   { to: '/admin/domains', label: 'Domains & links', icon: Ban },
+  { to: '/admin/status', label: 'System status', icon: Activity },
   { to: '/admin/audit', label: 'Audit log', icon: ScrollText },
 ]
 
+const IDLE_MS = 30 * 60 * 1000 // signed out after 30 minutes without activity
+
 export default function AdminLayout() {
   const { profile, signOut } = useAuth()
+  const [tickets, setTickets] = useState(0)
+
+  // Admin sessions end on their own when left open
+  useEffect(() => {
+    let timer
+    const reset = () => {
+      clearTimeout(timer)
+      timer = setTimeout(signOut, IDLE_MS)
+    }
+    const events = ['pointerdown', 'keydown', 'scroll', 'visibilitychange']
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }))
+    reset()
+    return () => {
+      clearTimeout(timer)
+      events.forEach((e) => window.removeEventListener(e, reset))
+    }
+  }, [signOut])
+
+  // Each admin sign-in goes in the audit log
+  useEffect(() => {
+    supabase.rpc('admin_log_login').then(() => {}) // the request only runs once it is awaited
+  }, [])
+
+  // Open buyer requests, shown next to the menu item
+  useEffect(() => {
+    const load = () => supabase.from('support_tickets').select('id', { count: 'exact', head: true }).neq('status', 'resolved').then(({ count }) => setTickets(count || 0))
+    load()
+    const timer = setInterval(load, 60000)
+    return () => clearInterval(timer)
+  }, [])
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[1440px] flex-col gap-4 p-3 sm:p-4 lg:flex-row">
       <aside className="flex shrink-0 flex-col gap-3 rounded-3xl bg-ink p-4 text-white lg:sticky lg:top-4 lg:h-[calc(100dvh-2rem)] lg:w-[260px]">
@@ -41,6 +79,7 @@ export default function AdminLayout() {
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `flex shrink-0 items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-medium transition ${isActive ? 'bg-lime text-ink' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}>
               <n.icon className="size-[18px]" />
               {n.label}
+              {n.badge === 'tickets' && tickets > 0 && <span className="ml-auto rounded-full bg-rose px-2 py-0.5 text-xs font-bold text-white">{tickets}</span>}
             </NavLink>
           ))}
         </nav>
@@ -48,7 +87,6 @@ export default function AdminLayout() {
           <p className="truncate text-sm font-semibold">{profile?.full_name || 'Admin'}</p>
           <p className="truncate text-xs text-white/50">{profile?.email}</p>
           <div className="mt-2 flex gap-3 text-xs font-semibold text-white/70">
-            <Link to="/dashboard" className="inline-flex items-center gap-1 hover:text-white"><ArrowLeft className="size-3.5" /> My page</Link>
             <button type="button" onClick={signOut} className="inline-flex items-center gap-1 hover:text-white"><LogOut className="size-3.5" /> Sign out</button>
           </div>
         </div>

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Crown, ExternalLink, Search, Users } from 'lucide-react'
+import { formatInr } from '../../lib/images'
 import { errorMessage, supabase } from '../../lib/supabase'
 import { Badge, Button, Card, Empty, Input, Modal, Select, Spinner, Tabs, Textarea, useToast } from '../../components/ui'
 import { DataTable, useViewMode, ViewToggle } from '../../components/DataTable'
 import { PageHeading } from '../dashboard/DashboardLayout'
+import AdminCreatorDetail from './AdminCreatorDetail'
 
 const PAGE_SIZE = 30
 
@@ -11,7 +13,7 @@ export function useModeration() {
   const toast = useToast()
   return {
     async setSuspended(profileId, suspended, reason) {
-      const { error } = await supabase.from('profiles').update({ status: suspended ? 'suspended' : 'active', suspended_reason: suspended ? reason : null }).eq('id', profileId)
+      const { error } = await supabase.rpc('admin_set_creator_status', { p_user: profileId, p_suspended: suspended, p_reason: reason || null })
       if (error) toast(error.message, 'error')
       else toast(suspended ? 'Creator suspended' : 'Creator reactivated')
       return !error
@@ -51,11 +53,12 @@ function PlanModal({ creator, plans, onClose, onDone }) {
   const defaultExpiry = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
   const [plan, setPlan] = useState(creator.plan || 'free')
   const [expires, setExpires] = useState(creator.plan_expires_at ? creator.plan_expires_at.slice(0, 10) : defaultExpiry)
+  const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   async function save() {
     setBusy(true)
     const p_expires = plan === 'free' || !expires ? null : new Date(`${expires}T23:59:59+05:30`).toISOString()
-    const { error } = await supabase.rpc('admin_set_plan', { p_user: creator.id, p_plan: plan, p_expires })
+    const { error } = await supabase.rpc('admin_set_plan_logged', { p_user: creator.id, p_plan: plan, p_expires, p_reason: reason })
     setBusy(false)
     if (error) return toast(errorMessage(error), 'error')
     toast(`Plan set to ${plans.find((p) => p.id === plan)?.name || plan}`)
@@ -68,10 +71,11 @@ function PlanModal({ creator, plans, onClose, onDone }) {
         {plan !== 'free' && (
           <Input label="Expires on" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} hint="Leave empty for no expiry. Recorded as an admin grant in their billing history." />
         )}
+        <Input label="Reason (required, kept in the audit log)" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Paid by UPI, reference checked" />
       </div>
       <div className="mt-6 flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button loading={busy} onClick={save}>Save plan</Button>
+        <Button loading={busy} disabled={reason.trim().length < 3} onClick={save}>Save plan</Button>
       </div>
     </Modal>
   )
@@ -88,6 +92,7 @@ export default function AdminCreators() {
   const [suspendFor, setSuspendFor] = useState(null)
   const [planFor, setPlanFor] = useState(null)
   const [plans, setPlans] = useState([])
+  const [stats, setStats] = useState({})
   const [view, setView] = useViewMode('admin-creators')
   const [openId, setOpenId] = useState(null)
   const { setSuspended, setHidden } = useModeration()
@@ -105,11 +110,25 @@ export default function AdminCreators() {
     if (filter === 'suspended') query = query.eq('status', 'suspended')
     if (filter === 'admins') query = query.eq('role', 'admin')
     if (filter === 'paid') query = query.neq('plan', 'free')
+    if (filter === 'free') query = query.eq('plan', 'free')
+    if (filter === 'flagged') {
+      const { data: ids } = await supabase.rpc('admin_flagged_user_ids')
+      query = query.in('id', ids?.length ? ids : ['00000000-0000-0000-0000-000000000000'])
+    }
     const term = q.trim().replace(/[%,()]/g, '')
-    if (term) query = query.or(`email.ilike.%${term}%,full_name.ilike.%${term}%`)
+    if (term) {
+      const { data: byPage } = await supabase.rpc('admin_search_user_ids', { p_q: term })
+      const ids = (byPage || []).join(',')
+      query = query.or(`email.ilike.%${term}%,full_name.ilike.%${term}%${ids ? `,id.in.(${ids})` : ''}`)
+    }
     const { data, count: c } = await query
     setRows(data || [])
     setCount(c || 0)
+    // Sales, last sign-in and photo for the creators on screen
+    if (data?.length) {
+      const { data: extra } = await supabase.rpc('admin_creator_stats', { p_ids: data.map((r) => r.id) })
+      setStats(Object.fromEntries((extra || []).map((x) => [x.id, x])))
+    }
   }, [q, filter, limit])
 
   useEffect(() => {
@@ -120,8 +139,14 @@ export default function AdminCreators() {
   const opened = (rows || []).find((r) => r.id === openId)
   const card = (r) => {
     const page = pageOf(r)
+    const x = stats[r.id]
     return (
               <Card key={r.id} className="flex flex-col gap-4 p-4 sm:p-5 md:flex-row md:items-center">
+                {x?.avatar_url ? (
+                  <img src={x.avatar_url} alt="" className="size-14 shrink-0 rounded-full object-cover" loading="lazy" />
+                ) : (
+                  <span className="grid size-14 shrink-0 place-items-center rounded-full bg-cream font-display text-lg font-bold text-ink-500">{(r.full_name || r.email || '?')[0].toUpperCase()}</span>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-semibold">{r.full_name || page?.display_name || 'Unnamed'}</p>
@@ -140,9 +165,16 @@ export default function AdminCreators() {
                   <p className="mt-0.5 truncate text-sm text-ink-500">
                     {r.email} {page && <>· <a href={`/${page.username}`} target="_blank" rel="noreferrer" className="font-medium text-ink hover:underline">/{page.username}</a></>}
                   </p>
+                  {x && (
+                    <p className="text-xs text-ink-600">
+                      {x.sales_count} sale{x.sales_count === 1 ? '' : 's'} · {formatInr(x.sales_total)} · {x.products} live product{x.products === 1 ? '' : 's'}{x.ig_connected ? ' · Instagram connected' : ''}
+                      {x.last_sign_in_at && ` · last seen ${new Date(x.last_sign_in_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                    </p>
+                  )}
                   <p className="text-xs text-ink-400">Joined {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}{r.plan !== 'free' && r.plan_expires_at && ` · plan until ${new Date(r.plan_expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}{r.suspended_reason && ` · ${r.suspended_reason}`}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setOpenId(r.id)}>Details</Button>
                   <Button variant="soft" size="sm" onClick={() => setPlanFor(r)}><Crown className="size-4" /> Plan</Button>
                   {page && (
                     <Button variant="outline" size="sm" href={`/${page.username}`} target="_blank" rel="noreferrer"><ExternalLink className="size-4" /> View</Button>
@@ -169,9 +201,9 @@ export default function AdminCreators() {
       <Card className="flex flex-col gap-3 p-3 sm:flex-row">
         <label className="flex flex-1 items-center gap-2 rounded-full bg-cream px-4">
           <Search className="size-4 text-ink-400" />
-          <input className="h-11 flex-1 bg-transparent text-sm outline-none" placeholder="Search by email or name" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="h-11 flex-1 bg-transparent text-sm outline-none" placeholder="Search by email, name or page username" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
-        <Tabs label="Filter" value={filter} onChange={setFilter} tabs={[['all', 'All'], ['paid', 'Paid'], ['suspended', 'Suspended'], ['admins', 'Admins']].map(([key, label]) => ({ key, label }))} />
+        <Tabs label="Filter" value={filter} onChange={setFilter} tabs={[['all', 'All'], ['paid', 'Paying'], ['free', 'Free'], ['flagged', 'Flagged'], ['suspended', 'Suspended'], ['admins', 'Admins']].map(([key, label]) => ({ key, label }))} />
       </Card>
 
       <ViewToggle value={view} onChange={setView} />
@@ -192,6 +224,8 @@ export default function AdminCreators() {
                 { key: 'page', label: 'Page', value: (r) => pageOf(r)?.username, render: (r) => (pageOf(r) ? `/${pageOf(r).username}` : '—') },
                 { key: 'plan', label: 'Plan', value: (r) => r.plan, className: 'capitalize', render: (r) => plans.find((p) => p.id === r.plan)?.name || r.plan },
                 { key: 'status', label: 'Status', value: (r) => r.status, render: (r) => (r.status === 'suspended' ? <Badge tone="red">Suspended</Badge> : <Badge tone="green">Active</Badge>) },
+                { key: 'sales', label: 'Sales', align: 'right', value: (r) => stats[r.id]?.sales_total ?? 0, render: (r) => (stats[r.id] ? formatInr(stats[r.id].sales_total) : '…') },
+                { key: 'seen', label: 'Last seen', value: (r) => stats[r.id]?.last_sign_in_at || '', className: 'whitespace-nowrap text-ink-500', render: (r) => (stats[r.id]?.last_sign_in_at ? new Date(stats[r.id].last_sign_in_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—') },
                 { key: 'created_at', label: 'Joined', value: (r) => r.created_at, className: 'whitespace-nowrap text-ink-500', render: (r) => new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) },
               ]}
             />
@@ -201,7 +235,16 @@ export default function AdminCreators() {
           )}
         </div>
       )}
-      <Modal open={Boolean(opened)} onClose={() => setOpenId(null)} title="Creator" wide>{opened && card(opened)}</Modal>
+      {opened && (
+        <AdminCreatorDetail
+          id={opened.id}
+          plans={plans}
+          onClose={() => setOpenId(null)}
+          onChanged={load}
+          onChangePlan={() => setPlanFor(opened)}
+          onSuspend={(on) => (on ? setSuspendFor(opened) : setSuspended(opened.id, false).then((ok) => ok && load()))}
+        />
+      )}
       <SuspendModal creator={suspendFor} onClose={() => setSuspendFor(null)} onDone={() => { setSuspendFor(null); load() }} />
       {planFor && <PlanModal key={planFor.id} creator={planFor} plans={plans} onClose={() => setPlanFor(null)} onDone={() => { setPlanFor(null); load() }} />}
     </div>

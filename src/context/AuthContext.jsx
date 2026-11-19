@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Button, FullScreenLoader, ToastProvider } from '../components/ui'
 import { Logo } from '../components/icons'
+import AdminSecurityGate from '../pages/admin/AdminSecurityGate'
 
 const AuthCtx = createContext(null)
 
@@ -164,21 +165,20 @@ export function RequireAuth({ children }) {
   return children
 }
 
+/** Admin screens. Anyone who is not an active admin is sent away; admins must have passed two-step login */
 export function RequireAdmin({ children }) {
   const { isAdmin, adminNeedsMfa, loading } = useAuth()
   if (loading) return <FullScreenLoader />
-  if (!isAdmin) return <Navigate to="/dashboard" replace />
-  if (adminNeedsMfa) {
-    return (
-      <div className="grid min-h-dvh place-items-center p-6 text-center">
-        <div className="max-w-sm">
-          <h1 className="display-md">Turn on two-step login</h1>
-          <p className="mt-3 text-ink-500">Admin tools need an authenticator app code at sign-in. Set it up in Settings, then sign out and sign in again.</p>
-          <a href="/dashboard/settings" className="mt-6 inline-flex h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white">Open Settings</a>
-        </div>
-      </div>
-    )
-  }
+  if (!isAdmin) return <Navigate to="/" replace />
+  if (adminNeedsMfa) return <AdminSecurityGate />
+  return children
+}
+
+/** Creator screens. The super admin has no creator page: they always go to the admin area */
+export function RequireCreator({ children }) {
+  const { profile, loading } = useAuth()
+  if (loading) return <FullScreenLoader />
+  if (profile?.role === 'admin') return <Navigate to="/admin" replace />
   return children
 }
 

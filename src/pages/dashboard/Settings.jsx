@@ -18,6 +18,8 @@ import { PageHeading } from './DashboardLayout'
 import { useUsernameCheck } from '../../lib/useUsernameCheck'
 import { CustomDomainCard, SeoTrackingCard, TwoFactorCard } from './SettingsExtra'
 
+const SHOW_DOMAIN_AND_SEO = false
+
 const UPI_RE = /^[a-zA-Z0-9._-]{2,255}@[a-zA-Z0-9]{2,64}$/
 
 /** The creator's own UPI ID: buyers pay it directly, and the creator confirms each payment */
@@ -61,7 +63,7 @@ function PaymentsCard() {
 const ALERT_STATUS = { sent: 'Sent', delivered: 'Delivered', read: 'Read', failed: 'Failed', skipped: 'Not sent', sending: 'Sending' }
 const ALERT_EVENT = { upi_submitted: 'UPI payment to confirm', new_order: 'New order', new_lead: 'New lead', brand_enquiry: 'Brand enquiry', order_confirmed: 'Buyer: payment confirmed', payment_rejected: 'Buyer: payment not received', test: 'Test message' }
 
-/** WhatsApp alerts from JOINLYY's number about orders, payments, leads and enquiries */
+/** WhatsApp alerts from Joinlyy's number about orders, payments, leads and enquiries */
 function WhatsappAlertsCard() {
   const { page, updatePage, canEdit } = usePage()
   const toast = useToast()
@@ -111,18 +113,18 @@ function WhatsappAlertsCard() {
       {!allowed ? (
         <UpgradeNote className="mt-5">WhatsApp alerts, for you and order updates for your buyers, are on the Creator and Pro plans.</UpgradeNote>
       ) : (
-      <>
-      <div className="mt-5 grid gap-4">
-        <Input label="Your WhatsApp number" inputMode="tel" placeholder="98765 43210" value={phone} disabled={!canEdit} error={wrong ? 'Enter a mobile number, e.g. 98765 43210' : undefined} hint="Indian numbers get +91 automatically" onChange={(e) => setPhone(e.target.value)} />
-        <Toggle label="Send me alerts" checked={page.alert_on} disabled={!canEdit || !digits || wrong} onChange={(v) => save(v)} />
-      </div>
-      {canEdit && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => save()} disabled={!changed || wrong}>Save number</Button>
-          <Button variant="outline" loading={busy} disabled={!page.alert_whatsapp || changed} onClick={test}>Send a test</Button>
-        </div>
-      )}
-      </>
+        <>
+          <div className="mt-5 grid gap-4">
+            <Input label="Your WhatsApp number" inputMode="tel" placeholder="98765 43210" value={phone} disabled={!canEdit} error={wrong ? 'Enter a mobile number, e.g. 98765 43210' : undefined} hint="Indian numbers get +91 automatically" onChange={(e) => setPhone(e.target.value)} />
+            <Toggle label="Send me alerts" checked={page.alert_on} disabled={!canEdit || !digits || wrong} onChange={(v) => save(v)} />
+          </div>
+          {canEdit && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button onClick={() => save()} disabled={!changed || wrong}>Save number</Button>
+              <Button variant="outline" loading={busy} disabled={!page.alert_whatsapp || changed} onClick={test}>Send a test</Button>
+            </div>
+          )}
+        </>
       )}
       {recent.length > 0 && (
         <ul className="mt-5 divide-y divide-ink/5 rounded-2xl bg-cream px-4 text-sm">
@@ -337,8 +339,12 @@ function PrivacyCard() {
       </div>
       <Modal open={open} onClose={() => setOpen(false)} title="Delete your account?">
         <Alert>This permanently deletes your page, blocks, leads, analytics and Instagram connection. It can’t be undone.</Alert>
-        <Input className="mt-4" label={`Type ${page.username} to confirm`} value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
-        <div className="mt-5 flex justify-end gap-2">
+        <Input
+          className="mt-4"
+          label={<>Type <strong>{page.username}</strong> to confirm</>}
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+        />        <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
           <Button variant="danger" loading={deleting} disabled={confirmText !== page.username} onClick={deleteAccount}>Delete forever</Button>
         </div>
@@ -402,21 +408,19 @@ export default function Settings() {
   return (
     <div className="space-y-4">
       <PageHeading title="Settings." />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-4">
-          <SocialLinksCard />
-          <PaymentsCard />
-          <WhatsappAlertsCard />
-          {INSTAGRAM_ENABLED && <InstagramCard />}
-          <PageSettingsCard />
-          <CustomDomainCard />
-          <SeoTrackingCard />
-        </div>
-        <div className="space-y-4">
-          <AccountCard />
-          <TwoFactorCard />
-          <PrivacyCard />
-        </div>
+      {/* Cards flow into two columns of balanced height, whatever their sizes */}
+      <div className="gap-4 lg:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
+        <SocialLinksCard />
+        <AccountCard />
+        <PaymentsCard />
+        <TwoFactorCard />
+        <WhatsappAlertsCard />
+        {INSTAGRAM_ENABLED && <InstagramCard />}
+        <PageSettingsCard />
+        <PrivacyCard />
+        {/* Hidden for now: custom domain and SEO & sharing */}
+        {SHOW_DOMAIN_AND_SEO && <CustomDomainCard />}
+        {SHOW_DOMAIN_AND_SEO && <SeoTrackingCard />}
       </div>
     </div>
   )

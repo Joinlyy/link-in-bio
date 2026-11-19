@@ -7,6 +7,9 @@ import { DataTable, useViewMode, ViewToggle } from '../../components/DataTable'
 import { PageHeading } from '../dashboard/DashboardLayout'
 import { ORDER_COLUMNS } from '../dashboard/Sales'
 
+// Refunds are switched off for now: failed payments and complaints are handled through buyer support
+const SHOW_REFUNDS = false
+
 export default function AdminOrders() {
   const toast = useToast()
   const [rows, setRows] = useState(null)
@@ -39,7 +42,7 @@ export default function AdminOrders() {
     <div className="space-y-4">
       <PageHeading title="Orders." italic="Across all creators.">Payments are in test mode until Razorpay/Cashfree is connected.</PageHeading>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Tabs label="Status" value={status} onChange={setStatus} tabs={[['paid', 'Paid'], ['refunded', 'Refunded'], ['failed', 'Failed']].map(([key, label]) => ({ key, label }))} />
+        <Tabs label="Status" value={status} onChange={setStatus} tabs={[['paid', 'Paid'], ['pending', 'Pending'], ['failed', 'Failed'], ['refunded', 'Refunded']].map(([key, label]) => ({ key, label }))} />
         <ViewToggle value={view} onChange={setView} />
       </div>
       {rows === null ? (
@@ -60,7 +63,7 @@ export default function AdminOrders() {
                 { key: 'buyer_email', label: 'Buyer', value: (o) => o.buyer_email, className: 'max-w-56 truncate text-ink-600' },
                 { key: 'created_at', label: 'Date', value: (o) => o.created_at, className: 'whitespace-nowrap text-ink-500', render: (o) => new Date(o.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) },
                 { key: 'amount_inr', label: 'Amount', align: 'right', value: (o) => o.amount_inr, className: 'font-semibold', render: (o) => formatInr(o.amount_inr) },
-                { key: 'actions', label: '', align: 'right', render: (o) => status === 'paid' && <Button variant="ghost" size="sm" onClick={() => refund(o)}>Refund</Button> },
+                { key: 'actions', label: '', align: 'right', render: (o) => SHOW_REFUNDS && status === 'paid' && <Button variant="ghost" size="sm" onClick={() => refund(o)}>Refund</Button> },
               ]}
             />
           ) : rows.map((o) => (
@@ -74,7 +77,7 @@ export default function AdminOrders() {
                 <span className="text-ink-400">{new Date(o.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>
                 {o.payment_provider === 'test' && <Badge>Test</Badge>}
                 <span className="w-20 text-right font-display text-lg font-bold">{formatInr(o.amount_inr)}</span>
-                {status === 'paid' && <Button variant="ghost" size="sm" onClick={() => refund(o)}>Refund</Button>}
+                {SHOW_REFUNDS && status === 'paid' && <Button variant="ghost" size="sm" onClick={() => refund(o)}>Refund</Button>}
               </div>
             </div>
           ))}

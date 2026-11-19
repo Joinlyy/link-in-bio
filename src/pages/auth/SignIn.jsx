@@ -48,6 +48,9 @@ export default function SignIn() {
 
   return (
     <AuthShell pill="Welcome back" title="Sign in" italic="to your page.">
+      {params.get('exists') && (
+        <div className="mb-5"><Alert tone="info">This email is already registered. Please sign in instead.</Alert></div>
+      )}
       <Tabs
         value={mode}
         onChange={(m) => {

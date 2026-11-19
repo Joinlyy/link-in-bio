@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.instagram-data]
 verify_jwt = false
+
+[functions.support]
+verify_jwt = false

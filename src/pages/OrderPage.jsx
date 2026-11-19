@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import SupportRequest from '../components/SupportRequest'
 import { acceptUpsell, bookSession, fetchOrder, fetchUpiPayment, getDownloadUrl, openDispute, rescheduleBooking, submitUpiReference } from '../lib/publicApi'
 import UpiPay from '../components/UpiPay'
 import { formatInr, optimizedImage } from '../lib/images'
@@ -288,6 +289,7 @@ function UpiOrder({ data, token, onChange, embedded }) {
             <p className="text-center text-xs text-ink-500">You’re paying {page.display_name || page.username} directly. Bookmark this page: it’s your order link.</p>
           </div>
         </div>
+        <SupportRequest token={token} />
       </div>
     </div>
   )
@@ -478,6 +480,8 @@ export function OrderView({ token, embedded = false }) {
         {paid && upsell && order.payment_provider !== 'upi' && <Upsell upsell={upsell} token={token} />}
 
         {!isTip && (paid || dispute) && <Dispute dispute={dispute} paid={paid} token={token} onChange={load} />}
+
+        <SupportRequest token={token} />
 
         {!embedded && <Link to={pageBase || '/'} className="card flex items-center gap-3 p-4">
           <Avatar page={page} size={44} theme={page.theme} />

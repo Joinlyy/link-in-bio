@@ -83,3 +83,16 @@ export async function getDownloadUrl(token, productId = null) {
 
 /** Status of an Instagram data deletion request (from Meta's data deletion callback) */
 export const fetchDeletionStatus = (code) => rpcGet('instagram_deletion_status', { p_code: code })
+
+/** A buyer's request to the platform team about an order (the order link is the credential) */
+export async function createSupportTicket(token, category, message) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/support`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ token, category, message }),
+  })
+  if (!res.ok) throw await readError(res)
+  return res.json()
+}
+
+export const fetchSupportTickets = (token) => rpcPost('order_support_tickets', { p_token: token })

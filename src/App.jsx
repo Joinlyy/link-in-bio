@@ -13,6 +13,7 @@ const AuthLayout = lazy(() => import('./context/AuthContext'))
 const Guards = {
   RequireAuth: lazy(() => import('./context/AuthContext').then((m) => ({ default: m.RequireAuth }))),
   RequireAdmin: lazy(() => import('./context/AuthContext').then((m) => ({ default: m.RequireAdmin }))),
+  RequireCreator: lazy(() => import('./context/AuthContext').then((m) => ({ default: m.RequireCreator }))),
   GuestOnly: lazy(() => import('./context/AuthContext').then((m) => ({ default: m.GuestOnly }))),
 }
 const MediaKit = lazy(() => import('./pages/MediaKit'))
@@ -43,6 +44,10 @@ const BrandDeals = lazy(() => import('./pages/dashboard/BrandDeals'))
 const Automations = lazy(() => import('./pages/dashboard/Automations'))
 const Support = lazy(() => import('./pages/dashboard/Support'))
 const AdminMessages = lazy(() => import('./pages/admin/AdminMessages'))
+const AdminSubscriptions = lazy(() => import('./pages/admin/AdminSubscriptions'))
+const AdminMoney = lazy(() => import('./pages/admin/AdminMoney'))
+const AdminStatus = lazy(() => import('./pages/admin/AdminStatus'))
+const AdminSupport = lazy(() => import('./pages/admin/AdminSupport'))
 const AdminAudit = lazy(() => import('./pages/admin/AdminAudit'))
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'))
 const AdminPlans = lazy(() => import('./pages/admin/AdminPlans'))
@@ -66,7 +71,7 @@ const AdminCreators = lazy(() => import('./pages/admin/AdminCreators'))
 const AdminReports = lazy(() => import('./pages/admin/AdminReports'))
 const AdminDomains = lazy(() => import('./pages/admin/AdminDomains'))
 
-const { RequireAuth, RequireAdmin, GuestOnly } = Guards
+const { RequireAuth, RequireAdmin, RequireCreator, GuestOnly } = Guards
 
 export default function App() {
   if (isCustomDomainHost()) {
@@ -102,11 +107,11 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
-            <Route path="/instagram/callback" element={<RequireAuth><InstagramCallback /></RequireAuth>} />
+            <Route path="/onboarding" element={<RequireAuth><RequireCreator><Onboarding /></RequireCreator></RequireAuth>} />
+            <Route path="/instagram/callback" element={<RequireAuth><RequireCreator><InstagramCallback /></RequireCreator></RequireAuth>} />
             <Route path="/invoices/:id/print" element={<RequireAuth><InvoicePrint /></RequireAuth>} />
 
-            <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
+            <Route path="/dashboard" element={<RequireAuth><RequireCreator><DashboardLayout /></RequireCreator></RequireAuth>}>
               <Route index element={<Overview />} />
               <Route path="editor" element={<Editor />} />
               <Route path="appearance" element={<Appearance />} />
@@ -138,6 +143,10 @@ export default function App() {
               <Route path="reports" element={<AdminReports />} />
               <Route path="domains" element={<AdminDomains />} />
               <Route path="messages" element={<AdminMessages />} />
+              <Route path="support" element={<AdminSupport />} />
+              <Route path="subscriptions" element={<AdminSubscriptions />} />
+              <Route path="money" element={<AdminMoney />} />
+              <Route path="status" element={<AdminStatus />} />
               <Route path="orders" element={<AdminOrders />} />
               <Route path="audit" element={<AdminAudit />} />
               <Route path="plans" element={<AdminPlans />} />

@@ -97,6 +97,18 @@ export function AuthCallback() {
   useEffect(() => {
     if (error || loading) return
     if (user) {
+      // Came from "Start free" but this email already has an account: don't continue as a new sign-up
+      let fromSignup = false
+      try {
+        fromSignup = sessionStorage.getItem('lib_signup_flow') === '1'
+        sessionStorage.removeItem('lib_signup_flow')
+      } catch {
+        /* ignore */
+      }
+      if (fromSignup && Date.now() - new Date(user.created_at).getTime() > 5 * 60 * 1000) {
+        supabase.auth.signOut().finally(() => navigate('/signin?exists=1', { replace: true }))
+        return
+      }
       const next = params.get('next')
       navigate(safeNext(next), { replace: true })
       return
