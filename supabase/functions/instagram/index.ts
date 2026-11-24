@@ -139,8 +139,14 @@ async function exchange(admin: SupabaseClient, userId: string, code: string, sta
   longUrl.searchParams.set('client_secret', APP_SECRET)
   longUrl.searchParams.set('access_token', short.access_token)
   const longRes = await fetch(longUrl)
-  const long = await longRes.json()
-  if (!longRes.ok || !long.access_token) throw new HttpError(400, 'Could not create a long-lived Instagram token')
+  const long = await longRes.json().catch(() => ({}))
+  if (!longRes.ok || !long.access_token) {
+    // Say why: Instagram's own message names the problem (secret, permissions, token). It never contains a secret.
+    const why = long?.error?.message ?? long?.error_message ?? (typeof long?.error === 'string' ? long.error : '') ?? ''
+    const code = long?.error?.code ?? long?.code ?? longRes.status
+    console.error('instagram long-lived token exchange failed', longRes.status, JSON.stringify({ code, why, keys: Object.keys(long ?? {}), shortKeys: Object.keys(short) }))
+    throw new HttpError(400, `Could not create a long-lived Instagram token (${String(why || `HTTP ${longRes.status}`).slice(0, 160)}, code ${code})`)
+  }
 
   const expiresAt = new Date(Date.now() + (long.expires_in ?? 5_184_000) * 1000).toISOString()
   await admin.from('instagram_tokens').upsert({
