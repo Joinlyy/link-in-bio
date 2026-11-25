@@ -18,7 +18,7 @@ const LIMITS = [
   { key: 'max_products', label: 'Live products', scope: 'per page, deactivated ones don’t count' },
 ]
 
-const PERIOD_LABEL = { test: '₹1 test', month: 'Monthly', year: 'Yearly', referral: 'Referral reward', admin: 'Granted by team' }
+const PERIOD_LABEL = { test: 'Test payment', month: 'Monthly', year: 'Yearly', referral: 'Referral reward', admin: 'Granted by team' }
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
@@ -110,7 +110,7 @@ export default function Billing() {
 
   const current = plans?.find((p) => p.id === plan?.plan)
   const expired = plan?.expires_at && new Date(plan.expires_at) < new Date()
-  const autoRenew = sub && sub.status === 'active' && !sub.cancel_at_cycle_end && sub.period !== 'test'
+  const autoRenew = sub && sub.status === 'active' && !sub.cancel_at_cycle_end
   const waiting = sub && sub.status === 'authenticated' && Date.now() - new Date(sub.created_at).getTime() < 86400_000
 
   const refreshAll = () => {
@@ -120,11 +120,11 @@ export default function Billing() {
   }
 
   /** Pays through Razorpay. The plan is switched on by the server after it checks Razorpay's own records. */
-  async function buy(p, per = period) {
+  async function buy(p) {
     setPayError('')
-    setBusy(per === 'test' ? 'test' : p.id)
+    setBusy(p.id)
     try {
-      const r = await payForPlan({ plan: p.id, period: per, onFailed: setPayError })
+      const r = await payForPlan({ plan: p.id, period, onFailed: setPayError })
       if (r.dismissed) return
       if (r.activated) toast(`You’re on ${p.name}. Thank you!`)
       else setConfirming(true)
@@ -263,7 +263,7 @@ export default function Billing() {
                   {price ? formatInr(price) : '₹0'}
                   <span className="text-base font-medium text-ink-500"> / {period === 'year' ? 'year' : 'month'}{price ? ' + GST' : ''}</span>
                 </p>
-                {price > 0 && <p className="mt-1 text-xs text-ink-600">You pay {money2(withGst(price).total)} with 18% GST ({money2(withGst(price).gst)})</p>}
+                {price > 0 && <p className="mt-1 text-xs text-ink-600">You pay {money2(withGst(price).total)} with 18% GST ({money2(withGst(price).gst)}), renewing automatically</p>}
                 <ul className="mt-5 flex-1 space-y-2 text-sm">
                   {featureList(p.features || {}).map((f) => (
                     <li key={f.text} className={`flex items-center gap-2 ${f.on ? '' : 'text-ink-400'}`}>
@@ -277,7 +277,7 @@ export default function Billing() {
                     <Button variant="outline" className="w-full" disabled>{isCurrent ? 'Your plan' : 'Included'}</Button>
                   ) : (
                     <Button variant={highlight ? 'primary' : 'outline'} className="w-full" loading={busy === p.id} disabled={!!busy || !rzp?.enabled || Boolean(autoRenew || waiting)} onClick={() => buy(p)}>
-                      {!rzp?.enabled ? 'Opening soon' : autoRenew ? (isCurrent ? 'Subscribed' : 'Turn off auto-renew to change') : isCurrent ? 'Renew with auto-renew' : 'Subscribe'}
+                      {!rzp?.enabled ? 'Opening soon' : autoRenew ? (isCurrent ? 'Subscribed' : 'Turn off auto-renew to change') : isCurrent ? 'Renew with autopay' : 'Subscribe with autopay'}
                     </Button>
                   )}
                 </div>
@@ -285,15 +285,7 @@ export default function Billing() {
             )
           })}
         </div>
-        {rzp?.enabled && (
-          <div className="mt-4 flex flex-col gap-3 rounded-3xl border border-dashed border-ink/20 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-display text-lg font-bold">Pro, ₹1 test <Badge>Temporary</Badge></p>
-              <p className="text-sm text-ink-600">One payment of {money2(withGst(1).total)} (₹1 + GST) for 1 month of Pro, no auto-renew. For trying the payment flow.</p>
-            </div>
-            <Button variant="outline" loading={busy === 'test'} disabled={!!busy || Boolean(autoRenew || waiting)} onClick={() => buy({ id: 'pro', name: 'Pro' }, 'test')}>Pay ₹1 test</Button>
-          </div>
-        )}
+        {rzp?.enabled && <p className="mt-5 text-center text-sm text-ink-600">Every paid plan renews automatically ({period === 'year' ? 'every year' : 'every month'}) from the card, UPI or wallet you pay with. Cancel auto-renew any time on this page; you keep your plan until the period you paid for ends.</p>}
       </Card>
 
       {pays?.length > 0 && (
