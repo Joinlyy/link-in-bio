@@ -111,7 +111,7 @@ export default function Billing() {
   const current = plans?.find((p) => p.id === plan?.plan)
   const expired = plan?.expires_at && new Date(plan.expires_at) < new Date()
   const autoRenew = sub && sub.status === 'active' && !sub.cancel_at_cycle_end && sub.period !== 'test'
-  const waiting = sub && ['created', 'authenticated'].includes(sub.status) && Date.now() - new Date(sub.created_at).getTime() < 86400_000
+  const waiting = sub && sub.status === 'authenticated' && Date.now() - new Date(sub.created_at).getTime() < 86400_000
 
   const refreshAll = () => {
     reload()
