@@ -18,7 +18,7 @@ const LIMITS = [
   { key: 'max_products', label: 'Live products', scope: 'per page, deactivated ones don’t count' },
 ]
 
-const PERIOD_LABEL = { month: 'Monthly', year: 'Yearly', referral: 'Referral reward', admin: 'Granted by team' }
+const PERIOD_LABEL = { test: '₹1 test', month: 'Monthly', year: 'Yearly', referral: 'Referral reward', admin: 'Granted by team' }
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
@@ -110,7 +110,7 @@ export default function Billing() {
 
   const current = plans?.find((p) => p.id === plan?.plan)
   const expired = plan?.expires_at && new Date(plan.expires_at) < new Date()
-  const autoRenew = sub && sub.status === 'active' && !sub.cancel_at_cycle_end
+  const autoRenew = sub && sub.status === 'active' && !sub.cancel_at_cycle_end && sub.period !== 'test'
   const waiting = sub && ['created', 'authenticated'].includes(sub.status) && Date.now() - new Date(sub.created_at).getTime() < 86400_000
 
   const refreshAll = () => {
@@ -120,11 +120,11 @@ export default function Billing() {
   }
 
   /** Pays through Razorpay. The plan is switched on by the server after it checks Razorpay's own records. */
-  async function buy(p) {
+  async function buy(p, per = period) {
     setPayError('')
-    setBusy(p.id)
+    setBusy(per === 'test' ? 'test' : p.id)
     try {
-      const r = await payForPlan({ plan: p.id, period, onFailed: setPayError })
+      const r = await payForPlan({ plan: p.id, period: per, onFailed: setPayError })
       if (r.dismissed) return
       if (r.activated) toast(`You’re on ${p.name}. Thank you!`)
       else setConfirming(true)
@@ -285,6 +285,15 @@ export default function Billing() {
             )
           })}
         </div>
+        {rzp?.enabled && (
+          <div className="mt-4 flex flex-col gap-3 rounded-3xl border border-dashed border-ink/20 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-display text-lg font-bold">Pro, ₹1 test <Badge>Temporary</Badge></p>
+              <p className="text-sm text-ink-600">One payment of {money2(withGst(1).total)} (₹1 + GST) for 1 month of Pro, no auto-renew. For trying the payment flow.</p>
+            </div>
+            <Button variant="outline" loading={busy === 'test'} disabled={!!busy || Boolean(autoRenew || waiting)} onClick={() => buy({ id: 'pro', name: 'Pro' }, 'test')}>Pay ₹1 test</Button>
+          </div>
+        )}
       </Card>
 
       {pays?.length > 0 && (

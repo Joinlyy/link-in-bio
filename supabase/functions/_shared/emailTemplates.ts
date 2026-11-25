@@ -167,7 +167,7 @@ export function subscriptionReceipt(o: { plan: string; period: string; base: num
     html: layout({
       preheader: `${inr2(o.total)} received. Thank you!`,
       title: `Your ${o.plan} plan is active`,
-      body: `<p>Thank you! We received your payment and your <b>${esc(o.plan)}</b> plan (${o.period === 'year' ? 'yearly' : 'monthly'}) is on${o.until ? ` until <b>${esc(o.until)}</b>` : ''}.</p>
+      body: `<p>Thank you! We received your payment and your <b>${esc(o.plan)}</b> plan (${o.period === 'year' ? 'yearly' : o.period === 'test' ? 'Rs 1 test' : 'monthly'}) is on${o.until ? ` until <b>${esc(o.until)}</b>` : ''}.</p>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:15px;border-top:1px solid #ECEAE3">
 <tr><td style="padding:10px 0;border-bottom:1px solid #ECEAE3">${esc(o.plan)} plan</td><td align="right" style="padding:10px 0;border-bottom:1px solid #ECEAE3">${inr2(o.base)}</td></tr>
 <tr><td style="padding:10px 0;border-bottom:1px solid #ECEAE3">GST (18%)</td><td align="right" style="padding:10px 0;border-bottom:1px solid #ECEAE3">${inr2(o.gst)}</td></tr>

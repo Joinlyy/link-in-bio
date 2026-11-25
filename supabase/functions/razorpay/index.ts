@@ -79,13 +79,13 @@ async function raiseIssue(db: SupabaseClient, kind: string, severity: string, ro
 }
 
 // ---------- Razorpay plans for our prices ----------
-async function ensureRazorpayPlan(db: SupabaseClient, planId: string, planName: string, period: 'month' | 'year', paise: number) {
+async function ensureRazorpayPlan(db: SupabaseClient, planId: string, planName: string, period: 'month' | 'year' | 'test', paise: number) {
   const { data: have } = await db.from('razorpay_plans').select('rzp_plan_id').eq('plan', planId).eq('period', period).eq('mode', MODE).eq('amount_paise', paise).maybeSingle()
   if (have) return have.rzp_plan_id as string
   const made = await rzp('/plans', 'POST', {
     period: period === 'year' ? 'yearly' : 'monthly',
     interval: 1,
-    item: { name: `Joinlyy ${planName} (${period === 'year' ? 'yearly' : 'monthly'})`, amount: paise, currency: 'INR', description: `${planName} plan, price including 18% GST` },
+    item: { name: `Joinlyy ${planName} (${period === 'year' ? 'yearly' : period === 'test' ? 'Rs 1 test' : 'monthly'})`, amount: paise, currency: 'INR', description: `${planName} plan, price including 18% GST` },
     notes: { plan: planId, period, mode: MODE },
   })
   const { error } = await db.from('razorpay_plans').insert({ plan: planId, period, mode: MODE, amount_paise: paise, rzp_plan_id: made.id })
@@ -99,9 +99,11 @@ function quote(base: number) {
   return { base: round2(base), gst, total, paise: Math.round(total * 100) }
 }
 
-async function planPrice(db: SupabaseClient, planId: string, period: 'month' | 'year') {
+async function planPrice(db: SupabaseClient, planId: string, period: 'month' | 'year' | 'test') {
   const { data: p } = await db.from('plans').select('id, name, price_monthly_inr, price_yearly_inr, is_active').eq('id', planId).maybeSingle()
-  const base = Number(period === 'year' ? p?.price_yearly_inr : p?.price_monthly_inr)
+  // TEMPORARY: the 'test' period is a one-time ₹1 charge on Pro, for trying the live flow. Remove it later.
+  if (period === 'test' && planId !== 'pro') throw new HttpError(400, 'The test price is only for Pro')
+  const base = period === 'test' ? 1 : Number(period === 'year' ? p?.price_yearly_inr : p?.price_monthly_inr)
   if (!p || !p.is_active || planId === 'free' || !(base > 0)) throw new HttpError(400, 'That plan can not be bought')
   return { name: p.name as string, ...quote(base) }
 }
@@ -254,7 +256,7 @@ async function webhook(req: Request, db: SupabaseClient) {
 async function createSubscription(req: Request, db: SupabaseClient, body: Json) {
   const user = await requireUser(req, db)
   const planId = String(body.plan ?? '')
-  const period = body.period === 'year' ? 'year' : body.period === 'month' ? 'month' : null
+  const period = body.period === 'year' ? 'year' : body.period === 'month' ? 'month' : body.period === 'test' ? 'test' : null
   if (!period || !['pro', 'business'].includes(planId)) throw new HttpError(400, 'Choose a plan and a period')
   const price = await planPrice(db, planId, period)
 
@@ -265,7 +267,7 @@ async function createSubscription(req: Request, db: SupabaseClient, body: Json) 
 
   const rzpPlan = await ensureRazorpayPlan(db, planId, price.name, period, price.paise)
   const made = await rzp('/subscriptions', 'POST', {
-    plan_id: rzpPlan, total_count: period === 'year' ? 10 : 120, quantity: 1, customer_notify: 1,
+    plan_id: rzpPlan, total_count: period === 'year' ? 10 : period === 'test' ? 1 : 120, quantity: 1, customer_notify: 1,
     notes: { user_id: user.id, plan: planId, period, mode: MODE },
   })
   const { error } = await db.from('billing_subscriptions').insert({
@@ -273,7 +275,7 @@ async function createSubscription(req: Request, db: SupabaseClient, body: Json) 
     base_inr: price.base, gst_inr: price.gst, total_inr: price.total,
   })
   if (error) throw error
-  return json({ subscription_id: made.id, key_id: KEY_ID, mode: MODE, name: 'Joinlyy', description: `${price.name} plan, ${period === 'year' ? 'yearly' : 'monthly'} (incl. 18% GST)`, email: user.email, ...price })
+  return json({ subscription_id: made.id, key_id: KEY_ID, mode: MODE, name: 'Joinlyy', description: `${price.name} plan, ${period === 'year' ? 'yearly' : period === 'test' ? 'Rs 1 test' : 'monthly'} (incl. 18% GST)`, email: user.email, ...price })
 }
 
 async function verify(req: Request, db: SupabaseClient, body: Json) {
@@ -372,7 +374,7 @@ Deno.serve(handle(async (req) => {
     case 'sync_plans': {
       await requireAdmin(req, db)
       const out: string[] = []
-      for (const [id, period] of [['pro', 'month'], ['pro', 'year'], ['business', 'month'], ['business', 'year']] as const) {
+      for (const [id, period] of [['pro', 'month'], ['pro', 'year'], ['business', 'month'], ['business', 'year'], ['pro', 'test']] as const) {
         const price = await planPrice(db, id, period)
         out.push(`${price.name} ${period}: ${await ensureRazorpayPlan(db, id, price.name, period, price.paise)}`)
       }
