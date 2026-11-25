@@ -35,7 +35,7 @@ function UpiCard() {
         <h2 className="text-lg font-bold">Your payout UPI ID</h2>
         {page.upi_id ? <Badge tone="green">Set</Badge> : <Badge>Not set</Badge>}
       </div>
-      <p className="mt-1 text-sm text-ink-500">Buyers pay Joinlyy. We keep our commission and send the rest of every sale to this UPI ID. Paid products, sessions and tips work only once it is set.</p>
+      <p className="mt-1 text-sm text-ink-500">Your earnings, after our platform charge, are sent to this UPI ID within 2 working days of each sale. Paid products, sessions and tips work only once it is set.</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <Input label="UPI ID" placeholder="yourname@okhdfcbank" value={upi} disabled={!canEdit} error={wrong ? 'A UPI ID looks like name@bank, for example priya@okaxis' : undefined} onChange={(e) => setUpi(e.target.value)} />
         <Input label="Name on that UPI account" maxLength={80} placeholder="As it appears in your bank" value={name} disabled={!canEdit} onChange={(e) => setName(e.target.value)} />
@@ -55,32 +55,90 @@ function Tile({ label, value, cls = 'bg-white', note }) {
   )
 }
 
+/** Two working days after the sale (Saturday and Sunday do not count) */
+function expectedBy(paidAt) {
+  const d = new Date(paidAt)
+  let left = 2
+  while (left > 0) {
+    d.setDate(d.getDate() + 1)
+    if (d.getDay() !== 0 && d.getDay() !== 6) left--
+  }
+  return d
+}
+
 function Earnings({ plan }) {
   const { user } = useAuth()
+  const { page } = usePage()
   const [e, setE] = useState(null)
   const [history, setHistory] = useState(null)
+  const [sales, setSales] = useState(null)
   useEffect(() => {
     supabase.rpc('my_earnings').then(({ data }) => setE(data || {}))
     supabase.from('creator_payouts').select('id, amount_inr, upi_id, reference, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50).then(({ data }) => setHistory(data || []))
-  }, [user.id])
-  if (!e || !history) return <div className="grid h-32 place-items-center"><Spinner /></div>
+    supabase.from('orders').select('id, kind, product_title, amount_inr, commission_pct, commission_inr, creator_share_inr, paid_at').eq('page_id', page.id).eq('payment_provider', 'razorpay').eq('status', 'paid').order('paid_at', { ascending: true }).limit(500).then(({ data }) => setSales(data || []))
+  }, [user.id, page.id])
+  if (!e || !history || !sales) return <div className="grid h-32 place-items-center"><Spinner /></div>
   const pct = plan?.features?.commission_pct
+
+  // Payouts cover the oldest sales first
+  let left = Number(e.paid_out)
+  const rows = sales.map((o) => {
+    const share = Number(o.creator_share_inr)
+    const sent = left >= share - 0.005
+    if (sent) left -= share
+    return { ...o, sent }
+  }).reverse()
+
   return (
     <>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Tile label="Owed to you" value={formatInr(e.balance)} cls="bg-ink text-white" note={`${formatInr(e.payable_now)} ready to send`} />
-        <Tile label="Held for 2 days" value={formatInr(e.held)} cls="bg-lilac-100" note="Released after the refund window" />
-        <Tile label="Paid to you so far" value={formatInr(e.paid_out)} cls="bg-lime" />
-        <Tile label="Sales" value={formatInr(e.gross)} note={`${formatInr(e.commission)} commission${pct != null ? ` (${pct}%)` : ''}`} />
+        <Tile label="You earned today" value={formatInr(e.today_share)} cls="bg-lime" note={e.today_orders > 0 ? `${e.today_orders} sale${e.today_orders === 1 ? '' : 's'}, buyers paid ${formatInr(e.today_gross)}` : 'No sales yet today'} />
+        <Tile label="On its way to you" value={formatInr(e.balance)} cls="bg-ink text-white" note="Sent to your UPI ID within 2 working days of each sale" />
+        <Tile label="Sent to you so far" value={formatInr(e.paid_out)} cls="bg-lilac-100" />
+        <Tile label="Platform charge so far" value={formatInr(e.commission)} note={`${pct != null ? `${pct}% of sales, ` : ''}buyers paid ${formatInr(e.gross)} in total`} />
       </div>
+
       <Card className="p-5 sm:p-7">
-        <h2 className="text-lg font-bold">How you get paid</h2>
+        <h2 className="text-lg font-bold">How every sale is split</h2>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-ink-700">
-          <li>A buyer pays on your page. The money comes to Joinlyy.</li>
-          <li>We keep <b>{pct != null ? `${pct}%` : 'a small commission'}</b> (Starter 15%, Creator 10%, Pro 5%). The rest is yours.</li>
-          <li>Each sale is held for 2 days in case of a refund. After that we send it to your UPI ID and list it below. You also get an email.</li>
+          <li>A buyer pays the price you set. That price is final: we add nothing on top, so include GST in it if it applies to you.</li>
+          <li>Joinlyy keeps a platform charge of <b>{pct != null ? `${pct}%` : 'a small percentage'}</b> (Starter 15%, Creator 10%, Pro 5%).</li>
+          <li>The rest is your earning. It is sent to your UPI ID within 2 working days of the sale, and you get an email each time.</li>
         </ol>
       </Card>
+
+      <Card className="p-5 sm:p-7">
+        <h2 className="text-lg font-bold">Your sales</h2>
+        {rows.length === 0 ? (
+          <p className="mt-2 text-sm text-ink-500">Paid sales appear here with the full split.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="text-left text-xs font-semibold text-ink-500">
+                  <th className="py-2 pr-3">Sale</th>
+                  <th className="py-2 pr-3 text-right">Buyer paid</th>
+                  <th className="py-2 pr-3 text-right">Platform charge</th>
+                  <th className="py-2 pr-3 text-right">You receive</th>
+                  <th className="py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink/5">
+                {rows.map((o) => (
+                  <tr key={o.id}>
+                    <td className="py-2.5 pr-3"><span className="font-medium">{o.product_title || (o.kind === 'tip' ? 'Tip' : 'Order')}</span><span className="block text-xs text-ink-500">{day(o.paid_at)}</span></td>
+                    <td className="py-2.5 pr-3 text-right">{formatInr(o.amount_inr)}</td>
+                    <td className="py-2.5 pr-3 text-right text-ink-600">− {formatInr(o.commission_inr)}{o.commission_pct != null ? ` (${Number(o.commission_pct)}%)` : ''}</td>
+                    <td className="py-2.5 pr-3 text-right font-semibold">{formatInr(o.creator_share_inr)}</td>
+                    <td className="py-2.5">{o.sent ? <Badge tone="green">Sent</Badge> : <span className="text-xs text-ink-600">By {day(expectedBy(o.paid_at))}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
       <Card className="p-5 sm:p-7">
         <h2 className="text-lg font-bold">Payout history</h2>
         {history.length === 0 ? (

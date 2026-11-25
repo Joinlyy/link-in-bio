@@ -13,6 +13,7 @@ export default function AdminPayouts() {
   const toast = useToast()
   const [rows, setRows] = useState(null)
   const [history, setHistory] = useState(null)
+  const [ledger, setLedger] = useState(null)
   const [error, setError] = useState('')
   const [tab, setTab] = useState('owed')
   const [pay, setPay] = useState(null)
@@ -22,26 +23,31 @@ export default function AdminPayouts() {
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const [{ data, error: err }, { data: hist }] = await Promise.all([
+    const [{ data, error: err }, { data: hist }, { data: led }] = await Promise.all([
       supabase.rpc('admin_creator_earnings'),
       supabase.from('creator_payouts').select('id, user_id, amount_inr, upi_id, reference, note, created_at').order('created_at', { ascending: false }).limit(200),
+      supabase.rpc('admin_sales_ledger', { p_limit: 300 }),
     ])
     if (err) return setError(errorMessage(err))
     setRows(data || [])
     setHistory(hist || [])
+    setLedger(led || [])
   }, [])
   useEffect(() => {
     load()
   }, [load])
 
   if (error) return <Alert>{error}</Alert>
-  if (!rows || !history) return <div className="grid h-60 place-items-center"><Spinner /></div>
+  if (!rows || !history || !ledger) return <div className="grid h-60 place-items-center"><Spinner /></div>
 
   const who = (id) => rows.find((r) => r.user_id === id)
   const owed = rows.reduce((s, r) => s + Number(r.balance), 0)
   const ready = rows.reduce((s, r) => s + Number(r.payable_now), 0)
   const held = rows.reduce((s, r) => s + Number(r.held), 0)
   const commission = rows.reduce((s, r) => s + Number(r.commission), 0)
+  const sum = (k) => rows.reduce((t, r) => t + Number(r[k]), 0)
+  const gross = sum('gross')
+  const paidOut = sum('paid_out')
   const visible = rows.filter((r) => (tab === 'owed' ? Number(r.balance) > 0 : true))
 
   function openPay(r) {
@@ -71,21 +77,51 @@ export default function AdminPayouts() {
   return (
     <div className="space-y-4">
       <PageHeading title="Creator payouts." italic={`${inr(owed)} owed.`}>
-        Buyers pay Joinlyy. Each creator’s share (sale minus our commission) is owed to them. Send it from your account to their UPI ID, then record it here so the balance goes down and they are told.
+        Buyers pay Joinlyy. Every sale splits into your platform charge and the creator’s earning. Send each creator their earning to their UPI ID within 2 working days, then record it here so the balance goes down and they are told.
       </PageHeading>
 
+      <p className="eyebrow text-ink-500">Today</p>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[['Owed to creators', inr(owed), 'bg-ink text-white'], ['Ready to send', inr(ready), 'bg-lime'], ['Held (under 2 days)', inr(held), 'bg-lilac-100'], ['Our commission, all time', inr(commission), 'bg-white']].map(([k, v, cls]) => (
+        {[['Buyers paid today', inr(sum('today_gross')), 'bg-white'], ['Platform charge today (yours)', inr(sum('today_commission')), 'bg-lime'], ['Creators earned today', inr(sum('today_share')), 'bg-lilac-100'], ['Owed to creators now', inr(owed), 'bg-ink text-white']].map(([k, v, cls]) => (
           <div key={k} className={`rounded-3xl p-5 shadow-soft ${cls}`}>
             <p className={`text-xs font-semibold ${cls.includes('text-white') ? 'text-white/70' : 'text-ink-500'}`}>{k}</p>
             <p className="mt-2 font-display text-2xl font-bold">{v}</p>
           </div>
         ))}
       </div>
+      <p className="eyebrow text-ink-500">All time</p>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[['Buyers paid in total', inr(gross), 'bg-white'], ['Your platform charge', inr(commission), 'bg-white'], ['Creators earned in total', inr(sum('share')), 'bg-white'], ['You have sent them', inr(paidOut), 'bg-white']].map(([k, v, cls]) => (
+          <div key={k} className={`rounded-3xl p-5 shadow-soft ${cls}`}>
+            <p className="text-xs font-semibold text-ink-500">{k}</p>
+            <p className="mt-2 font-display text-2xl font-bold">{v}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-sm text-ink-600">Check: buyers paid {inr(gross)} = your platform charge {inr(commission)} + creators earned {inr(sum('share'))}. Creators earned {inr(sum('share'))} − sent {inr(paidOut)} = owed {inr(owed)}, of which {inr(ready)} is past the 2-day refund window and ready to pay, and {inr(held)} is still inside it.</p>
 
-      <Tabs label="Show" value={tab} onChange={setTab} tabs={[['owed', 'Owed now'], ['all', 'All creators'], ['history', 'Payments sent']].map(([key, label]) => ({ key, label }))} />
+      <Tabs label="Show" value={tab} onChange={setTab} tabs={[['owed', 'Owed now'], ['all', 'All creators'], ['sales', 'Every sale'], ['history', 'Payments sent']].map(([key, label]) => ({ key, label }))} />
 
-      {tab === 'history' ? (
+      {tab === 'sales' ? (
+        ledger.length === 0 ? <Empty icon={IndianRupee} title="No paid sales yet" /> : (
+          <Card className="divide-y divide-ink/5">
+            <DataTable
+              bare
+              rows={ledger}
+              minWidth={980}
+              columns={[
+                { key: 'when', label: 'Paid', value: (l) => l.paid_at || '', className: 'whitespace-nowrap', render: (l) => when(l.paid_at) },
+                { key: 'who', label: 'Creator', value: (l) => l.creator_email, render: (l) => l.creator_name || l.username || l.creator_email },
+                { key: 'item', label: 'Item', value: (l) => l.item, className: 'max-w-48 truncate', render: (l) => l.item },
+                { key: 'paid', label: 'Buyer paid', align: 'right', value: (l) => Number(l.buyer_paid), render: (l) => inr(l.buyer_paid) },
+                { key: 'fee', label: 'Platform charge (yours)', align: 'right', value: (l) => Number(l.platform_charge), render: (l) => `${inr(l.platform_charge)}${l.commission_pct != null ? ` · ${Number(l.commission_pct)}%` : ''}` },
+                { key: 'gets', label: 'Creator gets', align: 'right', value: (l) => Number(l.creator_gets), className: 'font-semibold', render: (l) => inr(l.creator_gets) },
+                { key: 'st', label: '', value: (l) => l.status, render: (l) => (l.status === 'refunded' ? <Badge tone="red">Refunded</Badge> : null) },
+              ]}
+            />
+          </Card>
+        )
+      ) : tab === 'history' ? (
         history.length === 0 ? <Empty icon={IndianRupee} title="No payouts recorded yet" /> : (
           <Card className="divide-y divide-ink/5">
             <DataTable
@@ -107,16 +143,17 @@ export default function AdminPayouts() {
           <DataTable
             bare
             rows={visible}
-            minWidth={1000}
+            minWidth={1100}
             columns={[
               { key: 'who', label: 'Creator', value: (r) => r.email, className: 'max-w-56 truncate', render: (r) => <span>{r.full_name || r.username || r.email}<span className="block text-xs text-ink-500">{r.email}</span></span> },
               { key: 'upi', label: 'Payout UPI ID', value: (r) => r.upi_id || '', render: (r) => (r.upi_id
                 ? <button type="button" onClick={() => copy(r.upi_id)} className="inline-flex items-center gap-1.5 font-medium underline-offset-2 hover:underline">{r.upi_id}<Copy className="size-3.5" /></button>
                 : <Badge tone="red">Not set</Badge>) },
-              { key: 'orders', label: 'Sales', align: 'right', value: (r) => Number(r.orders), render: (r) => `${r.orders} · ${inr(r.gross)}` },
-              { key: 'commission', label: 'Our commission', align: 'right', value: (r) => Number(r.commission), render: (r) => inr(r.commission) },
-              { key: 'paid', label: 'Paid out', align: 'right', value: (r) => Number(r.paid_out), render: (r) => inr(r.paid_out) },
-              { key: 'owed', label: 'Owed', align: 'right', value: (r) => Number(r.balance), className: 'font-semibold', render: (r) => <span>{inr(r.balance)}{Number(r.held) > 0 && <span className="block text-xs font-normal text-ink-500">{inr(r.payable_now)} ready</span>}</span> },
+              { key: 'orders', label: 'Buyers paid', align: 'right', value: (r) => Number(r.gross), render: (r) => <span>{inr(r.gross)}<span className="block text-xs text-ink-500">{r.orders} sale{Number(r.orders) === 1 ? '' : 's'}</span></span> },
+              { key: 'commission', label: 'Platform charge (yours)', align: 'right', value: (r) => Number(r.commission), render: (r) => inr(r.commission) },
+              { key: 'share', label: 'Creator earned', align: 'right', value: (r) => Number(r.share), render: (r) => <span>{inr(r.share)}{Number(r.today_share) > 0 && <span className="block text-xs text-ink-500">{inr(r.today_share)} today</span>}</span> },
+              { key: 'paid', label: 'You sent', align: 'right', value: (r) => Number(r.paid_out), render: (r) => inr(r.paid_out) },
+              { key: 'owed', label: 'Owed now', align: 'right', value: (r) => Number(r.balance), className: 'font-semibold', render: (r) => <span>{inr(r.balance)}{Number(r.held) > 0 && <span className="block text-xs font-normal text-ink-500">{inr(r.payable_now)} ready, {inr(r.held)} not yet</span>}</span> },
               { key: 'act', label: '', value: () => '', render: (r) => (Number(r.balance) > 0 ? <Button size="sm" onClick={() => openPay(r)}>Record payout</Button> : null) },
             ]}
           />

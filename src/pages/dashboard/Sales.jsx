@@ -409,15 +409,15 @@ function Payouts() {
       <div className="rounded-3xl bg-ink p-7 text-white">
         <p className="eyebrow text-lime">Owed to you</p>
         <p className="mt-3 font-display text-5xl font-bold">{formatInr(e?.balance || 0)}</p>
-        <p className="mt-2 text-sm text-white/60">{e ? `${formatInr(e.payable_now)} ready to be sent, ${formatInr(e.held)} held for 2 days after each sale.` : 'Loading…'}</p>
+        <p className="mt-2 text-sm text-white/60">{e ? 'Sent to your UPI ID within 2 working days of each sale.' : 'Loading…'}</p>
         <Link to="/dashboard/payouts" className="mt-6 inline-flex h-11 items-center rounded-full bg-lime px-5 text-sm font-semibold text-ink">See payouts</Link>
       </div>
       <Card className="p-7">
         <p className="eyebrow text-ink-500">How payouts work</p>
-        <h3 className="mt-3 text-xl font-bold">We collect, then pay your UPI ID</h3>
+        <h3 className="mt-3 text-xl font-bold">Your earning goes to your UPI ID</h3>
         <ul className="mt-4 space-y-2 text-sm text-ink-600">
           <li>• Buyers pay Joinlyy by UPI, card or net banking</li>
-          <li>• We keep our commission and send you the rest to your payout UPI ID</li>
+          <li>• We take our platform charge and send you the rest, your earning, to your payout UPI ID within 2 working days</li>
           <li>• Every sale and every payout is listed under Payouts</li>
         </ul>
       </Card>

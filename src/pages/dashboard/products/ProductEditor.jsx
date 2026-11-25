@@ -143,6 +143,20 @@ function SaveSummary({ open, product: p, saving, onClose, onSave, onDraft }) {
   )
 }
 
+/** The creator sets the final price the buyer pays (GST included if it applies). This shows what lands with them after our platform charge. */
+function SplitNote({ price, pct }) {
+  if (!(price > 0) || pct == null) return null
+  const fee = Math.round(price * pct) / 100
+  return (
+    <div className="rounded-2xl bg-cream p-4 text-sm">
+      <p className="flex justify-between gap-3"><span>Buyer pays (final price)</span><b>{formatInr(price)}</b></p>
+      <p className="mt-1 flex justify-between gap-3 text-ink-600"><span>Platform charge ({pct}%)</span><span>− {formatInr(fee)}</span></p>
+      <p className="mt-1 flex justify-between gap-3 border-t border-ink/10 pt-1"><span className="font-semibold">You receive</span><b>{formatInr(price - fee)}</b></p>
+      <p className="mt-2 text-xs text-ink-500">This price is what the buyer pays. If GST applies to you, include it in the price: we never add anything on top. Your earning is sent to your UPI ID within 2 working days.</p>
+    </div>
+  )
+}
+
 export default function ProductEditor() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -432,6 +446,7 @@ export default function ProductEditor() {
                 <Input label={priceLabel} type="number" min={0} value={p.price_inr} onChange={(e) => set({ price_inr: e.target.value })} hint={Number(p.price_inr) === 0 && p.type !== 'link' ? 'Free' : undefined} />
                 <Input label="Was (₹)" type="number" min={0} placeholder="Optional" value={p.compare_at_inr || ''} onChange={(e) => set({ compare_at_inr: e.target.value })} />
               </div>
+              {sellable && Number(p.price_inr) > 0 && <SplitNote price={Number(p.price_inr)} pct={features?.commission_pct} />}
               {sellable && (
                 <>
                   {salesTools || p.pay_what_you_want ? (

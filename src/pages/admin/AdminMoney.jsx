@@ -27,7 +27,7 @@ export default function AdminMoney() {
   ]
   return (
     <div className="space-y-4">
-      <PageHeading title="Money." italic="In and out.">Sales go straight to creators by UPI. Commission only applies to payments through our own checkout (Razorpay, coming next), so it is zero for now.</PageHeading>
+      <PageHeading title="Money." italic="In and out.">Buyers pay Joinlyy through Razorpay. Our commission is the platform charge on each sale, and creators are paid from the Creator payouts page.</PageHeading>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {tiles.map(([k, v, cls]) => (
           <div key={k} className={`rounded-3xl p-5 shadow-soft ${cls}`}>
