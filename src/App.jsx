@@ -61,6 +61,7 @@ const InvoicePrint = lazy(() => import('./pages/dashboard/InvoicePrint'))
 const Audience = lazy(() => import('./pages/dashboard/Audience'))
 const Referrals = lazy(() => import('./pages/dashboard/Referrals'))
 const Billing = lazy(() => import('./pages/dashboard/Billing'))
+const Payouts = lazy(() => import('./pages/dashboard/Payouts'))
 const Team = lazy(() => import('./pages/dashboard/Team'))
 const Templates = lazy(() => import('./pages/dashboard/Templates'))
 const Guide = lazy(() => import('./pages/dashboard/Guide'))
@@ -134,6 +135,7 @@ export default function App() {
               <Route path="audience" element={<Audience />} />
               <Route path="referrals" element={<Referrals />} />
               <Route path="billing" element={<Billing />} />
+              <Route path="payouts" element={<Payouts />} />
               <Route path="team" element={<Team />} />
               <Route path="templates" element={<Templates />} />
               <Route path="content" element={<ContentForms />} />

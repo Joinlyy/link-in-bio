@@ -182,6 +182,28 @@ async function processEvent(db: SupabaseClient, event: Json) {
     return 'processed'
   }
 
+  // Route: a linked account changed state
+  if (name.startsWith('product.') || name.startsWith('account.')) {
+    const accId = event.account_id ?? entities.product?.entity?.account_id ?? entities.account?.entity?.id
+    const { data: pa } = accId ? await db.from('payout_accounts').select('user_id').eq('rzp_account_id', accId).maybeSingle() : { data: null }
+    if (!pa) return 'ignored'
+    await kycSync(db, pa.user_id)
+    return 'processed'
+  }
+
+  // Route: a buyer's payment for a creator's order
+  if (name === 'payment.captured' || name === 'order.paid') {
+    const pay = entities.payment?.entity
+    if (pay?.order_id) {
+      const { data: ord } = await db.from('orders').select('*').eq('rzp_order_id', pay.order_id).maybeSingle()
+      if (ord) {
+        await settleOrder(db, ord, pay.id)
+        return 'processed'
+      }
+    }
+    if (name === 'order.paid') return 'ignored'
+  }
+
   if (name === 'payment.failed' || name === 'payment.captured') {
     const pay = entities.payment?.entity
     if (!pay?.id || !pay.invoice_id) return 'ignored' // not a subscription payment
@@ -341,7 +363,242 @@ async function reconcile(db: SupabaseClient) {
       if (ev.attempts + 1 >= 5) await raiseIssue(db, 'event_failed', 'high', null, null, { event_row: ev.id })
     }
   }
-  return { synced, failed, replayed }
+  const route = await reconcileRoute(db).catch((e) => ({ error: String(e) }))
+  return { synced, failed, replayed, route }
+}
+
+// ---------- Razorpay Route: creator payout accounts (KYC) and split payments ----------
+const HOLD_HOURS = Number(Deno.env.get('ROUTE_HOLD_HOURS') ?? '48') // money stays with Razorpay this long before it reaches the creator, so a manual refund is still possible
+const KYC_CATEGORY = Deno.env.get('ROUTE_CATEGORY') ?? 'education'
+const KYC_SUBCATEGORY = Deno.env.get('ROUTE_SUBCATEGORY') ?? 'e_learning'
+
+async function rzp2(path: string, method = 'GET', body?: unknown): Promise<Json> {
+  if (!KEY_ID || !KEY_SECRET) throw new HttpError(503, 'Razorpay is not set up yet')
+  const res = await fetch(`https://api.razorpay.com/v2${path}`, {
+    method,
+    headers: { Authorization: `Basic ${btoa(`${KEY_ID}:${KEY_SECRET}`)}`, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const msg = data?.error?.description || data?.message || `HTTP ${res.status}`
+    if (/access denied/i.test(msg)) throw new HttpError(503, 'Payouts are not switched on at Razorpay yet. We will tell you when they are.')
+    throw new HttpError(400, `Razorpay: ${msg}`)
+  }
+  return data
+}
+
+const KYC_STATUS: Record<string, string> = { activated: 'activated', under_review: 'under_review', needs_clarification: 'needs_clarification', suspended: 'suspended', rejected: 'rejected', requested: 'under_review' }
+
+/** Pull the linked account's state from Razorpay and store it */
+async function kycSync(db: SupabaseClient, userId: string) {
+  const { data: acc } = await db.from('payout_accounts').select('*').eq('user_id', userId).maybeSingle()
+  if (!acc?.rzp_account_id || !acc.rzp_product_id) return acc
+  const p = await rzp2(`/accounts/${acc.rzp_account_id}/products/${acc.rzp_product_id}`)
+  const status = KYC_STATUS[p.activation_status] ?? 'under_review'
+  const reqs = [...(p.requirements ?? []), ...(p.active_configuration?.requirements ?? [])]
+  const patch = {
+    status,
+    requirements: reqs.map((r: Json) => ({ field: r.field_reference, reason: r.reason_code, status: r.status, url: r.resolution_url ?? null })).slice(0, 20),
+    reason: status === 'rejected' || status === 'suspended' ? String(p.rejection_reason ?? p.reason ?? '').slice(0, 300) || null : null,
+    activated_at: status === 'activated' ? (acc.activated_at ?? new Date().toISOString()) : acc.activated_at,
+    updated_at: new Date().toISOString(),
+  }
+  await db.from('payout_accounts').update(patch).eq('user_id', userId)
+  return { ...acc, ...patch }
+}
+
+async function kycStart(req: Request, db: SupabaseClient, body: Json) {
+  const user = await requireUser(req, db)
+  const text = (v: unknown, max = 120) => String(v ?? '').trim().slice(0, max)
+  const f = {
+    legal_name: text(body.legal_name),
+    business_type: body.business_type === 'proprietorship' ? 'proprietorship' : 'individual',
+    pan: text(body.pan, 10).toUpperCase(),
+    phone: text(body.phone, 15).replace(/\D/g, '').replace(/^91(?=\d{10}$)/, ''),
+    account: text(body.bank_account, 20).replace(/\s/g, ''),
+    ifsc: text(body.ifsc, 11).toUpperCase(),
+    beneficiary: text(body.beneficiary_name),
+    street: text(body.street),
+    city: text(body.city, 60),
+    state: text(body.state, 60),
+    pin: text(body.postal_code, 6),
+  }
+  const bad = (m: string) => {
+    throw new HttpError(400, m)
+  }
+  if (f.legal_name.length < 2) bad('Enter your full name as on your PAN card')
+  if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(f.pan)) bad('PAN looks wrong. It has 5 letters, 4 digits and 1 letter, like ABCDE1234F')
+  if (!/^[6-9]\d{9}$/.test(f.phone)) bad('Enter a 10-digit mobile number')
+  if (!/^\d{9,18}$/.test(f.account)) bad('Bank account number should be 9 to 18 digits')
+  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(f.ifsc)) bad('IFSC looks wrong. It is 11 characters, like HDFC0001234')
+  if (f.beneficiary.length < 2) bad('Enter the name on the bank account')
+  if (f.street.length < 3 || f.city.length < 2 || f.state.length < 2) bad('Enter your address, city and state')
+  if (!/^\d{6}$/.test(f.pin)) bad('PIN code should be 6 digits')
+
+  let { data: acc } = await db.from('payout_accounts').select('*').eq('user_id', user.id).maybeSingle()
+  if (acc && ['activated', 'under_review', 'suspended'].includes(acc.status)) throw new HttpError(409, 'Your payout account is already set up or being reviewed')
+  if (!acc) {
+    await db.from('payout_accounts').insert({ user_id: user.id })
+    acc = { user_id: user.id }
+  }
+  const save = (p: Json) => db.from('payout_accounts').update({ ...p, updated_at: new Date().toISOString() }).eq('user_id', user.id)
+
+  // Each step is saved, so pressing the button again carries on from where it stopped
+  if (!acc.rzp_account_id) {
+    const made = await rzp2('/accounts', 'POST', {
+      email: user.email, phone: f.phone, type: 'route', reference_id: user.id.replace(/-/g, '').slice(0, 20),
+      legal_business_name: f.legal_name, business_type: f.business_type, contact_name: f.legal_name,
+      profile: {
+        category: KYC_CATEGORY, subcategory: KYC_SUBCATEGORY,
+        addresses: { registered: { street1: f.street, street2: f.street, city: f.city, state: f.state, postal_code: f.pin, country: 'IN' } },
+      },
+      legal_info: { pan: f.pan },
+    })
+    acc.rzp_account_id = made.id
+    await save({ rzp_account_id: made.id, status: 'created', legal_name: f.legal_name, business_type: f.business_type, phone: f.phone })
+  }
+  if (!acc.rzp_stakeholder_id) {
+    const sh = await rzp2(`/accounts/${acc.rzp_account_id}/stakeholders`, 'POST', { name: f.legal_name, email: user.email, kyc: { pan: f.pan } })
+    acc.rzp_stakeholder_id = sh.id
+    await save({ rzp_stakeholder_id: sh.id })
+  }
+  if (!acc.rzp_product_id) {
+    const pr = await rzp2(`/accounts/${acc.rzp_account_id}/products`, 'POST', { product_name: 'route', tnc_accepted: true })
+    acc.rzp_product_id = pr.id
+    await save({ rzp_product_id: pr.id })
+  }
+  await rzp2(`/accounts/${acc.rzp_account_id}/products/${acc.rzp_product_id}`, 'PATCH', {
+    settlements: { account_number: f.account, ifsc_code: f.ifsc, beneficiary_name: f.beneficiary },
+    tnc_accepted: true,
+  })
+  await save({ bank_last4: f.account.slice(-4), bank_ifsc: f.ifsc, beneficiary_name: f.beneficiary })
+  const fresh = await kycSync(db, user.id)
+  return json({ ok: true, status: fresh?.status ?? 'under_review' })
+}
+
+async function kycStatus(req: Request, db: SupabaseClient) {
+  const user = await requireUser(req, db)
+  const fresh = await kycSync(db, user.id).catch(() => null)
+  return json({ ok: true, status: fresh?.status ?? 'not_started' })
+}
+
+/** What the creator is paid and what we keep, from the creator's plan */
+async function commissionFor(db: SupabaseClient, ownerId: string, amountInr: number) {
+  const { data: pr } = await db.from('profiles').select('plan, plan_expires_at').eq('id', ownerId).maybeSingle()
+  const live = !pr?.plan_expires_at || new Date(pr.plan_expires_at) > new Date()
+  const { data: plan } = await db.from('plans').select('features').eq('id', live ? pr?.plan ?? 'free' : 'free').maybeSingle()
+  const pct = Number(plan?.features?.commission_pct ?? 15)
+  const paise = Math.round(amountInr * 100)
+  const fee = Math.min(paise - 100, Math.round((paise * pct) / 100)) // the creator always gets at least ₹1
+  return { pct, commission: fee / 100, share: (paise - fee) / 100, sharePaise: paise - fee }
+}
+
+async function orderByToken(db: SupabaseClient, token: string) {
+  const { data: o } = await db.from('orders').select('*, pages(owner_id, display_name, username)').eq('access_token', token).maybeSingle()
+  if (!o) throw new HttpError(404, 'Order not found')
+  return o
+}
+
+/** Buyer presses Pay: make (or reuse) the Razorpay order with the split attached */
+async function orderCreate(db: SupabaseClient, body: Json) {
+  const o = await orderByToken(db, String(body.token ?? ''))
+  if (o.payment_provider !== 'razorpay' || o.status !== 'pending' || !(o.amount_inr > 0)) throw new HttpError(409, 'This order is not waiting for a payment')
+  const ownerId = o.pages.owner_id as string
+  const { data: acc } = await db.from('payout_accounts').select('rzp_account_id, status').eq('user_id', ownerId).maybeSingle()
+  if (!acc?.rzp_account_id || acc.status !== 'activated') throw new HttpError(409, 'This creator can not take payments right now')
+  const c = await commissionFor(db, ownerId, o.amount_inr)
+  let rzpOrderId = o.rzp_order_id as string | null
+  if (rzpOrderId) {
+    const existing = await rzp(`/orders/${rzpOrderId}`)
+    if (existing.status === 'paid') {
+      const pays = await rzp(`/orders/${rzpOrderId}/payments`)
+      const ok = (pays.items ?? []).find((p: Json) => p.status === 'captured')
+      if (ok) {
+        await settleOrder(db, o, ok.id)
+        throw new HttpError(409, 'This order is already paid')
+      }
+    }
+  } else {
+    const made = await rzp('/orders', 'POST', {
+      amount: Math.round(o.amount_inr * 100), currency: 'INR', receipt: String(o.id).slice(0, 40),
+      notes: { order_id: o.id, page: o.pages.username },
+      transfers: [{
+        account: acc.rzp_account_id, amount: c.sharePaise, currency: 'INR', notes: { order_id: o.id },
+        on_hold: HOLD_HOURS > 0 ? 1 : 0,
+        ...(HOLD_HOURS > 0 ? { on_hold_until: Math.floor(Date.now() / 1000) + HOLD_HOURS * 3600 } : {}),
+      }],
+    })
+    rzpOrderId = made.id
+    await db.from('orders').update({ rzp_order_id: made.id, commission_pct: c.pct, commission_inr: c.commission, creator_share_inr: c.share }).eq('id', o.id)
+  }
+  return json({
+    key_id: KEY_ID, order_id: rzpOrderId, amount: Math.round(o.amount_inr * 100), currency: 'INR',
+    name: o.pages.display_name || o.pages.username, description: o.product_title || 'Order', email: o.buyer_email, contact: o.buyer_phone || undefined,
+  })
+}
+
+/** Mark an order paid from Razorpay's own record of the payment. Safe to repeat. */
+async function settleOrder(db: SupabaseClient, o: Json, paymentId: string) {
+  let pay = await rzp(`/payments/${paymentId}`)
+  if (pay.order_id !== o.rzp_order_id) throw new HttpError(400, 'That payment belongs to another order')
+  if (pay.status === 'authorized') pay = await rzp(`/payments/${paymentId}/capture`, 'POST', { amount: pay.amount, currency: pay.currency })
+  if (pay.status !== 'captured') return { paid: false, status: pay.status }
+  if (pay.amount !== Math.round(o.amount_inr * 100) || pay.currency !== 'INR') {
+    await raiseIssue(db, 'order_amount_mismatch', 'high', null, paymentId, { order: o.id, paid_paise: pay.amount, expected_inr: o.amount_inr })
+    return { paid: false, status: 'amount_mismatch' }
+  }
+  if (o.status === 'paid' || o.status === 'refunded') return { paid: true, status: o.status }
+  await db.from('orders').update({ status: 'paid', paid_at: iso(pay.created_at) ?? new Date().toISOString(), payment_ref: paymentId }).eq('id', o.id).in('status', ['pending', 'failed'])
+  return { paid: true, status: 'paid' }
+}
+
+async function orderVerify(db: SupabaseClient, body: Json) {
+  const o = await orderByToken(db, String(body.token ?? ''))
+  const paymentId = String(body.payment_id ?? '')
+  const signature = String(body.signature ?? '')
+  if (!o.rzp_order_id || !paymentId || !signature) throw new HttpError(400, 'Missing payment details')
+  if (!sameText(signature, await hmacHex(KEY_SECRET, `${o.rzp_order_id}|${paymentId}`))) throw new HttpError(400, 'Payment could not be verified')
+  return json({ ok: true, ...(await settleOrder(db, o, paymentId)) })
+}
+
+/** "I paid but it says pending": look at Razorpay's records for this order */
+async function orderCheck(db: SupabaseClient, body: Json) {
+  const o = await orderByToken(db, String(body.token ?? ''))
+  if (o.status === 'paid') return json({ ok: true, paid: true })
+  if (!o.rzp_order_id) return json({ ok: true, paid: false })
+  const pays = await rzp(`/orders/${o.rzp_order_id}/payments`)
+  const ok = (pays.items ?? []).find((p: Json) => p.status === 'captured' || p.status === 'authorized')
+  return json({ ok: true, ...(ok ? await settleOrder(db, o, ok.id) : { paid: false }) })
+}
+
+/** Safety net for Route: check accounts under review and orders that stayed pending */
+async function reconcileRoute(db: SupabaseClient) {
+  const { data: accs } = await db.from('payout_accounts').select('user_id').in('status', ['created', 'under_review', 'needs_clarification']).not('rzp_product_id', 'is', null).limit(25)
+  for (const a of accs ?? []) await kycSync(db, a.user_id).catch((e) => console.error('kyc sync', a.user_id, e))
+  const { data: orders } = await db.from('orders').select('*').eq('payment_provider', 'razorpay').eq('status', 'pending')
+    .lt('created_at', new Date(Date.now() - 10 * 60_000).toISOString()).limit(40)
+  let settled = 0
+  let closed = 0
+  for (const o of orders ?? []) {
+    try {
+      if (o.rzp_order_id) {
+        const pays = await rzp(`/orders/${o.rzp_order_id}/payments`)
+        const ok = (pays.items ?? []).find((p: Json) => p.status === 'captured' || p.status === 'authorized')
+        if (ok && (await settleOrder(db, o, ok.id)).paid) {
+          settled++
+          continue
+        }
+      }
+      if (new Date(o.created_at).getTime() < Date.now() - 24 * 3600_000) {
+        await db.rpc('route_fail_order', { p_order_id: o.id, p_reason: 'Payment not completed' })
+        closed++
+      }
+    } catch (e) {
+      console.error('order reconcile', o.id, e)
+    }
+  }
+  return { settled, closed }
 }
 
 Deno.serve(handle(async (req) => {
@@ -351,7 +608,26 @@ Deno.serve(handle(async (req) => {
   const body = await req.json().catch(() => ({}))
   switch (body.action) {
     case 'config':
-      return json({ enabled: Boolean(KEY_ID && KEY_SECRET), key_id: KEY_ID || null, mode: MODE, gst_rate: GST_RATE })
+    {
+      const { data: st } = await db.from('app_settings').select('route_enabled').eq('id', true).maybeSingle()
+      return json({ enabled: Boolean(KEY_ID && KEY_SECRET), key_id: KEY_ID || null, mode: MODE, gst_rate: GST_RATE, route_enabled: Boolean(st?.route_enabled) })
+    }
+    case 'kyc_start':
+      return kycStart(req, db, body)
+    case 'kyc_status':
+      return kycStatus(req, db)
+    case 'order_create':
+      return orderCreate(db, body)
+    case 'order_verify':
+      return orderVerify(db, body)
+    case 'order_check':
+      return orderCheck(db, body)
+    case 'test_route': {
+      await requireAdmin(req, db)
+      // A made-up account id: "not found" means Route is on for us, "access denied" means Razorpay has not enabled it
+      const out = await rzp2('/accounts/acc_0000000000000A').then(() => ({ enabled: true, message: '' }), (e) => ({ enabled: !/not switched on/i.test(String(e.message)), message: String(e.message) }))
+      return json(out)
+    }
     case 'create_subscription':
       return createSubscription(req, db, body)
     case 'verify':

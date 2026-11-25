@@ -17,13 +17,35 @@ import { MAIN_SOCIALS, SOCIALS } from '../../lib/socials'
 import { PageHeading } from './DashboardLayout'
 import { useUsernameCheck } from '../../lib/useUsernameCheck'
 import { CustomDomainCard, SeoTrackingCard, TwoFactorCard } from './SettingsExtra'
+import { Link } from 'react-router-dom'
+import { KYC_LABEL, usePayouts } from '../../lib/payouts'
 
 const SHOW_DOMAIN_AND_SEO = false
 
 const UPI_RE = /^[a-zA-Z0-9._-]{2,255}@[a-zA-Z0-9]{2,64}$/
 
 /** The creator's own UPI ID: buyers pay it directly, and the creator confirms each payment */
+function PayoutsPointer() {
+  const { account } = usePayouts()
+  const status = account?.status || 'not_started'
+  return (
+    <Card className="p-5 sm:p-7">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-bold">Payouts</h2>
+        <Badge tone={status === 'activated' ? 'green' : 'neutral'}>{KYC_LABEL[status]}</Badge>
+      </div>
+      <p className="mt-1 text-sm text-ink-500">Buyers pay once and your share goes straight to your bank account. Verify yourself once to start selling.</p>
+      <div className="mt-4"><Button to="/dashboard/payouts" variant={status === 'activated' ? 'outline' : 'primary'}>{status === 'activated' ? 'View payout account' : 'Set up payouts'}</Button></div>
+    </Card>
+  )
+}
+
 function PaymentsCard() {
+  const { route } = usePayouts()
+  return route ? <PayoutsPointer /> : <UpiCard />
+}
+
+function UpiCard() {
   const { page, updatePage, canEdit } = usePage()
   const toast = useToast()
   const [upi, setUpi] = useState(page.upi_id || '')

@@ -13,7 +13,7 @@ export function withGst(base) {
 export const money2 = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 let scriptPromise
-function loadCheckout() {
+export function loadCheckout() {
   if (window.Razorpay) return Promise.resolve()
   scriptPromise ||= new Promise((resolve, reject) => {
     const s = document.createElement('script')
@@ -65,3 +65,32 @@ export async function payForPlan({ plan, period, onFailed }) {
     rz.open()
   })
 }
+
+/** A buyer paying a creator's order: Checkout opens with the split already attached by the server. Anyone with the order link can use it. */
+export async function payOrder({ token, onFailed }) {
+  const o = await invokeFunction('razorpay', { action: 'order_create', token })
+  await loadCheckout()
+  return new Promise((resolve, reject) => {
+    const rz = new window.Razorpay({
+      key: o.key_id,
+      order_id: o.order_id,
+      amount: o.amount,
+      currency: o.currency,
+      name: o.name,
+      description: o.description,
+      prefill: { email: o.email, contact: o.contact },
+      theme: { color: '#15161A' },
+      handler: async (resp) => {
+        try {
+          resolve(await invokeFunction('razorpay', { action: 'order_verify', token, payment_id: resp.razorpay_payment_id, signature: resp.razorpay_signature }))
+        } catch (e) {
+          reject(e)
+        }
+      },
+      modal: { ondismiss: () => resolve({ dismissed: true }) },
+    })
+    rz.on('payment.failed', (r) => onFailed?.(r?.error?.description || 'The payment failed. You can try again.'))
+    rz.open()
+  })
+}
+export const checkOrderPayment = (token) => invokeFunction('razorpay', { action: 'order_check', token })

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import SupportRequest from '../components/SupportRequest'
 import { acceptUpsell, bookSession, fetchOrder, fetchUpiPayment, getDownloadUrl, openDispute, rescheduleBooking, submitUpiReference } from '../lib/publicApi'
 import UpiPay from '../components/UpiPay'
+import { checkOrderPayment, money2, payOrder } from '../lib/razorpay'
 import { formatInr, optimizedImage } from '../lib/images'
 import { calendarUrl, formatIst } from '../lib/slots'
 import { normalizeUrl } from '../lib/embeds'
@@ -240,6 +241,69 @@ function Dispute({ dispute, paid, token, onChange }) {
   )
 }
 
+/** An order paid through Razorpay: the buyer pays once, the split to the creator happens on Razorpay's side */
+function RazorpayOrder({ data, token, onChange, embedded }) {
+  const { order, page } = data
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const failed = order.status === 'failed'
+
+  async function pay() {
+    setMsg('')
+    setBusy(true)
+    try {
+      const r = await payOrder({ token, onFailed: setMsg })
+      if (r.dismissed) return
+      if (!r.paid) setMsg('We are confirming your payment. This can take a minute, press "I have paid" if it does not update.')
+    } catch (e) {
+      setMsg(e.message)
+    } finally {
+      setBusy(false)
+      onChange()
+    }
+  }
+  async function recheck() {
+    setMsg('')
+    setBusy(true)
+    try {
+      const r = await checkOrderPayment(token)
+      if (!r.paid) setMsg('We have not seen the payment yet. If money left your account it shows here within minutes, or message the creator with your order link.')
+    } catch (e) {
+      setMsg(e.message)
+    } finally {
+      setBusy(false)
+      onChange()
+    }
+  }
+
+  return (
+    <div className={embedded ? '' : 'min-h-dvh px-4 py-8 sm:py-14'}>
+      <div className="mx-auto max-w-xl space-y-4">
+        <div className="card overflow-hidden">
+          <div className="bg-cream-200 px-6 py-8 text-center sm:px-9">
+            <h1 className="display-md">{failed ? 'Payment not completed' : 'Pay to finish your order'}</h1>
+            <p className="mt-2 break-words text-ink-700">{order.kind === 'tip' ? `Tip for ${page.display_name || page.username}` : order.product_title}</p>
+          </div>
+          <div className="space-y-4 p-6 text-center sm:p-9">
+            <p className="font-display text-4xl font-bold tracking-tight">{money2(order.amount_inr)}</p>
+            {failed ? (
+              <p className="text-sm text-ink-600">This order was closed because the payment did not go through. Go back to the page and try again. If money left your account, message {page.display_name || 'the creator'} with this link.</p>
+            ) : (
+              <>
+                <button type="button" onClick={pay} disabled={busy} className="inline-flex h-12 w-full items-center justify-center rounded-full bg-ink px-6 text-base font-bold text-white disabled:opacity-60">{busy ? 'Please wait…' : `Pay ${money2(order.amount_inr)}`}</button>
+                <button type="button" onClick={recheck} disabled={busy} className="text-sm font-semibold text-ink-600 underline underline-offset-2">I have paid, check my payment</button>
+              </>
+            )}
+            {msg && <p className="rounded-2xl bg-cream p-3 text-sm text-ink-700">{msg}</p>}
+            <p className="text-xs text-ink-500">Secure payment by Razorpay. UPI, cards and net banking. Bookmark this page: it is your order link.</p>
+          </div>
+        </div>
+        <SupportRequest token={token} />
+      </div>
+    </div>
+  )
+}
+
 /** An order paid straight to the creator's UPI: pay, send the reference, then wait for them to confirm */
 function UpiOrder({ data, token, onChange, embedded }) {
   const { order, page } = data
@@ -336,6 +400,9 @@ export function OrderView({ token, embedded = false }) {
   }
 
   const { data } = state
+  if (data.order.payment_provider === 'razorpay' && ['pending', 'failed'].includes(data.order.status)) {
+    return <RazorpayOrder data={data} token={token} onChange={load} embedded={embedded} />
+  }
   if (data.order.payment_provider === 'upi' && ['pending', 'failed'].includes(data.order.status)) {
     return <UpiOrder data={data} token={token} onChange={load} embedded={embedded} />
   }
@@ -477,7 +544,7 @@ export function OrderView({ token, embedded = false }) {
           </div>
         </div>
 
-        {paid && upsell && order.payment_provider !== 'upi' && <Upsell upsell={upsell} token={token} />}
+        {paid && upsell && !['upi', 'razorpay'].includes(order.payment_provider) && <Upsell upsell={upsell} token={token} />}
 
         {!isTip && (paid || dispute) && <Dispute dispute={dispute} paid={paid} token={token} onChange={load} />}
 

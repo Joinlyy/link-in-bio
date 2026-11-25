@@ -38,7 +38,7 @@ const NAV = [
   { to: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   {
     to: '/dashboard/settings', label: 'Settings', icon: Settings,
-    tabs: [['/dashboard/settings', 'Settings'], ['/dashboard/team', 'Team'], ['/dashboard/billing', 'Plan'], ['/dashboard/referrals', 'Refer & earn'], ['/dashboard/messages', 'Messages']],
+    tabs: [['/dashboard/settings', 'Settings'], ['/dashboard/team', 'Team'], ['/dashboard/payouts', 'Payouts'], ['/dashboard/billing', 'Plan'], ['/dashboard/referrals', 'Refer & earn'], ['/dashboard/messages', 'Messages']],
   },
   { to: '/dashboard/guide', label: 'Guide', icon: BookOpen },
 ]

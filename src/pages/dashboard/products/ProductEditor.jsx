@@ -9,6 +9,7 @@ import { DAYS } from '../../../lib/slots'
 import { normalizeUrl } from '../../../lib/embeds'
 import ImageInput from '../../../components/ImageInput'
 import { UpgradeNote } from '../../../components/PlanGate'
+import PayoutNotice from '../../../components/PayoutNotice'
 import { useOwnerFeatures } from '../../../lib/usePlan'
 import { Alert, Button, Card, Input, Modal, Select, Textarea, Toggle, useToast, askConfirm } from '../../../components/ui'
 import { BUNDLE_ITEM_TYPES, missing, PRODUCT_TYPES, productKind, typeOf, UPSELL_TYPES } from './productTypes'
@@ -277,6 +278,7 @@ export default function ProductEditor() {
         </div>
       </div>
 
+      <PayoutNotice />
       {!canEdit && <Alert tone="info"><span className="inline-flex items-center gap-1.5"><Eye className="size-4" /> You have view-only access to this page’s products.</span></Alert>}
 
       <fieldset disabled={!canEdit} className="m-0 min-w-0 border-0 p-0">

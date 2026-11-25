@@ -80,11 +80,87 @@ function Overview({ onChanged }) {
             {conn.error && <p className="mt-2 text-red-700">{conn.error}</p>}
             <p className="mt-3 text-ink-600">Webhook URL for the Razorpay dashboard:</p>
             <code className="mt-1 block rounded-xl bg-white p-2 text-xs break-all">{conn.webhook_url}</code>
-            <p className="mt-2 text-xs text-ink-500">Events to turn on: subscription.authenticated, activated, charged, pending, halted, cancelled, completed, paused, resumed, updated; payment.failed, payment.captured; refund.processed.</p>
+            <p className="mt-2 text-xs text-ink-500">Events to turn on: subscription.authenticated, activated, charged, pending, halted, cancelled, completed, paused, resumed, updated; payment.failed, payment.captured, order.paid; and for creator payouts: product.route.activated, under_review, needs_clarification; account.under_review, activated, needs_clarification.</p>
           </div>
         )}
       </Card>
+      <RouteCard />
     </div>
+  )
+}
+
+/** Creator payouts (Razorpay Route): is it available to us, is it switched on, and who is verified */
+function RouteCard() {
+  const toast = useToast()
+  const [on, setOn] = useState(null)
+  const [access, setAccess] = useState(null)
+  const [accounts, setAccounts] = useState(null)
+  const [busy, setBusy] = useState('')
+
+  const load = useCallback(async () => {
+    const [{ data: st }, { data: acc }] = await Promise.all([
+      supabase.from('app_settings').select('route_enabled').eq('id', true).maybeSingle(),
+      supabase.from('payout_accounts').select('user_id, status, legal_name, bank_last4, updated_at').order('updated_at', { ascending: false }).limit(50),
+    ])
+    setOn(Boolean(st?.route_enabled))
+    setAccounts(acc || [])
+  }, [])
+  useEffect(() => {
+    load()
+  }, [load])
+
+  async function check() {
+    setBusy('check')
+    try {
+      setAccess(await invokeFunction('razorpay', { action: 'test_route' }))
+    } catch (e) {
+      toast(e.message, 'error')
+    }
+    setBusy('')
+  }
+  async function flip() {
+    setBusy('flip')
+    const { error } = await supabase.rpc('admin_set_route', { p_on: !on })
+    setBusy('')
+    if (error) return toast(errorMessage(error), 'error')
+    toast(!on ? 'Creator payouts are ON. Paid products now need KYC.' : 'Creator payouts are OFF. The old direct UPI flow is back.')
+    load()
+  }
+
+  if (on === null) return null
+  const count = (st) => (accounts || []).filter((a) => a.status === st).length
+  return (
+    <Card className="space-y-4 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="eyebrow text-ink-500">Creator payouts (Route)</p>
+        {on ? <Badge tone="green">On</Badge> : <Badge>Off</Badge>}
+      </div>
+      <p className="text-sm text-ink-600">Turn this on only after Razorpay has enabled Route for your account. While it is on, creators must finish KYC before any paid product, session or tip works, and every sale is split with your commission.</p>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="soft" size="sm" loading={busy === 'check'} onClick={check}>Check Route access</Button>
+        <Button variant={on ? 'outline' : 'primary'} size="sm" loading={busy === 'flip'} onClick={flip}>{on ? 'Turn off' : 'Turn on creator payouts'}</Button>
+      </div>
+      {access && (
+        <div className="rounded-2xl bg-cream p-4 text-sm">
+          {access.enabled ? <Badge tone="green">Route is available on this Razorpay account</Badge> : <Badge tone="red">Route is not enabled yet</Badge>}
+          {!access.enabled && <p className="mt-2 text-ink-600">Ask Razorpay to enable Route for your account (support, or your account manager). Then check again. {access.message}</p>}
+        </div>
+      )}
+      {accounts?.length > 0 && (
+        <div>
+          <p className="text-sm font-semibold">Creators: {count('activated')} verified, {count('under_review')} in review, {count('needs_clarification')} need more, {count('rejected') + count('suspended')} refused or paused</p>
+          <ul className="mt-2 divide-y divide-ink/5 text-sm">
+            {accounts.map((a) => (
+              <li key={a.user_id} className="flex flex-wrap items-center gap-3 py-2">
+                <span className="min-w-0 flex-1 truncate">{a.legal_name || a.user_id.slice(0, 8)}{a.bank_last4 ? ` · ••${a.bank_last4}` : ''}</span>
+                <Badge tone={a.status === 'activated' ? 'green' : a.status === 'rejected' || a.status === 'suspended' ? 'red' : 'neutral'}>{a.status.replace(/_/g, ' ')}</Badge>
+                <span className="text-xs text-ink-500">{when(a.updated_at)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
   )
 }
 
