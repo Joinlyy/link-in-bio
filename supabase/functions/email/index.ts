@@ -1,7 +1,7 @@
 // Automatic emails, sent through Brevo.
 //   POST { action: 'event', kind, id }  — called by database triggers when something happens. The row is read again and each email
 //        is recorded once (unique key in email_log), so a forged call can only trigger an email that should have gone out anyway.
-//        kinds: 'welcome' (profile id), 'order' (order id), 'plan_payment' (plan payment id)
+//        kinds: 'welcome' (profile id), 'order' (order id), 'creator_payout' (payout id), 'billing_payment', 'billing_sub'
 //   POST { action: 'reminders' }        — called daily by pg_cron: plans ending in 3 days, plans that ended.
 // Secrets: BREVO_API_KEY, EMAIL_FROM (+ optional EMAIL_FROM_NAME, BREVO_LIST_ID), APP_ORIGIN. See docs/EMAIL-SETUP.md.
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -52,10 +52,6 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
       const { data: owner } = page?.owner_id ? await db.from('profiles').select('email').eq('id', page.owner_id).maybeSingle() : { data: null }
       await deliver(db, `order_creator:${o.id}`, 'order_creator', owner?.email, T.newOrderCreator({ buyer: o.buyer_name || o.buyer_email, product: what, amount: o.amount_inr }))
     }
-    // A UPI payment the creator could not find
-    if (o.status === 'failed' && o.payment_provider === 'upi' && o.payment_ref) {
-      await deliver(db, `payment_rejected:${o.id}`, 'payment_rejected', o.buyer_email, T.paymentRejectedBuyer({ creator: creatorName, product: what, orderUrl, reason: o.refund_reason || undefined }))
-    }
     return
   }
 
@@ -79,6 +75,15 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
     return
   }
 
+  if (kind === 'creator_payout') {
+    const { data: cp } = await db.from('creator_payouts').select('id, user_id, amount_inr, upi_id, reference, created_at').eq('id', id).maybeSingle()
+    if (!cp) return
+    const { data: u } = await db.from('profiles').select('email').eq('id', cp.user_id).maybeSingle()
+    if (!u?.email) return
+    await deliver(db, `payout:${cp.id}`, 'creator_payout', u.email, T.payoutSent({ amount: Number(cp.amount_inr), upi: cp.upi_id, reference: cp.reference }))
+    return
+  }
+
   if (kind === 'billing_sub') {
     const { data: bs } = await db.from('billing_subscriptions').select('id, user_id, plan, status, current_end').eq('id', id).maybeSingle()
     if (!bs) return
@@ -89,20 +94,6 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
     if (bs.status === 'cancelled') await deliver(db, `sub_cancelled:${bs.id}`, 'sub_cancelled', u.email, T.subscriptionCancelled({ plan: name, until }))
     if (bs.status === 'halted') await deliver(db, `sub_halted:${bs.id}`, 'sub_halted', u.email, T.autoRenewStopped({ plan: name, until }))
     return
-  }
-
-  if (kind === 'plan_payment') {
-    const { data: pp } = await db.from('plan_payments').select('id, user_id, plan, status, note, decided_at').eq('id', id).maybeSingle()
-    if (!pp || !['approved', 'rejected'].includes(pp.status) || !recent(pp.decided_at)) return
-    const { data: u } = await db.from('profiles').select('email, plan_expires_at, full_name, plan').eq('id', pp.user_id).maybeSingle()
-    if (!u?.email) return
-    const name = await planName(db, pp.plan)
-    if (pp.status === 'approved') {
-      await deliver(db, `plan_approved:${pp.id}`, 'plan_approved', u.email, T.planApproved({ plan: name, until: u.plan_expires_at ? dateIn(u.plan_expires_at) : null }))
-      await syncContact(u.email, { PLAN: pp.plan })
-    } else {
-      await deliver(db, `plan_rejected:${pp.id}`, 'plan_rejected', u.email, T.planRejected({ plan: name, note: pp.note || undefined }))
-    }
   }
 }
 
@@ -138,7 +129,7 @@ Deno.serve(handle(async (req) => {
   const db = adminClient()
   if (body.action === 'event') {
     const id = String(body.id ?? '')
-    if (!/^[0-9a-f-]{36}$/i.test(id) || !['welcome', 'order', 'plan_payment', 'billing_payment', 'billing_sub'].includes(String(body.kind))) throw new HttpError(400, 'Invalid event')
+    if (!/^[0-9a-f-]{36}$/i.test(id) || !['welcome', 'order', 'creator_payout', 'billing_payment', 'billing_sub'].includes(String(body.kind))) throw new HttpError(400, 'Invalid event')
     await handleEvent(db, String(body.kind), id)
     return json({ ok: true })
   }

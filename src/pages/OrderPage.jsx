@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import SupportRequest from '../components/SupportRequest'
-import { acceptUpsell, bookSession, fetchOrder, fetchUpiPayment, getDownloadUrl, openDispute, rescheduleBooking, submitUpiReference } from '../lib/publicApi'
-import UpiPay from '../components/UpiPay'
+import { acceptUpsell, bookSession, fetchOrder, getDownloadUrl, openDispute, rescheduleBooking } from '../lib/publicApi'
 import { checkOrderPayment, money2, payOrder } from '../lib/razorpay'
 import { formatInr, optimizedImage } from '../lib/images'
 import { calendarUrl, formatIst } from '../lib/slots'
@@ -304,61 +303,6 @@ function RazorpayOrder({ data, token, onChange, embedded }) {
   )
 }
 
-/** An order paid straight to the creator's UPI: pay, send the reference, then wait for them to confirm */
-function UpiOrder({ data, token, onChange, embedded }) {
-  const { order, page } = data
-  const [pay, setPay] = useState(null)
-  const loadPay = useCallback(() => fetchUpiPayment(token).then(setPay).catch(() => setPay(null)), [token])
-  useEffect(() => {
-    loadPay()
-  }, [loadPay])
-  // Check now and then whether the creator has confirmed
-  useEffect(() => {
-    if (!pay?.utr || order.status !== 'pending') return
-    const timer = setInterval(onChange, 30000)
-    return () => clearInterval(timer)
-  }, [pay?.utr, order.status, onChange])
-
-  const failed = order.status === 'failed'
-  return (
-    <div className={embedded ? '' : 'min-h-dvh px-4 py-8 sm:py-14'}>
-      <div className="mx-auto max-w-xl space-y-4">
-        <div className="card overflow-hidden">
-          <div className="bg-cream-200 px-6 py-8 text-center sm:px-9">
-            <h1 className="display-md">{failed ? 'Payment not confirmed' : pay?.utr ? 'Waiting for confirmation' : 'Pay to finish your order'}</h1>
-            <p className="mt-2 break-words text-ink-700">{order.kind === 'tip' ? `Tip for ${page.display_name || page.username}` : order.product_title}</p>
-          </div>
-          <div className="space-y-5 p-6 sm:p-9">
-            {failed ? (
-              <Section tone="bg-red-50">
-                <p className="font-semibold text-red-700">{page.display_name || 'The creator'} couldn’t find this payment.</p>
-                {order.refund_reason && <p className="mt-1 text-sm text-red-700">Reason: {order.refund_reason}</p>}
-                <p className="mt-2 text-sm text-ink-700">If money left your account, contact them with your UPI reference.</p>
-              </Section>
-            ) : pay ? (
-              <UpiPay
-                upiId={pay.upi_id}
-                name={pay.upi_name}
-                amount={pay.amount_inr}
-                note={pay.note}
-                submittedUtr={pay.utr}
-                onSubmit={async (utr) => {
-                  await submitUpiReference(token, utr)
-                  await loadPay()
-                }}
-              />
-            ) : (
-              <div className="h-80 animate-pulse rounded-3xl bg-cream" />
-            )}
-            <p className="text-center text-xs text-ink-500">You’re paying {page.display_name || page.username} directly. Bookmark this page: it’s your order link.</p>
-          </div>
-        </div>
-        <SupportRequest token={token} />
-      </div>
-    </div>
-  )
-}
-
 export function OrderView({ token, embedded = false }) {
   const [state, setState] = useState({ status: 'loading' })
 
@@ -402,9 +346,6 @@ export function OrderView({ token, embedded = false }) {
   const { data } = state
   if (data.order.payment_provider === 'razorpay' && ['pending', 'failed'].includes(data.order.status)) {
     return <RazorpayOrder data={data} token={token} onChange={load} embedded={embedded} />
-  }
-  if (data.order.payment_provider === 'upi' && ['pending', 'failed'].includes(data.order.status)) {
-    return <UpiOrder data={data} token={token} onChange={load} embedded={embedded} />
   }
   const { order, page, product, access, upsell, dispute } = data
   const type = product?.type || order.product_type
@@ -544,7 +485,7 @@ export function OrderView({ token, embedded = false }) {
           </div>
         </div>
 
-        {paid && upsell && !['upi', 'razorpay'].includes(order.payment_provider) && <Upsell upsell={upsell} token={token} />}
+        {paid && upsell && order.payment_provider !== 'razorpay' && <Upsell upsell={upsell} token={token} />}
 
         {!isTip && (paid || dispute) && <Dispute dispute={dispute} paid={paid} token={token} onChange={load} />}
 

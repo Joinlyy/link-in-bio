@@ -195,24 +195,6 @@ function PageSwitcher({ compact = false }) {
   )
 }
 
-/** Payments buyers have sent, waiting for the creator to check */
-function UpiWaitingBanner() {
-  const { page } = usePage()
-  const { pathname } = useLocation()
-  const [count, setCount] = useState(0)
-  useEffect(() => {
-    supabase.from('orders').select('id', { count: 'exact', head: true }).eq('page_id', page.id).eq('payment_provider', 'upi').eq('status', 'pending').not('payment_ref', 'is', null)
-      .then(({ count: n }) => setCount(n || 0))
-  }, [page.id, pathname])
-  if (!count || pathname === '/dashboard/sales') return null
-  return (
-    <Link to="/dashboard/sales" className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-lime px-4 py-3 text-sm">
-      <span><b>{count} UPI payment{count === 1 ? '' : 's'} to confirm.</b> Buyers are waiting for access.</span>
-      <span className="font-semibold underline underline-offset-2">Check now</span>
-    </Link>
-  )
-}
-
 /** Says plainly that visitors can't see the page yet, with the one button that fixes it */
 function DraftBanner() {
   const { page, updatePage } = usePage()
@@ -323,7 +305,6 @@ function Shell() {
         <MobileNav isAdmin={isAdmin} />
 
         {canEdit && !page.is_published && <DraftBanner />}
-        {canEdit && <UpiWaitingBanner />}
 
         {!canEdit && (
           <div className="flex items-center gap-2 rounded-2xl bg-lilac-100 px-4 py-3 text-sm font-medium">

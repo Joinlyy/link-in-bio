@@ -31,7 +31,7 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
   const [couponMsg, setCouponMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [mode, setMode] = useState(null) // 'upi' | 'test' | 'off'
+  const [mode, setMode] = useState(null) // 'route' | 'platform' | 'test' | 'off'
   useEffect(() => {
     if (!preview) fetchPaymentMode(page.id).then(setMode).catch(() => setMode(null))
   }, [page.id, preview])
@@ -113,7 +113,7 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
       <input className="field" placeholder="Your name" required maxLength={120} autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       <input className="field" type="email" required placeholder="Email (we’ll show your access link)" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
       <input className="field" type="tel" placeholder="WhatsApp number (optional)" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-      {mode === 'upi' && page.wa_updates !== false && form.phone.trim() && (
+      {(mode === 'route' || mode === 'platform') && page.wa_updates !== false && form.phone.trim() && (
         <label className="flex items-start gap-2.5 text-sm">
           <input type="checkbox" className="mt-0.5 size-4 accent-ink" checked={form.waUpdates} onChange={(e) => setForm({ ...form, waUpdates: e.target.checked })} />
           <span>Send me a WhatsApp message when my payment is confirmed</span>
@@ -130,9 +130,9 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
       )}
       {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p>}
       <button type="submit" disabled={busy || (total > 0 && mode === 'off')} className="flex h-13 w-full items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-white disabled:opacity-60">
-        {busy ? 'Processing…' : total > 0 ? `${mode === 'upi' ? 'Continue to pay' : 'Pay'} ${formatInr(total)}${product.type === 'membership' ? ` / ${intervalLabel(product.data)}` : ''}` : freeLabel}
+        {busy ? 'Processing…' : total > 0 ? `Pay ${formatInr(total)}${product.type === 'membership' ? ` / ${intervalLabel(product.data)}` : ''}` : freeLabel}
       </button>
-      {total > 0 && mode === 'upi' && <p className="text-center text-xs text-ink-500">You pay {page.display_name || 'the creator'} directly with any UPI app. Access opens once they confirm your payment.</p>}
+      {total > 0 && (mode === 'route' || mode === 'platform') && <p className="text-center text-xs text-ink-500">Secure payment by Razorpay: UPI, cards and net banking. Your access opens as soon as it succeeds.</p>}
       {total > 0 && mode === 'test' && <p className="text-center text-xs text-ink-500">🔒 Test mode: no real payment is taken.</p>}
       {total > 0 && mode === 'off' && <p className="text-center text-xs font-medium text-ink-600">This creator hasn’t set up payments yet. Please check back soon.</p>}
     </form>

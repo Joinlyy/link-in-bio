@@ -191,6 +191,19 @@ export function renewalFailed(o: { plan: string; total: number; reason?: string 
   }
 }
 
+export function payoutSent(o: { amount: number; upi: string | null; reference: string | null }): Mail {
+  const amt = `₹${o.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return {
+    subject: `We sent you ${amt}`,
+    html: layout({
+      preheader: `${amt} is on its way to your UPI ID.`,
+      title: 'Your payout is on its way',
+      body: `<p>We sent <b>${esc(amt)}</b>, your share of recent sales, ${o.upi ? `to your UPI ID <b>${esc(o.upi)}</b>` : 'to you'}.</p>${o.reference ? `<p>UPI reference: <b>${esc(o.reference)}</b></p>` : ''}<p>See every sale and payout in your dashboard.</p>`,
+      button: { label: 'Open payouts', url: `${APP}/dashboard/payouts` },
+    }),
+  }
+}
+
 export function subscriptionCancelled(o: { plan: string; until: string | null }): Mail {
   return {
     subject: `Your ${o.plan} auto-renew is off`,

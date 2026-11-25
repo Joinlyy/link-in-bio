@@ -41,11 +41,11 @@ export default function TipSheet({ block, ctx, onClose }) {
         <input className="field" placeholder="Your name" value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input className="field" type="email" required placeholder="Email for your receipt" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         <textarea className="field" rows={2} maxLength={500} placeholder="Say something nice (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-        {mode === 'upi' && <p className="text-xs text-ink-500">You’ll pay {ctx.displayName || 'the creator'} directly with any UPI app.</p>}
+        {(mode === 'route' || mode === 'platform') && <p className="text-xs text-ink-500">Secure payment by Razorpay: UPI, cards and net banking.</p>}
         {mode === 'off' && <p className="text-xs font-medium text-ink-600">Tips aren’t open yet. Please check back soon.</p>}
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}
         <button type="submit" disabled={busy || mode === 'off'} className="h-12 w-full rounded-full bg-ink text-sm font-semibold text-white disabled:opacity-60">
-          {busy ? 'Processing…' : `${mode === 'upi' ? 'Continue to pay' : 'Pay'} ${formatInr(amount)}`}
+          {busy ? 'Processing…' : `Pay ${formatInr(amount)}`}
         </button>
         {mode === 'test' && <p className="text-center text-xs text-ink-500">Test mode: no real money is charged.</p>}
       </form>

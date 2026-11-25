@@ -1,41 +1,120 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Landmark, ShieldCheck } from 'lucide-react'
+import { usePage } from '../../context/PageContext'
+import { useAuth } from '../../context/AuthContext'
+import { errorMessage, supabase } from '../../lib/supabase'
+import { formatInr } from '../../lib/images'
 import { usePlan } from '../../lib/usePlan'
 import { KYC_LABEL, kycRefresh, kycStart, usePayouts } from '../../lib/payouts'
 import { Alert, Badge, Button, Card, Input, Select, Spinner, useToast } from '../../components/ui'
 import { PageHeading } from './DashboardLayout'
 
-const STATES = ['Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Chandigarh', 'Puducherry', 'Andaman and Nicobar Islands', 'Dadra and Nagar Haveli and Daman and Diu', 'Lakshadweep']
-const STEPS = [['Your details', ['created', 'needs_clarification', 'under_review', 'activated']], ['Bank account', ['created', 'needs_clarification', 'under_review', 'activated']], ['Checked by Razorpay', ['activated']], ['Ready to sell', ['activated']]]
-const EMPTY = { legal_name: '', business_type: 'individual', pan: '', phone: '', street: '', city: '', state: '', postal_code: '', beneficiary_name: '', bank_account: '', bank_account2: '', ifsc: '' }
+const UPI_RE = /^[a-zA-Z0-9._-]{2,255}@[a-zA-Z0-9]{2,64}$/
+const day = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
-function Steps({ status }) {
-  const done = (i) => (i === 0 || i === 1 ? ['created', 'needs_clarification', 'under_review', 'activated'].includes(status) : i === 2 ? status === 'activated' : status === 'activated')
-  const current = STEPS.findIndex((_, i) => !done(i))
+/** Where we send the creator's earnings */
+function UpiCard() {
+  const { page, updatePage, canEdit } = usePage()
+  const { reload } = usePayouts()
+  const toast = useToast()
+  const [upi, setUpi] = useState(page.upi_id || '')
+  const [name, setName] = useState(page.upi_name || page.display_name || '')
+  const clean = upi.trim()
+  const wrong = clean && !UPI_RE.test(clean)
+  const changed = clean !== (page.upi_id || '') || name.trim() !== (page.upi_name || '')
+
+  async function save() {
+    await updatePage({ upi_id: clean || null, upi_name: name.trim() || null }, { immediate: true })
+    toast(clean ? 'Saved. We will send your earnings to this UPI ID.' : 'Payout UPI ID removed. Paid products are switched off until you add one.')
+    reload()
+  }
+
   return (
-    <ol className="grid gap-3 sm:grid-cols-4">
-      {STEPS.map(([label], i) => (
-        <li key={label} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold ${done(i) ? 'bg-lime' : i === current ? 'bg-ink text-white' : 'bg-cream text-ink-500'}`}>
-          <span className={`grid size-6 shrink-0 place-items-center rounded-full text-xs ${done(i) ? 'bg-ink text-lime' : 'bg-white/20'}`}>{done(i) ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}</span>
-          {label}
-        </li>
-      ))}
-    </ol>
+    <Card className="p-5 sm:p-7">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-bold">Your payout UPI ID</h2>
+        {page.upi_id ? <Badge tone="green">Set</Badge> : <Badge>Not set</Badge>}
+      </div>
+      <p className="mt-1 text-sm text-ink-500">Buyers pay Joinlyy. We keep our commission and send the rest of every sale to this UPI ID. Paid products, sessions and tips work only once it is set.</p>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <Input label="UPI ID" placeholder="yourname@okhdfcbank" value={upi} disabled={!canEdit} error={wrong ? 'A UPI ID looks like name@bank, for example priya@okaxis' : undefined} onChange={(e) => setUpi(e.target.value)} />
+        <Input label="Name on that UPI account" maxLength={80} placeholder="As it appears in your bank" value={name} disabled={!canEdit} onChange={(e) => setName(e.target.value)} />
+      </div>
+      {canEdit && <div className="mt-4"><Button onClick={save} disabled={!changed || wrong}>Save</Button></div>}
+    </Card>
   )
 }
 
-export default function Payouts() {
-  const { plan } = usePlan()
-  const { loading, route, account, reload } = usePayouts()
+function Tile({ label, value, cls = 'bg-white', note }) {
+  return (
+    <div className={`rounded-3xl p-5 shadow-soft ${cls}`}>
+      <p className={`text-xs font-semibold ${cls.includes('text-white') ? 'text-white/70' : 'text-ink-500'}`}>{label}</p>
+      <p className="mt-2 font-display text-2xl font-bold">{value}</p>
+      {note && <p className={`mt-1 text-xs ${cls.includes('text-white') ? 'text-white/60' : 'text-ink-500'}`}>{note}</p>}
+    </div>
+  )
+}
+
+function Earnings({ plan }) {
+  const { user } = useAuth()
+  const [e, setE] = useState(null)
+  const [history, setHistory] = useState(null)
+  useEffect(() => {
+    supabase.rpc('my_earnings').then(({ data }) => setE(data || {}))
+    supabase.from('creator_payouts').select('id, amount_inr, upi_id, reference, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50).then(({ data }) => setHistory(data || []))
+  }, [user.id])
+  if (!e || !history) return <div className="grid h-32 place-items-center"><Spinner /></div>
+  const pct = plan?.features?.commission_pct
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Tile label="Owed to you" value={formatInr(e.balance)} cls="bg-ink text-white" note={`${formatInr(e.payable_now)} ready to send`} />
+        <Tile label="Held for 2 days" value={formatInr(e.held)} cls="bg-lilac-100" note="Released after the refund window" />
+        <Tile label="Paid to you so far" value={formatInr(e.paid_out)} cls="bg-lime" />
+        <Tile label="Sales" value={formatInr(e.gross)} note={`${formatInr(e.commission)} commission${pct != null ? ` (${pct}%)` : ''}`} />
+      </div>
+      <Card className="p-5 sm:p-7">
+        <h2 className="text-lg font-bold">How you get paid</h2>
+        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-ink-700">
+          <li>A buyer pays on your page. The money comes to Joinlyy.</li>
+          <li>We keep <b>{pct != null ? `${pct}%` : 'a small commission'}</b> (Starter 15%, Creator 10%, Pro 5%). The rest is yours.</li>
+          <li>Each sale is held for 2 days in case of a refund. After that we send it to your UPI ID and list it below. You also get an email.</li>
+        </ol>
+      </Card>
+      <Card className="p-5 sm:p-7">
+        <h2 className="text-lg font-bold">Payout history</h2>
+        {history.length === 0 ? (
+          <p className="mt-2 text-sm text-ink-500">Nothing has been sent yet. Your first payout appears here.</p>
+        ) : (
+          <div className="mt-3 divide-y divide-ink/5">
+            {history.map((h) => (
+              <div key={h.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{formatInr(h.amount_inr)}</p>
+                  <p className="text-sm text-ink-500">{day(h.created_at)}{h.upi_id ? ` · to ${h.upi_id}` : ''}{h.reference ? ` · ref ${h.reference}` : ''}</p>
+                </div>
+                <Badge tone="green">Sent</Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
+  )
+}
+
+// ---------- Razorpay Route KYC (shown only once Route is switched on) ----------
+const STATES = ['Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Chandigarh', 'Puducherry', 'Andaman and Nicobar Islands', 'Dadra and Nagar Haveli and Daman and Diu', 'Lakshadweep']
+const EMPTY = { legal_name: '', business_type: 'individual', pan: '', phone: '', street: '', city: '', state: '', postal_code: '', beneficiary_name: '', bank_account: '', bank_account2: '', ifsc: '' }
+
+function KycCard() {
+  const { account, reload } = usePayouts()
   const toast = useToast()
   const [f, setF] = useState(EMPTY)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
-
-  if (loading || !plan) return <div className="grid h-60 place-items-center"><Spinner /></div>
   const status = account?.status || 'not_started'
-  const pct = plan.features?.commission_pct
   const canFill = ['not_started', 'created', 'needs_clarification', 'rejected'].includes(status)
 
   async function submit(e) {
@@ -49,19 +128,18 @@ export default function Payouts() {
       setF(EMPTY)
       toast(r.status === 'activated' ? 'Your payout account is verified' : 'Details sent. Razorpay is checking them.')
     } catch (err) {
-      setError(err.message)
+      setError(errorMessage(err))
     } finally {
       setBusy(false)
       reload()
     }
   }
-
   async function refresh() {
     setBusy(true)
     try {
       await kycRefresh()
     } catch (err) {
-      toast(err.message, 'error')
+      toast(errorMessage(err), 'error')
     } finally {
       setBusy(false)
       reload()
@@ -69,75 +147,54 @@ export default function Payouts() {
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeading title="Payouts." italic="Get paid to your bank.">
-        Verify yourself once. After that every sale is split automatically: your share goes to your bank account, and our small commission stays with us.
-      </PageHeading>
-
-      {!route && <Alert tone="info">Payouts are opening soon. Until then you can keep using the page, and nothing you have built is lost.</Alert>}
-
-      <Card className="space-y-5 p-5 sm:p-7">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-bold">Your payout account</h2>
-          <Badge tone={status === 'activated' ? 'green' : status === 'rejected' || status === 'suspended' ? 'red' : 'neutral'}>{KYC_LABEL[status]}</Badge>
-        </div>
-        <Steps status={status} />
-
-        {status === 'activated' && account && (
-          <div className="rounded-2xl bg-cream p-4 text-sm">
-            <p className="flex items-center gap-2 font-semibold"><ShieldCheck className="size-4" /> You are verified. Paid products, sessions and tips are switched on.</p>
-            <p className="mt-2 text-ink-600">Payouts go to <b>{account.beneficiary_name}</b>, account ending <b>{account.bank_last4}</b> ({account.bank_ifsc}). To change the bank account, message us from Messages.</p>
-          </div>
-        )}
-        {status === 'under_review' && (
-          <Alert tone="info">Razorpay is checking your details. This usually takes a few hours to 2 working days. We will email you when it is done.
-            <div className="mt-2"><Button size="sm" variant="outline" loading={busy} onClick={refresh}>Check status</Button></div>
-          </Alert>
-        )}
-        {status === 'needs_clarification' && (
-          <Alert>
-            Razorpay needs a little more to finish. {account?.requirements?.length ? 'It asked for: ' + account.requirements.map((r) => String(r.field || r.reason || '').replace(/_/g, ' ')).filter(Boolean).join(', ') + '.' : ''} Correct your details below and send them again.
-          </Alert>
-        )}
-        {(status === 'rejected' || status === 'suspended') && <Alert>Razorpay could not approve this account{account?.reason ? `: ${account.reason}` : '.'} Message us from Messages and we will help.</Alert>}
-      </Card>
-
-      <Card className="p-5 sm:p-7">
-        <h2 className="text-lg font-bold">How you get paid</h2>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-ink-700">
-          <li>A buyer pays once on your page, by UPI, card or net banking.</li>
-          <li>Razorpay splits it right away: <b>{pct != null ? `${pct}%` : 'a small commission'}</b> goes to Joinlyy (your plan decides it: Starter 15%, Creator 10%, Pro 5%), the rest is yours.</li>
-          <li>Your share is held for 2 days so a refund is still possible, then Razorpay sends it to your bank account.</li>
-        </ol>
-        <p className="mt-3 text-xs text-ink-500">Free things, and brand products or courses sold on another website, never need this.</p>
-      </Card>
-
-      {canFill && (
-        <Card className="p-5 sm:p-7">
-          <h2 className="flex items-center gap-2 text-lg font-bold"><Landmark className="size-5" /> Your details</h2>
-          <p className="mt-1 text-sm text-ink-500">We send these straight to Razorpay for verification. We do not keep your PAN or your full account number.</p>
-          <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
-            <Input label="Full name (as on PAN)" value={f.legal_name} onChange={set('legal_name')} required disabled={!route} />
-            <Select label="You sell as" value={f.business_type} onChange={set('business_type')} disabled={!route} options={[{ value: 'individual', label: 'An individual' }, { value: 'proprietorship', label: 'A proprietorship or business' }]} />
-            <Input label="PAN" placeholder="ABCDE1234F" maxLength={10} value={f.pan} onChange={(e) => setF((x) => ({ ...x, pan: e.target.value.toUpperCase() }))} required disabled={!route} />
-            <Input label="Mobile number" inputMode="numeric" placeholder="10 digits" maxLength={13} value={f.phone} onChange={set('phone')} required disabled={!route} />
-            <Input className="sm:col-span-2" label="Address" value={f.street} onChange={set('street')} required disabled={!route} />
-            <Input label="City" value={f.city} onChange={set('city')} required disabled={!route} />
-            <Select label="State" value={f.state} onChange={set('state')} disabled={!route} options={[{ value: '', label: 'Choose a state', disabled: true }, ...STATES.map((s) => ({ value: s, label: s }))]} required />
-            <Input label="PIN code" inputMode="numeric" maxLength={6} value={f.postal_code} onChange={set('postal_code')} required disabled={!route} />
-            <div className="hidden sm:block" />
-            <Input label="Name on bank account" value={f.beneficiary_name} onChange={set('beneficiary_name')} required disabled={!route} />
-            <Input label="IFSC" placeholder="HDFC0001234" maxLength={11} value={f.ifsc} onChange={(e) => setF((x) => ({ ...x, ifsc: e.target.value.toUpperCase() }))} required disabled={!route} />
-            <Input label="Bank account number" inputMode="numeric" value={f.bank_account} onChange={set('bank_account')} required disabled={!route} />
-            <Input label="Type the account number again" inputMode="numeric" value={f.bank_account2} onChange={set('bank_account2')} required disabled={!route} />
-            {error && <div className="sm:col-span-2"><Alert>{error}</Alert></div>}
-            <div className="sm:col-span-2">
-              <Button type="submit" loading={busy} disabled={!route}>Send for verification</Button>
-              <p className="mt-2 text-xs text-ink-500">By sending, you agree to Razorpay’s terms for receiving payments and confirm these details are yours.</p>
-            </div>
-          </form>
-        </Card>
+    <Card className="space-y-5 p-5 sm:p-7">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-bold"><Landmark className="size-5" /> Verify for instant payouts</h2>
+        <Badge tone={status === 'activated' ? 'green' : status === 'rejected' || status === 'suspended' ? 'red' : 'neutral'}>{KYC_LABEL[status]}</Badge>
+      </div>
+      {status === 'activated' && account && (
+        <p className="flex items-center gap-2 rounded-2xl bg-cream p-4 text-sm font-semibold"><ShieldCheck className="size-4" /> Verified. Your share now goes to {account.beneficiary_name}, account ending {account.bank_last4}, at the time of each sale.</p>
       )}
+      {status === 'under_review' && (
+        <Alert tone="info">Razorpay is checking your details. <Button size="sm" variant="outline" loading={busy} onClick={refresh}>Check status</Button></Alert>
+      )}
+      {status === 'needs_clarification' && <Alert>Razorpay needs a little more. Correct your details below and send them again.</Alert>}
+      {(status === 'rejected' || status === 'suspended') && <Alert>Razorpay could not approve this account{account?.reason ? `: ${account.reason}` : '.'}</Alert>}
+      {canFill && (
+        <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+          <Input label="Full name (as on PAN)" value={f.legal_name} onChange={set('legal_name')} required />
+          <Select label="You sell as" value={f.business_type} onChange={set('business_type')} options={[{ value: 'individual', label: 'An individual' }, { value: 'proprietorship', label: 'A proprietorship or business' }]} />
+          <Input label="PAN" placeholder="ABCDE1234F" maxLength={10} value={f.pan} onChange={(e) => setF((x) => ({ ...x, pan: e.target.value.toUpperCase() }))} required />
+          <Input label="Mobile number" inputMode="numeric" maxLength={13} value={f.phone} onChange={set('phone')} required />
+          <Input className="sm:col-span-2" label="Address" value={f.street} onChange={set('street')} required />
+          <Input label="City" value={f.city} onChange={set('city')} required />
+          <Select label="State" value={f.state} onChange={set('state')} options={[{ value: '', label: 'Choose a state', disabled: true }, ...STATES.map((s) => ({ value: s, label: s }))]} required />
+          <Input label="PIN code" inputMode="numeric" maxLength={6} value={f.postal_code} onChange={set('postal_code')} required />
+          <div className="hidden sm:block" />
+          <Input label="Name on bank account" value={f.beneficiary_name} onChange={set('beneficiary_name')} required />
+          <Input label="IFSC" placeholder="HDFC0001234" maxLength={11} value={f.ifsc} onChange={(e) => setF((x) => ({ ...x, ifsc: e.target.value.toUpperCase() }))} required />
+          <Input label="Bank account number" inputMode="numeric" value={f.bank_account} onChange={set('bank_account')} required />
+          <Input label="Type the account number again" inputMode="numeric" value={f.bank_account2} onChange={set('bank_account2')} required />
+          {error && <div className="sm:col-span-2"><Alert>{error}</Alert></div>}
+          <div className="sm:col-span-2"><Button type="submit" loading={busy}>Send for verification</Button></div>
+        </form>
+      )}
+    </Card>
+  )
+}
+
+export default function Payouts() {
+  const { plan } = usePlan()
+  const { loading, route } = usePayouts()
+  if (loading || !plan) return <div className="grid h-60 place-items-center"><Spinner /></div>
+  return (
+    <div className="space-y-4">
+      <PageHeading title="Payouts." italic="Get paid to your UPI.">
+        Everything buyers pay you, minus our commission, sent to your UPI ID.
+      </PageHeading>
+      <UpiCard />
+      <Earnings plan={plan} />
+      {route && <KycCard />}
     </div>
   )
 }

@@ -20,7 +20,7 @@ const NAV = [
   { to: '/admin/disputes', label: 'Disputes', icon: Scale },
   { to: '/admin/fraud', label: 'Fraud flags', icon: ShieldAlert },
   { to: '/admin/plans', label: 'Plans & pricing', icon: Crown },
-  { to: '/admin/payments', label: 'Plan payments', icon: IndianRupee },
+  { to: '/admin/payouts', label: 'Creator payouts', icon: IndianRupee },
   { to: '/admin/domains', label: 'Domains & links', icon: Ban },
   { to: '/admin/status', label: 'System status', icon: Activity },
   { to: '/admin/audit', label: 'Audit log', icon: ScrollText },

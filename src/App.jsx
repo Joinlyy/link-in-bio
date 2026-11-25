@@ -53,7 +53,7 @@ const AdminSupport = lazy(() => import('./pages/admin/AdminSupport'))
 const AdminAudit = lazy(() => import('./pages/admin/AdminAudit'))
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'))
 const AdminPlans = lazy(() => import('./pages/admin/AdminPlans'))
-const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'))
+const AdminPayouts = lazy(() => import('./pages/admin/AdminPayouts'))
 const AdminFraud = lazy(() => import('./pages/admin/AdminFraud'))
 const AdminDisputes = lazy(() => import('./pages/admin/AdminDisputes'))
 const Invoices = lazy(() => import('./pages/dashboard/Invoices'))
@@ -158,7 +158,7 @@ export default function App() {
               <Route path="orders" element={<AdminOrders />} />
               <Route path="audit" element={<AdminAudit />} />
               <Route path="plans" element={<AdminPlans />} />
-              <Route path="payments" element={<AdminPayments />} />
+              <Route path="payouts" element={<AdminPayouts />} />
               <Route path="fraud" element={<AdminFraud />} />
               <Route path="disputes" element={<AdminDisputes />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />

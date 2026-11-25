@@ -37,7 +37,6 @@ export default function AdminOverview() {
         ['High priority', stats.high_tickets ?? 0, stats.high_tickets > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/support'],
         ['Failed payments (7d)', stats.failed_orders_7d ?? 0, stats.failed_orders_7d > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/orders'],
         ['Razorpay issues', billing ? billing.open_issues + billing.failed_24h : '…', billing && billing.open_issues + billing.failed_24h > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/razorpay'],
-        ['Plan payments to review', stats.pending_plan_payments ?? 0, stats.pending_plan_payments > 0 ? 'bg-lime' : 'bg-white', '/admin/payments'],
         ['Open disputes', stats.open_disputes ?? 0, stats.open_disputes > 0 ? 'bg-ink text-white' : 'bg-white', '/admin/disputes'],
         ['Fraud flags', stats.open_flags ?? 0, stats.open_flags > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/fraud'],
         ['Open reports', stats.open_reports, stats.open_reports > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/reports'],

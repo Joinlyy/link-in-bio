@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CalendarCheck, Download, IndianRupee, MessageCircleQuestionMark, Receipt, ShieldAlert, Undo2, Wallet } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { usePage } from '../../context/PageContext'
 import { errorMessage, supabase } from '../../lib/supabase'
 import { formatInr } from '../../lib/images'
@@ -37,58 +38,6 @@ export const ORDER_COLUMNS = 'payment_submitted_at, id, page_id, product_id, kin
 
 const STATUS_TONE = { paid: 'green', refunded: 'red', pending: 'lilac', failed: 'neutral' }
 const STATUS_LABEL = { pending: 'waiting for payment', failed: 'payment not received' }
-
-/** UPI payments buyers say they've made, for the creator to check in their bank app */
-function UpiToConfirm({ orders, onPatch, canEdit }) {
-  const toast = useToast()
-  const [busy, setBusy] = useState(null)
-  const waiting = orders.filter((o) => o.payment_provider === 'upi' && o.status === 'pending' && o.payment_ref)
-  if (!waiting.length) return null
-
-  async function confirm(o) {
-    setBusy(o.id)
-    const { error } = await supabase.rpc('confirm_upi_order', { p_order_id: o.id })
-    setBusy(null)
-    if (error) return toast(errorMessage(error), 'error')
-    onPatch(o.id, { status: 'paid', paid_at: new Date().toISOString() })
-    toast('Confirmed. The buyer has access now.')
-  }
-
-  async function reject(o) {
-    const reason = await askText({ title: 'Payment not received?', message: `${formatInr(o.amount_inr)} from ${o.buyer_name || o.buyer_email}, reference ${o.payment_ref}.\n\nThe buyer will see this reason on their order page.`, label: 'Reason', defaultValue: 'Payment not found in my bank account', confirmLabel: 'Mark as not received', danger: true })
-    if (reason === null) return
-    setBusy(o.id)
-    const { error } = await supabase.rpc('reject_upi_order', { p_order_id: o.id, p_reason: reason })
-    setBusy(null)
-    if (error) return toast(errorMessage(error), 'error')
-    onPatch(o.id, { status: 'failed', refund_reason: reason })
-    toast('Marked as not received')
-  }
-
-  return (
-    <Card className="border-2 border-lime p-5 sm:p-6">
-      <h2 className="text-lg font-bold">{waiting.length} UPI payment{waiting.length === 1 ? '' : 's'} to confirm</h2>
-      <p className="mt-1 text-sm text-ink-500">Open your bank or UPI app, find a payment with this amount and reference, then confirm it. Confirm only money you can see.</p>
-      <ul className="mt-4 divide-y divide-ink/5">
-        {waiting.map((o) => (
-          <li key={o.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{formatInr(o.amount_inr)} · {o.kind === 'tip' ? 'Tip' : o.product_title}</p>
-              <p className="truncate text-sm text-ink-500">{o.buyer_name ? `${o.buyer_name} · ` : ''}{o.buyer_email}</p>
-              <p className="text-sm">Reference <b className="tracking-wider">{o.payment_ref}</b> · sent {formatIst(o.payment_submitted_at, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
-            </div>
-            {canEdit && (
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" loading={busy === o.id} onClick={() => confirm(o)}>Money received</Button>
-                <Button size="sm" variant="ghost" disabled={busy === o.id} onClick={() => reject(o)}>Not received</Button>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Card>
-  )
-}
 
 async function refundOrder(order, toast) {
   const reason = await askText({ title: `Refund ${formatInr(order.amount_inr)}?`, message: `To ${order.buyer_email}\n\nTest mode: no real money moves yet. The order is marked refunded and the buyer loses access.`, label: 'Reason (shown to the buyer)', defaultValue: 'Refund requested', confirmLabel: 'Refund', danger: true })
@@ -450,22 +399,26 @@ function Bookings({ pageId }) {
   )
 }
 
-function Payouts({ total }) {
+function Payouts() {
+  const [e, setE] = useState(null)
+  useEffect(() => {
+    supabase.rpc('my_earnings').then(({ data }) => setE(data || null))
+  }, [])
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="rounded-3xl bg-ink p-7 text-white">
-        <p className="eyebrow text-lime">Available balance</p>
-        <p className="mt-3 font-display text-5xl font-bold">{formatInr(total)}</p>
-        <p className="mt-2 text-sm text-white/60">From test orders — not real money.</p>
-        <button type="button" disabled className="mt-6 h-11 rounded-full bg-white/10 px-5 text-sm font-semibold text-white/50">Withdraw to bank / UPI</button>
+        <p className="eyebrow text-lime">Owed to you</p>
+        <p className="mt-3 font-display text-5xl font-bold">{formatInr(e?.balance || 0)}</p>
+        <p className="mt-2 text-sm text-white/60">{e ? `${formatInr(e.payable_now)} ready to be sent, ${formatInr(e.held)} held for 2 days after each sale.` : 'Loading…'}</p>
+        <Link to="/dashboard/payouts" className="mt-6 inline-flex h-11 items-center rounded-full bg-lime px-5 text-sm font-semibold text-ink">See payouts</Link>
       </div>
       <Card className="p-7">
-        <p className="eyebrow text-ink-500">Payouts — coming soon</p>
-        <h3 className="mt-3 text-xl font-bold">Get paid to your UPI or bank</h3>
+        <p className="eyebrow text-ink-500">How payouts work</p>
+        <h3 className="mt-3 text-xl font-bold">We collect, then pay your UPI ID</h3>
         <ul className="mt-4 space-y-2 text-sm text-ink-600">
-          <li>• KYC (PAN + bank account) through our payment partner</li>
-          <li>• Weekly automatic payouts, minus payment gateway fees</li>
-          <li>• GST invoices and TDS statements for your accountant</li>
+          <li>• Buyers pay Joinlyy by UPI, card or net banking</li>
+          <li>• We keep our commission and send you the rest to your payout UPI ID</li>
+          <li>• Every sale and every payout is listed under Payouts</li>
         </ul>
       </Card>
     </div>
@@ -530,7 +483,6 @@ export default function Sales() {
             </div>
           </Card>
           <Tabs label="Sales" tabs={TABS} value={tab} onChange={setTab} />
-          {tab === 'orders' && <UpiToConfirm orders={orders} onPatch={patchOrder} canEdit={canEdit} />}
           {tab === 'orders' && <Orders orders={orders} onPatch={patchOrder} canEdit={canEdit} />}
           {tab === 'questions' && <Questions orders={orders} onPatch={patchOrder} canEdit={canEdit} />}
           {tab === 'disputes' && <Disputes pageId={page.id} orders={orders} onPatch={patchOrder} canEdit={canEdit} />}

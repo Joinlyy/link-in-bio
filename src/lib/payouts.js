@@ -19,14 +19,14 @@ export const KYC_LABEL = {
 /** The creator's own payout state: whether Route is on, their KYC row, and whether they can sell */
 export function usePayouts() {
   const { user } = useAuth()
-  const [state, setState] = useState({ loading: true, route: false, canSell: true, account: null })
+  const [state, setState] = useState({ loading: true, route: false, canSell: true, hasUpi: false, account: null })
   const load = useCallback(async () => {
     if (!user) return
     const [{ data: st }, { data: account }] = await Promise.all([
       supabase.rpc('my_payout_status'),
       supabase.from('payout_accounts').select('status, legal_name, business_type, bank_last4, bank_ifsc, beneficiary_name, requirements, reason, activated_at').eq('user_id', user.id).maybeSingle(),
     ])
-    setState({ loading: false, route: Boolean(st?.route_enabled), canSell: st ? Boolean(st.can_sell) : true, account: account || null })
+    setState({ loading: false, route: Boolean(st?.route_enabled), canSell: st ? Boolean(st.can_sell) : true, hasUpi: Boolean(st?.has_upi), account: account || null })
   }, [user])
   useEffect(() => {
     load()

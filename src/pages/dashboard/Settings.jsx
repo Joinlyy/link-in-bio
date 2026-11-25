@@ -22,68 +22,28 @@ import { KYC_LABEL, usePayouts } from '../../lib/payouts'
 
 const SHOW_DOMAIN_AND_SEO = false
 
-const UPI_RE = /^[a-zA-Z0-9._-]{2,255}@[a-zA-Z0-9]{2,64}$/
-
 /** The creator's own UPI ID: buyers pay it directly, and the creator confirms each payment */
 function PayoutsPointer() {
-  const { account } = usePayouts()
+  const { account, route, hasUpi } = usePayouts()
   const status = account?.status || 'not_started'
+  const ok = route ? status === 'activated' : hasUpi
   return (
     <Card className="p-5 sm:p-7">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-bold">Payouts</h2>
-        <Badge tone={status === 'activated' ? 'green' : 'neutral'}>{KYC_LABEL[status]}</Badge>
+        <Badge tone={ok ? 'green' : 'neutral'}>{route ? KYC_LABEL[status] : hasUpi ? 'UPI ID set' : 'Not set'}</Badge>
       </div>
-      <p className="mt-1 text-sm text-ink-500">Buyers pay once and your share goes straight to your bank account. Verify yourself once to start selling.</p>
-      <div className="mt-4"><Button to="/dashboard/payouts" variant={status === 'activated' ? 'outline' : 'primary'}>{status === 'activated' ? 'View payout account' : 'Set up payouts'}</Button></div>
+      <p className="mt-1 text-sm text-ink-500">Buyers pay Joinlyy, and we send your earnings, minus our commission, to your payout UPI ID. Add it once to start selling.</p>
+      <div className="mt-4"><Button to="/dashboard/payouts" variant={ok ? 'outline' : 'primary'}>{ok ? 'See earnings and payouts' : 'Add your UPI ID'}</Button></div>
     </Card>
   )
 }
 
 function PaymentsCard() {
-  const { route } = usePayouts()
-  return route ? <PayoutsPointer /> : <UpiCard />
+  return <PayoutsPointer />
 }
 
-function UpiCard() {
-  const { page, updatePage, canEdit } = usePage()
-  const toast = useToast()
-  const [upi, setUpi] = useState(page.upi_id || '')
-  const [name, setName] = useState(page.upi_name || page.display_name || '')
-  const clean = upi.trim()
-  const wrong = clean && !UPI_RE.test(clean)
-  const changed = clean !== (page.upi_id || '') || name.trim() !== (page.upi_name || '')
-
-  function save() {
-    updatePage({ upi_id: clean || null, upi_name: name.trim() || null }, { immediate: true })
-    toast(clean ? 'Buyers will now pay your UPI ID directly' : 'UPI payments turned off')
-  }
-
-  return (
-    <Card className="p-5 sm:p-7">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-bold">Get paid by UPI</h2>
-        {page.upi_id ? <Badge tone="green">On</Badge> : <Badge>Off</Badge>}
-      </div>
-      <p className="mt-1 text-sm text-ink-500">
-        Buyers pay your UPI ID straight from GPay, PhonePe or Paytm, with no fees. They send you the payment reference, and you confirm it in Sales after checking your bank app. Their access opens when you confirm.
-      </p>
-      <div className="mt-5 grid gap-4">
-        <Input label="Your UPI ID" placeholder="yourname@okhdfcbank" value={upi} disabled={!canEdit} error={wrong ? 'A UPI ID looks like name@bank, for example priya@okaxis' : undefined} onChange={(e) => setUpi(e.target.value)} />
-        <Input label="Name shown when paying" maxLength={80} placeholder="As it appears in your bank" value={name} disabled={!canEdit} onChange={(e) => setName(e.target.value)} />
-      </div>
-      {canEdit && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={save} disabled={!changed || wrong}>Save</Button>
-          {page.upi_id && <Button variant="ghost" onClick={() => { setUpi(''); updatePage({ upi_id: null }, { immediate: true }); toast('UPI payments turned off') }}>Turn off</Button>}
-        </div>
-      )}
-    </Card>
-  )
-}
-
-const ALERT_STATUS = { sent: 'Sent', delivered: 'Delivered', read: 'Read', failed: 'Failed', skipped: 'Not sent', sending: 'Sending' }
-const ALERT_EVENT = { upi_submitted: 'UPI payment to confirm', new_order: 'New order', new_lead: 'New lead', brand_enquiry: 'Brand enquiry', order_confirmed: 'Buyer: payment confirmed', payment_rejected: 'Buyer: payment not received', test: 'Test message' }
+const ALERT_EVENT = { new_order: 'New order', new_lead: 'New lead', brand_enquiry: 'Brand enquiry', order_confirmed: 'Buyer: payment confirmed', payment_rejected: 'Buyer: payment not received', test: 'Test message' }
 
 /** WhatsApp alerts from Joinlyy's number about orders, payments, leads and enquiries */
 function WhatsappAlertsCard() {

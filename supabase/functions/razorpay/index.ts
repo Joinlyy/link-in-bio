@@ -505,8 +505,14 @@ async function orderCreate(db: SupabaseClient, body: Json) {
   const o = await orderByToken(db, String(body.token ?? ''))
   if (o.payment_provider !== 'razorpay' || o.status !== 'pending' || !(o.amount_inr > 0)) throw new HttpError(409, 'This order is not waiting for a payment')
   const ownerId = o.pages.owner_id as string
+  // Route on and the creator verified: Razorpay splits the money. Otherwise every rupee comes to us and the creator is paid by hand.
+  const { data: st } = await db.from('app_settings').select('route_enabled').eq('id', true).maybeSingle()
   const { data: acc } = await db.from('payout_accounts').select('rzp_account_id, status').eq('user_id', ownerId).maybeSingle()
-  if (!acc?.rzp_account_id || acc.status !== 'activated') throw new HttpError(409, 'This creator can not take payments right now')
+  const split = Boolean(st?.route_enabled && acc?.rzp_account_id && acc.status === 'activated')
+  if (!split) {
+    const { data: pg } = await db.from('pages').select('upi_id').eq('owner_id', ownerId).maybeSingle()
+    if (!pg?.upi_id) throw new HttpError(409, 'This creator can not take payments right now')
+  }
   const c = await commissionFor(db, ownerId, o.amount_inr)
   let rzpOrderId = o.rzp_order_id as string | null
   if (rzpOrderId) {
@@ -523,11 +529,11 @@ async function orderCreate(db: SupabaseClient, body: Json) {
     const made = await rzp('/orders', 'POST', {
       amount: Math.round(o.amount_inr * 100), currency: 'INR', receipt: String(o.id).slice(0, 40),
       notes: { order_id: o.id, page: o.pages.username },
-      transfers: [{
-        account: acc.rzp_account_id, amount: c.sharePaise, currency: 'INR', notes: { order_id: o.id },
+      ...(split ? { transfers: [{
+        account: acc!.rzp_account_id, amount: c.sharePaise, currency: 'INR', notes: { order_id: o.id },
         on_hold: HOLD_HOURS > 0 ? 1 : 0,
         ...(HOLD_HOURS > 0 ? { on_hold_until: Math.floor(Date.now() / 1000) + HOLD_HOURS * 3600 } : {}),
-      }],
+      }] } : {}),
     })
     rzpOrderId = made.id
     await db.from('orders').update({ rzp_order_id: made.id, commission_pct: c.pct, commission_inr: c.commission, creator_share_inr: c.share }).eq('id', o.id)
