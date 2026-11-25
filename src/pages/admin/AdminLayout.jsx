@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { Activity, Ban, LifeBuoy, Wallet, Crown, Flag, Gauge, LogOut, MessagesSquare, Receipt, Scale, ScrollText, ShieldAlert, Users, IndianRupee } from 'lucide-react'
+import { Activity, Ban, CreditCard, LifeBuoy, Wallet, Crown, Flag, Gauge, LogOut, MessagesSquare, Receipt, Scale, ScrollText, ShieldAlert, Users, IndianRupee } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Logo } from '../../components/icons'
 import { APP_NAME } from '../../lib/config'
@@ -16,6 +16,7 @@ const NAV = [
   { to: '/admin/orders', label: 'Orders', icon: Receipt },
   { to: '/admin/money', label: 'Money', icon: Wallet },
   { to: '/admin/subscriptions', label: 'Subscriptions', icon: Crown },
+  { to: '/admin/razorpay', label: 'Razorpay', icon: CreditCard },
   { to: '/admin/disputes', label: 'Disputes', icon: Scale },
   { to: '/admin/fraud', label: 'Fraud flags', icon: ShieldAlert },
   { to: '/admin/plans', label: 'Plans & pricing', icon: Crown },

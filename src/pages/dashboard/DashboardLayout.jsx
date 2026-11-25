@@ -8,6 +8,7 @@ import {
 import { Avatar } from '../../components/page/PageRenderer'
 import { supabase } from '../../lib/supabase'
 import PasswordBanner from '../../components/SetPassword'
+import PlanEndBanner from '../../components/PlanEndBanner'
 import { useAuth } from '../../context/AuthContext'
 import { PageProvider, usePage } from '../../context/PageContext'
 import { Brand } from '../../components/SiteChrome'
@@ -296,6 +297,7 @@ function Shell() {
 
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <PasswordBanner />
+        <PlanEndBanner />
 
         {/* Top bar */}
         <header className="card z-40 flex flex-wrap items-center justify-between gap-2 p-3 sm:p-3.5 lg:sticky lg:top-4">

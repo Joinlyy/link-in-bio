@@ -45,6 +45,7 @@ const Automations = lazy(() => import('./pages/dashboard/Automations'))
 const Support = lazy(() => import('./pages/dashboard/Support'))
 const AdminMessages = lazy(() => import('./pages/admin/AdminMessages'))
 const SeoLanding = lazy(() => import('./pages/SeoLanding'))
+const AdminRazorpay = lazy(() => import('./pages/admin/AdminRazorpay'))
 const AdminSubscriptions = lazy(() => import('./pages/admin/AdminSubscriptions'))
 const AdminMoney = lazy(() => import('./pages/admin/AdminMoney'))
 const AdminStatus = lazy(() => import('./pages/admin/AdminStatus'))
@@ -149,6 +150,7 @@ export default function App() {
               <Route path="messages" element={<AdminMessages />} />
               <Route path="support" element={<AdminSupport />} />
               <Route path="subscriptions" element={<AdminSubscriptions />} />
+              <Route path="razorpay" element={<AdminRazorpay />} />
               <Route path="money" element={<AdminMoney />} />
               <Route path="status" element={<AdminStatus />} />
               <Route path="orders" element={<AdminOrders />} />

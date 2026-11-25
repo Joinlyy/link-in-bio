@@ -59,6 +59,38 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
     return
   }
 
+  if (kind === 'billing_payment') {
+    const { data: bp } = await db.from('billing_payments')
+      .select('id, user_id, status, amount_inr, base_inr, gst_inr, method, error, rzp_payment_id, period_end, billing_subscriptions(plan, period)').eq('id', id).maybeSingle()
+    if (!bp) return
+    const sub = first(bp.billing_subscriptions)
+    const { data: u } = await db.from('profiles').select('email').eq('id', bp.user_id).maybeSingle()
+    if (!u?.email || !sub) return
+    const name = await planName(db, sub.plan)
+    if (bp.status === 'captured') {
+      await deliver(db, `bill_receipt:${bp.id}`, 'bill_receipt', u.email, T.subscriptionReceipt({
+        plan: name, period: sub.period, base: Number(bp.base_inr), gst: Number(bp.gst_inr), total: Number(bp.amount_inr),
+        until: bp.period_end ? dateIn(bp.period_end) : null, paymentId: bp.rzp_payment_id, method: bp.method,
+      }))
+      await syncContact(u.email, { PLAN: sub.plan })
+    } else if (bp.status === 'failed') {
+      await deliver(db, `bill_failed:${bp.id}`, 'bill_failed', u.email, T.renewalFailed({ plan: name, total: Number(bp.amount_inr), reason: bp.error }))
+    }
+    return
+  }
+
+  if (kind === 'billing_sub') {
+    const { data: bs } = await db.from('billing_subscriptions').select('id, user_id, plan, status, current_end').eq('id', id).maybeSingle()
+    if (!bs) return
+    const { data: u } = await db.from('profiles').select('email').eq('id', bs.user_id).maybeSingle()
+    if (!u?.email) return
+    const name = await planName(db, bs.plan)
+    const until = bs.current_end ? dateIn(bs.current_end) : null
+    if (bs.status === 'cancelled') await deliver(db, `sub_cancelled:${bs.id}`, 'sub_cancelled', u.email, T.subscriptionCancelled({ plan: name, until }))
+    if (bs.status === 'halted') await deliver(db, `sub_halted:${bs.id}`, 'sub_halted', u.email, T.autoRenewStopped({ plan: name, until }))
+    return
+  }
+
   if (kind === 'plan_payment') {
     const { data: pp } = await db.from('plan_payments').select('id, user_id, plan, status, note, decided_at').eq('id', id).maybeSingle()
     if (!pp || !['approved', 'rejected'].includes(pp.status) || !recent(pp.decided_at)) return
@@ -74,22 +106,30 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
   }
 }
 
-/** Plans ending within 3 days, and plans that ended in the last 2 days (each email once per plan end date) */
+/** Days between two dates in India time: today minus the plan's last day (negative before it ends) */
+const istDay = (ts: number) => new Date(ts + 5.5 * 3600_000).toISOString().slice(0, 10)
+const dayDiff = (endTs: number, nowTs: number) => Math.round((Date.parse(istDay(nowTs)) - Date.parse(istDay(endTs))) / 86400_000)
+const STAGES: Record<number, string> = { [-3]: 'before3', 0: 'day0', 1: 'after1', 2: 'after2', 3: 'after3', 7: 'after7', 10: 'after10' }
+
+/**
+ * Plan-end reminders: 3 days before, on the last day, then 1, 2, 3, 7 and 10 days after it ended. Each is sent once per plan end date.
+ * Plans that renew by themselves (an active Razorpay subscription with auto-renew on) get none of them.
+ */
 async function reminders(db: SupabaseClient) {
   const now = Date.now()
-  const { data: soon } = await db.from('profiles').select('id, email, plan, plan_expires_at')
-    .neq('plan', 'free').gt('plan_expires_at', new Date(now).toISOString()).lt('plan_expires_at', new Date(now + 3 * 86400_000).toISOString())
-  for (const u of soon ?? []) {
-    const days = Math.max(1, Math.ceil((new Date(u.plan_expires_at).getTime() - now) / 86400_000))
-    await deliver(db, `plan_expiring:${u.id}:${u.plan_expires_at.slice(0, 10)}`, 'plan_expiring', u.email, T.planExpiring({ plan: await planName(db, u.plan), until: dateIn(u.plan_expires_at), days }))
+  const { data: due } = await db.from('profiles').select('id, email, plan, plan_expires_at')
+    .neq('plan', 'free').gt('plan_expires_at', new Date(now - 11 * 86400_000).toISOString()).lt('plan_expires_at', new Date(now + 4 * 86400_000).toISOString())
+  let sent = 0
+  for (const u of due ?? []) {
+    const stage = STAGES[dayDiff(Date.parse(u.plan_expires_at), now)]
+    if (!stage || !u.email) continue
+    const { data: auto } = await db.from('billing_subscriptions').select('id').eq('user_id', u.id).eq('status', 'active').eq('cancel_at_cycle_end', false).limit(1)
+    if (auto?.length) continue
+    await deliver(db, `plan_end:${u.id}:${u.plan_expires_at.slice(0, 10)}:${stage}`, 'plan_end', u.email, T.planReminder(stage, { plan: await planName(db, u.plan), until: dateIn(u.plan_expires_at) }))
+    sent++
+    if (stage === 'after1') await syncContact(u.email, { PLAN: 'expired' })
   }
-  const { data: ended } = await db.from('profiles').select('id, email, plan, plan_expires_at')
-    .neq('plan', 'free').lt('plan_expires_at', new Date(now).toISOString()).gt('plan_expires_at', new Date(now - 2 * 86400_000).toISOString())
-  for (const u of ended ?? []) {
-    await deliver(db, `plan_expired:${u.id}:${u.plan_expires_at.slice(0, 10)}`, 'plan_expired', u.email, T.planExpired({ plan: await planName(db, u.plan) }))
-    await syncContact(u.email, { PLAN: 'expired' })
-  }
-  return { expiring: soon?.length ?? 0, ended: ended?.length ?? 0 }
+  return { checked: due?.length ?? 0, stages: sent }
 }
 
 Deno.serve(handle(async (req) => {
@@ -98,7 +138,7 @@ Deno.serve(handle(async (req) => {
   const db = adminClient()
   if (body.action === 'event') {
     const id = String(body.id ?? '')
-    if (!/^[0-9a-f-]{36}$/i.test(id) || !['welcome', 'order', 'plan_payment'].includes(String(body.kind))) throw new HttpError(400, 'Invalid event')
+    if (!/^[0-9a-f-]{36}$/i.test(id) || !['welcome', 'order', 'plan_payment', 'billing_payment', 'billing_sub'].includes(String(body.kind))) throw new HttpError(400, 'Invalid event')
     await handleEvent(db, String(body.kind), id)
     return json({ ok: true })
   }

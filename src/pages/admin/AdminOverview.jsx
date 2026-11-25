@@ -13,9 +13,11 @@ export default function AdminOverview() {
   const [error, setError] = useState('')
   const [rev, setRev] = useState(null)
   const [plans, setPlans] = useState([])
+  const [billing, setBilling] = useState(null)
 
   useEffect(() => {
     supabase.rpc('admin_money').then(({ data }) => setRev(data))
+    supabase.rpc('admin_billing_overview').then(({ data }) => setBilling(data))
     supabase.from('plans').select('id, name, position').order('position').then(({ data }) => setPlans(data || []))
     supabase.rpc('admin_stats').then(({ data, error: err }) => (err ? setError(err.message) : setStats(data)))
   }, [])
@@ -34,6 +36,7 @@ export default function AdminOverview() {
         ['Buyer support open', stats.open_tickets ?? 0, stats.open_tickets > 0 ? 'bg-ink text-white' : 'bg-white', '/admin/support'],
         ['High priority', stats.high_tickets ?? 0, stats.high_tickets > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/support'],
         ['Failed payments (7d)', stats.failed_orders_7d ?? 0, stats.failed_orders_7d > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/orders'],
+        ['Razorpay issues', billing ? billing.open_issues + billing.failed_24h : '…', billing && billing.open_issues + billing.failed_24h > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/razorpay'],
         ['Plan payments to review', stats.pending_plan_payments ?? 0, stats.pending_plan_payments > 0 ? 'bg-lime' : 'bg-white', '/admin/payments'],
         ['Open disputes', stats.open_disputes ?? 0, stats.open_disputes > 0 ? 'bg-ink text-white' : 'bg-white', '/admin/disputes'],
         ['Fraud flags', stats.open_flags ?? 0, stats.open_flags > 0 ? 'bg-rose text-white' : 'bg-white', '/admin/fraud'],
@@ -47,7 +50,7 @@ export default function AdminOverview() {
         ['Sales volume (30d)', money(stats.gmv_30d), 'bg-lime', '/admin/money'],
         ['Our commission', money(m?.commission), 'bg-white', '/admin/money'],
         ['Plan revenue (30d)', money(m?.plan_revenue_30d), 'bg-lilac-100', '/admin/subscriptions'],
-        ['MRR (starts with Razorpay)', '₹0', 'bg-white', '/admin/subscriptions'],
+        ['MRR (auto-renewing plans)', billing ? money(billing.mrr) : '…', 'bg-white', '/admin/razorpay'],
         ['Orders (30d)', formatNumber(stats.orders_30d), 'bg-white', '/admin/orders'],
         ['Sales volume, all time', money(stats.gmv_total), 'bg-white', '/admin/orders'],
         ['Orders, all time', formatNumber(stats.orders_total), 'bg-white'],

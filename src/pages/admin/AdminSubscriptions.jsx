@@ -49,9 +49,10 @@ export default function AdminSubscriptions() {
               { key: 'plan', label: 'Plan', value: (r) => r.plan, render: (r) => name(r.plan) },
               { key: 'status', label: 'Status', value: (r) => (r.active ? 1 : 0), render: (r) => (r.active ? <Badge tone="green">Active</Badge> : r.plan === 'free' ? <Badge>Free</Badge> : <Badge tone="red">Expired</Badge>) },
               { key: 'renews', label: 'Renews / ends', value: (r) => r.plan_expires_at || '', className: 'whitespace-nowrap', render: (r) => (r.plan === 'free' ? '—' : `${day(r.plan_expires_at)}${daysLeft(r.plan_expires_at) !== null ? ` (${daysLeft(r.plan_expires_at)}d)` : ''}`) },
+              { key: 'auto', label: 'Auto-renew', value: (r) => (r.rzp_status ? (r.rzp_auto_renew ? 1 : 0) : -1), render: (r) => (r.rzp_status ? (r.rzp_auto_renew ? <Badge tone="green">On</Badge> : <Badge>Off ({r.rzp_status})</Badge>) : '—') },
               { key: 'source', label: 'Source', value: (r) => r.last_source || '', className: 'capitalize text-ink-600', render: (r) => (r.last_source === 'admin' ? 'Admin grant' : r.last_source || '—') },
               { key: 'paid', label: 'Paid so far', align: 'right', value: (r) => r.paid_total, className: 'font-semibold', render: (r) => formatInr(r.paid_total) },
-              { key: 'issues', label: 'Failed / pending / overrides', value: (r) => r.failed, className: 'text-ink-600', render: (r) => `${r.failed} / ${r.pending} / ${r.overrides}` },
+              { key: 'issues', label: 'Failed / pending / overrides', value: (r) => r.failed, className: 'text-ink-600', render: (r) => `${r.failed + (r.rzp_failed || 0)} / ${r.pending} / ${r.overrides}` },
             ]}
           />
         </Card>

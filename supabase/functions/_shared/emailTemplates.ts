@@ -157,3 +157,76 @@ export function ticketReply(o: { reply: string; orderUrl: string; ticketNo: numb
     }),
   }
 }
+
+// ---- Razorpay subscriptions ----
+const inr2 = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+export function subscriptionReceipt(o: { plan: string; period: string; base: number; gst: number; total: number; until: string | null; paymentId: string; method?: string | null }): Mail {
+  return {
+    subject: `Payment received: your ${o.plan} plan is active`,
+    html: layout({
+      preheader: `${inr2(o.total)} received. Thank you!`,
+      title: `Your ${o.plan} plan is active`,
+      body: `<p>Thank you! We received your payment and your <b>${esc(o.plan)}</b> plan (${o.period === 'year' ? 'yearly' : 'monthly'}) is on${o.until ? ` until <b>${esc(o.until)}</b>` : ''}.</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:15px;border-top:1px solid #ECEAE3">
+<tr><td style="padding:10px 0;border-bottom:1px solid #ECEAE3">${esc(o.plan)} plan</td><td align="right" style="padding:10px 0;border-bottom:1px solid #ECEAE3">${inr2(o.base)}</td></tr>
+<tr><td style="padding:10px 0;border-bottom:1px solid #ECEAE3">GST (18%)</td><td align="right" style="padding:10px 0;border-bottom:1px solid #ECEAE3">${inr2(o.gst)}</td></tr>
+<tr><td style="padding:10px 0"><b>Total paid</b></td><td align="right" style="padding:10px 0"><b>${inr2(o.total)}</b></td></tr></table>
+<p style="font-size:13px;color:#6B6E78">Payment ID: ${esc(o.paymentId)}${o.method ? `, paid by ${esc(o.method)}` : ''}. Your plan renews automatically; you can turn auto-renew off any time on the Billing page.</p>`,
+      button: { label: 'Open my dashboard', url: `${APP}/dashboard` },
+    }),
+  }
+}
+
+export function renewalFailed(o: { plan: string; total: number; reason?: string | null }): Mail {
+  return {
+    subject: `Your ${o.plan} payment did not go through`,
+    html: layout({
+      preheader: 'Your plan has not been renewed yet.',
+      title: 'Your payment did not go through',
+      body: `<p>We tried to charge <b>${inr2(o.total)}</b> for your <b>${esc(o.plan)}</b> plan, but the payment failed${o.reason ? ` (${esc(o.reason)})` : ''}.</p>
+<p>Your plan stays on until its current end date. Please check that your card or UPI has enough balance, or pay again from the Billing page, so you don't lose your paid features.</p>`,
+      button: { label: 'Fix my payment', url: `${APP}/dashboard/billing` },
+    }),
+  }
+}
+
+export function subscriptionCancelled(o: { plan: string; until: string | null }): Mail {
+  return {
+    subject: `Your ${o.plan} auto-renew is off`,
+    html: layout({
+      preheader: o.until ? `Your plan stays on until ${o.until}.` : 'Your subscription was cancelled.',
+      title: 'Auto-renew is turned off',
+      body: `<p>Your <b>${esc(o.plan)}</b> subscription will not renew${o.until ? `. Your plan stays active until <b>${esc(o.until)}</b>` : ''}, then your account moves to the free Starter plan. Your page and content stay safe.</p><p>Changed your mind? You can subscribe again any time.</p>`,
+      button: { label: 'Open billing', url: `${APP}/dashboard/billing` },
+    }),
+  }
+}
+
+export function autoRenewStopped(o: { plan: string; until: string | null }): Mail {
+  return {
+    subject: `We could not renew your ${o.plan} plan`,
+    html: layout({
+      preheader: 'Auto-renew stopped after payment attempts failed.',
+      title: 'Auto-renew stopped',
+      body: `<p>We tried several times to renew your <b>${esc(o.plan)}</b> plan, but the payments failed, so auto-renew has stopped${o.until ? `. Your plan stays on until <b>${esc(o.until)}</b>` : ''}.</p><p>Subscribe again from the Billing page to keep your paid features.</p>`,
+      button: { label: 'Renew my plan', url: `${APP}/dashboard/billing` },
+    }),
+  }
+}
+
+/** Plan-end reminders: 3 days before, on the day, then 1, 2, 3, 7 and 10 days after it ended */
+export function planReminder(stage: string, o: { plan: string; until: string }): Mail {
+  const renew = { label: 'Renew my plan', url: `${APP}/dashboard/billing` }
+  const t: Record<string, { subject: string; title: string; text: string; pre: string }> = {
+    'before3': { subject: `Your ${o.plan} plan ends in 3 days`, title: `Your plan ends on ${o.until}`, pre: 'Renew now so nothing stops.', text: 'After that your account goes back to the free Starter plan. Extra automations, WhatsApp alerts and sales tools will pause. Renew now and your plan continues without a gap.' },
+    'day0': { subject: `Your ${o.plan} plan ends today`, title: 'Your plan ends today', pre: 'Last day of your paid plan.', text: `Today, ${o.until}, is the last day of your plan. Renew today to keep your paid features.` },
+    'after1': { subject: `Your ${o.plan} plan ended yesterday`, title: 'Your plan has ended', pre: 'Come back to your paid features.', text: 'Your plan ended yesterday and your account is now on the free Starter plan. Your page and content are safe, and free comment to DM automation keeps working. Renew to switch your paid features back on.' },
+    'after2': { subject: `Your ${o.plan} features are paused`, title: 'Your paid features are paused', pre: 'Two days since your plan ended.', text: 'Extra pages, WhatsApp alerts and advanced automations are paused. Renewing takes a minute and brings everything back as you left it.' },
+    'after3': { subject: `Still want ${o.plan}? Renew in one minute`, title: 'Renew in one minute', pre: 'Your settings are saved.', text: 'Your settings and content are saved exactly as you left them. Renew and everything switches back on straight away.' },
+    'after7': { subject: `A week without ${o.plan}`, title: 'A week without your paid plan', pre: 'Your audience keeps visiting your page.', text: 'Your page is still getting visitors. Renew to bring back your paid features and keep growing.' },
+    'after10': { subject: `Last reminder: renew your ${o.plan} plan`, title: 'Last reminder', pre: 'This is our last email about your plan.', text: 'This is our last reminder about your ended plan. You can renew any time from the Billing page. Thank you for creating with Joinlyy.' },
+  }
+  const m = t[stage] ?? t['after1']
+  return { subject: m.subject, html: layout({ preheader: m.pre, title: m.title, body: `<p>${esc(m.text)}</p>`, button: renew }) }
+}

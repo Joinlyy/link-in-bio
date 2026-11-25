@@ -79,6 +79,22 @@ export default function AdminStatus() {
         </Card>
       </div>
 
+      {s.razorpay && (
+        <Card className="p-5 sm:p-6">
+          <p className="eyebrow text-ink-500">Razorpay</p>
+          <dl className="mt-3 space-y-2 text-sm">
+            <div className="flex justify-between"><dt>Last webhook received</dt><dd>{ago(s.razorpay.last_event)}</dd></div>
+            <div className="flex justify-between"><dt>Failed webhooks (24h)</dt><dd><b>{s.razorpay.failed_24h}</b></dd></div>
+            <div className="flex justify-between"><dt>Waiting more than 10 minutes</dt><dd><b>{s.razorpay.unprocessed}</b></dd></div>
+            <div className="flex justify-between"><dt>Subscriptions not confirmed after 30 minutes</dt><dd><b>{s.razorpay.stuck_subscriptions}</b></dd></div>
+            <div className="flex justify-between"><dt>Open billing issues</dt><dd><b>{s.razorpay.open_issues}</b></dd></div>
+          </dl>
+          {(s.razorpay.failed_24h > 0 || s.razorpay.unprocessed > 0 || s.razorpay.stuck_subscriptions > 0 || s.razorpay.open_issues > 0) && (
+            <p className="mt-3 rounded-2xl bg-cream p-3 text-xs text-ink-600">Something needs a look: open Admin, Razorpay.</p>
+          )}
+        </Card>
+      )}
+
       <Card className="p-5 sm:p-6">
         <p className="eyebrow text-ink-500">Scheduled jobs</p>
         <ul className="mt-3 divide-y divide-ink/5 text-sm">

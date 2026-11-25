@@ -10,6 +10,7 @@ import { DataTable, useViewMode, ViewToggle } from '../../components/DataTable'
 import { PageHeading } from './DashboardLayout'
 import { featureList } from '../../lib/plans'
 import UpiPay from '../../components/UpiPay'
+import { cancelAutoRenew, checkPayment, money2, payForPlan, razorpayConfig, withGst } from '../../lib/razorpay'
 
 const LIMITS = [
   { key: 'max_pages', label: 'Bio pages', scope: 'on your account' },
@@ -87,23 +88,92 @@ export default function Billing() {
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [payInfo, setPayInfo] = useState(null)
   const [paying, setPaying] = useState(null)
+  const [rzp, setRzp] = useState(null) // { enabled, mode }
+  const [sub, setSub] = useState(null) // the latest Razorpay subscription
+  const [pays, setPays] = useState(null)
+  const [confirming, setConfirming] = useState(false)
+  const [payError, setPayError] = useState('')
   const loadPayInfo = useCallback(() => supabase.rpc('plan_payment_info').then(({ data }) => setPayInfo(data || {})), [])
 
   const loadHistory = useCallback(async () => {
     const { data } = await supabase.from('subscriptions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30)
     setHistory(data || [])
+    const [{ data: subs }, { data: payments }] = await Promise.all([
+      supabase.from('billing_subscriptions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+      supabase.from('billing_payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30),
+    ])
+    setSub(subs?.[0] || null)
+    setPays(payments || [])
   }, [user.id])
 
   useEffect(() => {
     supabase.from('plans').select('*').eq('is_active', true).order('position').then(({ data }) => setPlans(data || []))
     loadHistory()
     loadPayInfo()
+    razorpayConfig().then(setRzp)
   }, [loadHistory, loadPayInfo])
 
   const current = plans?.find((p) => p.id === plan?.plan)
   const expired = plan?.expires_at && new Date(plan.expires_at) < new Date()
+  const autoRenew = sub && sub.status === 'active' && !sub.cancel_at_cycle_end
+  const waiting = sub && ['created', 'authenticated'].includes(sub.status) && Date.now() - new Date(sub.created_at).getTime() < 86400_000
+
+  const refreshAll = () => {
+    reload()
+    loadHistory()
+    reloadPages()
+  }
+
+  /** Pays through Razorpay. The plan is switched on by the server after it checks Razorpay's own records. */
+  async function buy(p) {
+    setPayError('')
+    setBusy(p.id)
+    try {
+      const r = await payForPlan({ plan: p.id, period, onFailed: setPayError })
+      if (r.dismissed) return
+      if (r.activated) toast(`You’re on ${p.name}. Thank you!`)
+      else setConfirming(true)
+    } catch (e) {
+      toast(e.message, 'error')
+    } finally {
+      setBusy(null)
+      refreshAll()
+    }
+  }
+
+  /** "I paid but it still says pending": ask the server to look at Razorpay's records */
+  async function recheck() {
+    setBusy('check')
+    try {
+      const r = await checkPayment()
+      if (r.activated) {
+        setConfirming(false)
+        toast('Payment confirmed. Your plan is on.')
+      } else toast('We have not seen the payment yet. If money left your account it will show here within minutes, or message us from the order help button.')
+    } catch (e) {
+      toast(e.message, 'error')
+    } finally {
+      setBusy(null)
+      refreshAll()
+    }
+  }
+
+  async function stopRenewal() {
+    setBusy('cancel')
+    try {
+      await cancelAutoRenew()
+      toast('Auto-renew is off. Your plan stays on until it ends.')
+    } catch (e) {
+      toast(e.message, 'error')
+    } finally {
+      setBusy(null)
+      setConfirmCancel(false)
+      refreshAll()
+    }
+  }
 
   async function upgrade(p) {
+    if (rzp?.enabled) return buy(p)
     // Real payments go to the platform's UPI and wait for approval; test mode upgrades at once
     if (payInfo?.upi_id) return setPaying(p)
     setBusy(p.id)
@@ -133,6 +203,15 @@ export default function Billing() {
     <div className="space-y-4">
       <PageHeading title="Plan & billing." italic="Grow without limits." />
 
+      {payError && <Alert>{payError}</Alert>}
+      {(confirming || waiting) && !autoRenew && (
+        <Alert tone="info">
+          <b>We are confirming your payment.</b> This usually takes under a minute. If you were charged and your plan is not on yet, press the button and we will look at Razorpay’s records right now.
+          <div className="mt-2"><Button size="sm" variant="outline" loading={busy === 'check'} onClick={recheck}>Check my payment</Button></div>
+        </Alert>
+      )}
+      {sub?.status === 'halted' && <Alert>Auto-renew stopped because the payments failed. Your plan stays on until the end date below. Subscribe again to keep your paid features.</Alert>}
+      {pays?.[0]?.status === 'failed' && sub && ['pending', 'halted'].includes(sub.status) && <Alert>Your last payment did not go through{pays[0].error ? ` (${pays[0].error})` : ''}. Check your card or UPI, or subscribe again below.</Alert>}
       {payInfo?.pending ? (
         <Alert tone="success">
           <b>Payment sent for {plans.find((x) => x.id === payInfo.pending.plan)?.name || payInfo.pending.plan}</b> ({formatInr(payInfo.pending.amount_inr)}, reference {payInfo.pending.utr}). We’ll switch your plan on as soon as we’ve checked it, usually within a day.
@@ -160,13 +239,21 @@ export default function Billing() {
               {plan.plan === 'free'
                 ? 'Free forever. Upgrade any time.'
                 : plan.expires_at
-                  ? <>{expired ? 'Expired on' : 'Renews / ends on'} <b className="text-white">{fmtDate(plan.expires_at)}</b></>
+                  ? <>{autoRenew ? 'Renews automatically on' : expired ? 'Ended on' : 'Ends on'} <b className="text-white">{fmtDate(autoRenew && sub.current_end ? sub.current_end : plan.expires_at)}</b></>
                   : 'No expiry'}
             </p>
-            {plan.plan !== 'free' && (
+            {autoRenew && <p className="mt-1 text-xs text-white/60">{money2(sub.total_inr)} per {sub.period === 'year' ? 'year' : 'month'}, including GST</p>}
+            {!autoRenew && plan.plan !== 'free' && plan.expires_at && !expired && <p className="mt-1 text-xs text-lime">Auto-renew is off. Subscribe again before this date to keep your plan.</p>}
+            {autoRenew ? (
               <Button variant="outline" size="sm" className="mt-5 !border-white/20 !bg-white/10 !text-white" onClick={() => setConfirmCancel(true)}>
-                Cancel plan
+                Turn off auto-renew
               </Button>
+            ) : (
+              plan.plan !== 'free' && !rzp?.enabled && (
+                <Button variant="outline" size="sm" className="mt-5 !border-white/20 !bg-white/10 !text-white" onClick={() => setConfirmCancel(true)}>
+                  Cancel plan
+                </Button>
+              )
             )}
           </div>
         </div>
@@ -205,8 +292,9 @@ export default function Billing() {
                 <p className="mt-1 text-sm text-ink-600">{p.description}</p>
                 <p className="mt-5 font-display text-4xl font-bold tracking-tight">
                   {price ? formatInr(price) : '₹0'}
-                  <span className="text-base font-medium text-ink-500"> / {period === 'year' ? 'year' : 'month'}</span>
+                  <span className="text-base font-medium text-ink-500"> / {period === 'year' ? 'year' : 'month'}{price ? ' + GST' : ''}</span>
                 </p>
+                {price > 0 && <p className="mt-1 text-xs text-ink-600">You pay {money2(withGst(price).total)} with 18% GST ({money2(withGst(price).gst)})</p>}
                 <ul className="mt-5 flex-1 space-y-2 text-sm">
                   {featureList(p.features || {}).map((f) => (
                     <li key={f.text} className={`flex items-center gap-2 ${f.on ? '' : 'text-ink-400'}`}>
@@ -219,8 +307,8 @@ export default function Billing() {
                   {p.id === 'free' ? (
                     <Button variant="outline" className="w-full" disabled>{isCurrent ? 'Your plan' : 'Included'}</Button>
                   ) : (
-                    <Button variant={highlight ? 'primary' : 'outline'} className="w-full" loading={busy === p.id} disabled={!!busy || !!payInfo?.pending || (!payInfo?.upi_id && !payInfo?.test_payments)} onClick={() => upgrade(p)}>
-                      {isCurrent ? `Extend ${period === 'year' ? '1 year' : '1 month'}` : 'Upgrade'}{payInfo?.upi_id ? '' : payInfo?.test_payments ? ' (test mode)' : ''}
+                    <Button variant={highlight ? 'primary' : 'outline'} className="w-full" loading={busy === p.id} disabled={!!busy || !!payInfo?.pending || (rzp?.enabled ? Boolean(autoRenew || waiting) : !payInfo?.upi_id && !payInfo?.test_payments)} onClick={() => upgrade(p)}>
+                      {rzp?.enabled ? (autoRenew ? (isCurrent ? 'Subscribed' : 'Turn off auto-renew to change') : isCurrent ? 'Renew with auto-renew' : 'Subscribe') : isCurrent ? `Extend ${period === 'year' ? '1 year' : '1 month'}` : 'Upgrade'}{rzp?.enabled ? '' : payInfo?.upi_id ? '' : payInfo?.test_payments ? ' (test mode)' : ''}
                     </Button>
                   )}
                 </div>
@@ -229,6 +317,23 @@ export default function Billing() {
           })}
         </div>
       </Card>
+
+      {pays?.length > 0 && (
+        <Card className="p-5 sm:p-8">
+          <p className="eyebrow text-ink-500">Payments</p>
+          <div className="mt-3 divide-y divide-ink/5">
+            {pays.map((x) => (
+              <div key={x.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{money2(x.amount_inr)} {x.status === 'captured' && <span className="text-sm font-normal text-ink-500">({money2(x.base_inr)} + {money2(x.gst_inr)} GST)</span>}</p>
+                  <p className="text-sm text-ink-500">{fmtDate(x.paid_at || x.created_at)}{x.method ? ` · ${x.method}` : ''}{x.error ? ` · ${x.error}` : ''}</p>
+                </div>
+                <Badge tone={x.status === 'captured' ? 'green' : x.status === 'failed' ? 'red' : 'neutral'}>{x.status === 'captured' ? 'Paid' : x.status === 'failed' ? 'Failed' : x.status}</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="p-5 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -293,11 +398,15 @@ export default function Billing() {
         )}
       </Modal>
 
-      <Modal open={confirmCancel} onClose={() => setConfirmCancel(false)} title="Cancel your plan?">
-        <p className="text-sm text-ink-600">You’ll move to Starter right away. Paid features stop: extra pages, team access, custom domain, branding removal, WhatsApp alerts and advanced DM automations. Your content stays safe.</p>
+      <Modal open={confirmCancel} onClose={() => setConfirmCancel(false)} title={autoRenew ? 'Turn off auto-renew?' : 'Cancel your plan?'}>
+        <p className="text-sm text-ink-600">
+          {autoRenew
+            ? <>Your plan stays on until <b>{fmtDate(sub.current_end || plan.expires_at)}</b>, and then moves to Starter. We will remind you by email before it ends. Your content stays safe.</>
+            : 'You’ll move to Starter right away. Paid features stop: extra pages, team access, custom domain, branding removal, WhatsApp alerts and advanced DM automations. Your content stays safe.'}
+        </p>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setConfirmCancel(false)}>Keep plan</Button>
-          <Button variant="danger" loading={busy === 'cancel'} onClick={cancel}>Cancel plan</Button>
+          <Button variant="danger" loading={busy === 'cancel'} onClick={autoRenew ? stopRenewal : cancel}>{autoRenew ? 'Turn off auto-renew' : 'Cancel plan'}</Button>
         </div>
       </Modal>
     </div>
