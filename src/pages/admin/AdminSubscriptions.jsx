@@ -31,7 +31,7 @@ export default function AdminSubscriptions() {
 
   return (
     <div className="space-y-4">
-      <PageHeading title="Subscriptions." italic={`${count((r) => r.active)} paying.`}>Plans are paid by UPI and approved in Plan payments. Card and auto-renew billing arrive with Razorpay.</PageHeading>
+      <PageHeading title="Subscriptions." italic={`${count((r) => r.active)} paying.`}>Plans are paid and renewed through Razorpay. See the Razorpay page for webhooks and payments.</PageHeading>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[['Paying now', count((r) => r.active)], ['Ending in 7 days', count(soon)], ['Lapsed', count((r) => !r.active)], ['With failed payments', count((r) => r.failed > 0)]].map(([k, v]) => (
           <Card key={k} className="p-5"><p className="text-xs font-semibold text-ink-500">{k}</p><p className="mt-2 font-display text-3xl font-bold">{v}</p></Card>

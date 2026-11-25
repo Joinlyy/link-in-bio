@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Crown, FlaskConical, Minus, ReceiptText } from 'lucide-react'
+import { Check, Crown, Minus, ReceiptText } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { usePage } from '../../context/PageContext'
 import { errorMessage, supabase } from '../../lib/supabase'
@@ -9,7 +9,6 @@ import { Alert, Badge, Button, Card, Empty, Modal, Spinner, useToast } from '../
 import { DataTable, useViewMode, ViewToggle } from '../../components/DataTable'
 import { PageHeading } from './DashboardLayout'
 import { featureList } from '../../lib/plans'
-import UpiPay from '../../components/UpiPay'
 import { cancelAutoRenew, checkPayment, money2, payForPlan, razorpayConfig, withGst } from '../../lib/razorpay'
 
 const LIMITS = [
@@ -86,14 +85,11 @@ export default function Billing() {
   const [period, setPeriod] = useState('month')
   const [busy, setBusy] = useState(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
-  const [payInfo, setPayInfo] = useState(null)
-  const [paying, setPaying] = useState(null)
   const [rzp, setRzp] = useState(null) // { enabled, mode }
   const [sub, setSub] = useState(null) // the latest Razorpay subscription
   const [pays, setPays] = useState(null)
   const [confirming, setConfirming] = useState(false)
   const [payError, setPayError] = useState('')
-  const loadPayInfo = useCallback(() => supabase.rpc('plan_payment_info').then(({ data }) => setPayInfo(data || {})), [])
 
   const loadHistory = useCallback(async () => {
     const { data } = await supabase.from('subscriptions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30)
@@ -109,9 +105,8 @@ export default function Billing() {
   useEffect(() => {
     supabase.from('plans').select('*').eq('is_active', true).order('position').then(({ data }) => setPlans(data || []))
     loadHistory()
-    loadPayInfo()
     razorpayConfig().then(setRzp)
-  }, [loadHistory, loadPayInfo])
+  }, [loadHistory])
 
   const current = plans?.find((p) => p.id === plan?.plan)
   const expired = plan?.expires_at && new Date(plan.expires_at) < new Date()
@@ -172,20 +167,6 @@ export default function Billing() {
     }
   }
 
-  async function upgrade(p) {
-    if (rzp?.enabled) return buy(p)
-    // Real payments go to the platform's UPI and wait for approval; test mode upgrades at once
-    if (payInfo?.upi_id) return setPaying(p)
-    setBusy(p.id)
-    const { error } = await supabase.rpc('test_upgrade', { p_plan: p.id, p_period: period })
-    setBusy(null)
-    if (error) return toast(errorMessage(error), 'error')
-    toast(`You’re on ${p.name} — test mode, no payment taken`)
-    reload()
-    loadHistory()
-    reloadPages()
-  }
-
   async function cancel() {
     setBusy('cancel')
     const { error } = await supabase.rpc('cancel_plan')
@@ -212,19 +193,7 @@ export default function Billing() {
       )}
       {sub?.status === 'halted' && <Alert>Auto-renew stopped because the payments failed. Your plan stays on until the end date below. Subscribe again to keep your paid features.</Alert>}
       {pays?.[0]?.status === 'failed' && sub && ['pending', 'halted'].includes(sub.status) && <Alert>Your last payment did not go through{pays[0].error ? ` (${pays[0].error})` : ''}. Check your card or UPI, or subscribe again below.</Alert>}
-      {payInfo?.pending ? (
-        <Alert tone="success">
-          <b>Payment sent for {plans.find((x) => x.id === payInfo.pending.plan)?.name || payInfo.pending.plan}</b> ({formatInr(payInfo.pending.amount_inr)}, reference {payInfo.pending.utr}). We’ll switch your plan on as soon as we’ve checked it, usually within a day.
-        </Alert>
-      ) : payInfo?.last_rejected ? (
-        <Alert>Your last plan payment couldn’t be confirmed{payInfo.last_rejected.note ? `: ${payInfo.last_rejected.note}` : '.'} Message us in Messages if you were charged.</Alert>
-      ) : payInfo && !payInfo.upi_id && payInfo.test_payments ? (
-        <Alert tone="info">
-          <span className="inline-flex items-center gap-1.5 font-semibold"><FlaskConical className="size-4" /> Test mode</span>: upgrades are instant and no payment is taken.
-        </Alert>
-      ) : payInfo && !payInfo.upi_id ? (
-        <Alert tone="info">Paid plans open soon. You can keep using Starter in the meantime.</Alert>
-      ) : null}
+      {rzp && !rzp.enabled && <Alert tone="info">Paid plans open soon. You can keep using Starter in the meantime.</Alert>}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="relative overflow-hidden rounded-3xl bg-ink p-6 text-white sm:p-8">
@@ -249,7 +218,7 @@ export default function Billing() {
                 Turn off auto-renew
               </Button>
             ) : (
-              plan.plan !== 'free' && !rzp?.enabled && (
+              plan.plan !== 'free' && (
                 <Button variant="outline" size="sm" className="mt-5 !border-white/20 !bg-white/10 !text-white" onClick={() => setConfirmCancel(true)}>
                   Cancel plan
                 </Button>
@@ -307,8 +276,8 @@ export default function Billing() {
                   {p.id === 'free' ? (
                     <Button variant="outline" className="w-full" disabled>{isCurrent ? 'Your plan' : 'Included'}</Button>
                   ) : (
-                    <Button variant={highlight ? 'primary' : 'outline'} className="w-full" loading={busy === p.id} disabled={!!busy || !!payInfo?.pending || (rzp?.enabled ? Boolean(autoRenew || waiting) : !payInfo?.upi_id && !payInfo?.test_payments)} onClick={() => upgrade(p)}>
-                      {rzp?.enabled ? (autoRenew ? (isCurrent ? 'Subscribed' : 'Turn off auto-renew to change') : isCurrent ? 'Renew with auto-renew' : 'Subscribe') : isCurrent ? `Extend ${period === 'year' ? '1 year' : '1 month'}` : 'Upgrade'}{rzp?.enabled ? '' : payInfo?.upi_id ? '' : payInfo?.test_payments ? ' (test mode)' : ''}
+                    <Button variant={highlight ? 'primary' : 'outline'} className="w-full" loading={busy === p.id} disabled={!!busy || !rzp?.enabled || Boolean(autoRenew || waiting)} onClick={() => buy(p)}>
+                      {!rzp?.enabled ? 'Opening soon' : autoRenew ? (isCurrent ? 'Subscribed' : 'Turn off auto-renew to change') : isCurrent ? 'Renew with auto-renew' : 'Subscribe'}
                     </Button>
                   )}
                 </div>
@@ -378,25 +347,6 @@ export default function Billing() {
           </div>
         )}
       </Card>
-
-      <Modal open={Boolean(paying)} onClose={() => setPaying(null)} title={paying ? `${paying.name}, ${period === 'year' ? '1 year' : '1 month'}` : ''}>
-        {paying && (
-          <UpiPay
-            upiId={payInfo.upi_id}
-            name={payInfo.upi_name}
-            amount={period === 'year' ? paying.price_yearly_inr : paying.price_monthly_inr}
-            note={`${paying.name} plan ${user.email?.split('@')[0] || ''}`.trim().slice(0, 50)}
-            submitLabel="Send for approval"
-            onSubmit={async (utr) => {
-              const { error } = await supabase.rpc('request_plan_payment', { p_plan: paying.id, p_period: period, p_utr: utr })
-              if (error) throw new Error(errorMessage(error))
-              setPaying(null)
-              toast('Payment sent. We’ll switch your plan on once it’s checked.')
-              loadPayInfo()
-            }}
-          />
-        )}
-      </Modal>
 
       <Modal open={confirmCancel} onClose={() => setConfirmCancel(false)} title={autoRenew ? 'Turn off auto-renew?' : 'Cancel your plan?'}>
         <p className="text-sm text-ink-600">
