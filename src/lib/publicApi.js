@@ -50,6 +50,7 @@ export const fetchUsernameForDomain = (host) => rpcGet('get_page_by_domain', { p
 export const fetchMediaKit = (username) => rpcGet('get_media_kit', { p_username: username.toLowerCase() })
 export const fetchProduct = (username, id) => rpcGet('get_public_product', { p_username: username.toLowerCase(), p_product_id: id })
 export const fetchOrder = (token) => rpcGet('get_order', { p_token: token })
+export const fetchOrderInvoice = (token) => rpcGet('get_order_invoice', { p_token: token })
 
 export const submitLead = (payload) => rpcPost('submit_lead', payload)
 export const submitEnquiry = (payload) => rpcPost('submit_enquiry', payload)

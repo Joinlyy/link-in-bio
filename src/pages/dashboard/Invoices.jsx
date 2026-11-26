@@ -39,7 +39,7 @@ const blankItem = () => ({ description: '', sac: DEFAULT_SAC, qty: 1, rate: '' }
 // ---------------------------------------------------------------------------
 // Billing details (pages.billing)
 // ---------------------------------------------------------------------------
-function BillingCard({ billing, onSave, canEdit }) {
+export function BillingCard({ billing, onSave, canEdit }) {
   const [b, setB] = useState(billing)
   const [open, setOpen] = useState(!billing.legal_name)
   const set = (patch) => setB((x) => ({ ...x, ...patch }))

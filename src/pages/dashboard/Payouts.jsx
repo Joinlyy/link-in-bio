@@ -8,6 +8,7 @@ import { usePlan } from '../../lib/usePlan'
 import { KYC_LABEL, kycRefresh, kycStart, usePayouts } from '../../lib/payouts'
 import { Alert, Badge, Button, Card, Input, Select, Spinner, useToast } from '../../components/ui'
 import { PageHeading } from './DashboardLayout'
+import { BillingCard } from './Invoices'
 
 const UPI_RE = /^[a-zA-Z0-9._-]{2,255}@[a-zA-Z0-9]{2,64}$/
 const day = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -241,6 +242,32 @@ function KycCard() {
   )
 }
 
+/** The seller details printed on every sale's invoice. A GSTIN makes it a GST invoice; without one, no GST is shown. */
+function TaxCard() {
+  const { page, updatePage, canEdit } = usePage()
+  const toast = useToast()
+  return (
+    <div className="space-y-3">
+      <Card className="p-5 sm:p-7">
+        <h2 className="text-lg font-bold">Tax and invoice details</h2>
+        <p className="mt-1 text-sm text-ink-500">
+          Every paid sale gets an invoice for your buyer. Add your business name, address and <b>GSTIN</b> and the invoice becomes a GST invoice: the price the buyer paid is split into the taxable value, CGST and SGST.
+          If you are not GST-registered, leave the GSTIN empty and the invoice shows no GST at all.
+        </p>
+      </Card>
+      <BillingCard
+        key={JSON.stringify(page.billing || {})}
+        billing={page.billing || {}}
+        canEdit={canEdit}
+        onSave={async (billing) => {
+          await updatePage({ billing }, { immediate: true })
+          toast('Saved. New sales will use these details.')
+        }}
+      />
+    </div>
+  )
+}
+
 export default function Payouts() {
   const { plan } = usePlan()
   const { loading, route } = usePayouts()
@@ -252,6 +279,7 @@ export default function Payouts() {
       </PageHeading>
       <UpiCard />
       <Earnings plan={plan} />
+      <TaxCard />
       {route && <KycCard />}
     </div>
   )

@@ -9,6 +9,7 @@ const NAV = [
   { href: '/#features', label: 'Features' },
   { href: '/#how', label: 'How it works' },
   { href: '/#pricing', label: 'Pricing' },
+  { href: '/blog', label: 'Blog' },
   { href: '/academy', label: 'Guides' },
   { href: '/#faq', label: 'Questions' },
 ]
@@ -77,58 +78,73 @@ export function SiteHeader() {
   )
 }
 
+const FOOTER = [
+  ['Product', [
+    ['a', '/#features', 'Features'],
+    ['a', '/#pricing', 'Pricing'],
+    ['l', '/sell-on-instagram-with-upi', 'Sell with UPI'],
+    ['l', '/creator-media-kit-generator', 'Media kit'],
+    ['l', '/link-in-bio-templates', 'Templates'],
+    ['a', '/#faq', 'Questions'],
+  ]],
+  ['Instagram tools', [
+    ['l', '/instagram-comment-to-dm-automation', 'Comment to DM automation'],
+    ['l', '/how-to-set-up-comment-to-dm', 'Set up comment to DM'],
+    ['l', '/instagram-dm-keywords-that-convert', 'Comment keywords'],
+    ['l', '/instagram-post-scheduler', 'Post scheduler'],
+    ['l', '/schedule-instagram-reels-free', 'Schedule Reels free'],
+    ['l', '/manychat-alternative-india', 'ManyChat alternative'],
+  ]],
+  ['Learn', [
+    ['l', '/blog', 'Blog: all guides'],
+    ['l', '/academy', 'Creator Academy'],
+    ['l', '/link-in-bio-for-indian-creators', 'Link in bio for India'],
+    ['l', '/how-to-add-link-in-bio-instagram', 'Add a link in bio'],
+    ['l', '/best-link-in-bio-tools-india', 'Choosing a tool'],
+    ['l', '/linktree-alternative-india', 'Linktree alternative'],
+  ]],
+  ['Company', [
+    ['l', '/about', 'About Joinlyy'],
+    ['l', '/signup', 'Create a page'],
+    ['l', '/signin', 'Sign in'],
+    ['l', '/privacy', 'Privacy Policy'],
+    ['l', '/terms', 'Terms'],
+    ['l', '/refund-policy', 'Refund Policy'],
+  ]],
+]
+
 export function SiteFooter() {
   return (
     <footer className="container-page pt-4 pb-6">
-      <div className="card flex flex-col gap-8 p-6 sm:p-10 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-sm">
-          <Brand />
-          <p className="mt-4 text-sm leading-relaxed text-ink-500">
-            Joinlyy (say "join-lee") is the link in bio for Indian creators: free Instagram comment to DM automation, and a page to sell, book and get paid from one link. Built in India for creators who post in Hindi, English and everything in between.
-          </p>
+      <div className="card p-6 sm:p-10">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-14">
+          <div className="max-w-sm">
+            <Brand />
+            <p className="mt-4 text-sm leading-relaxed text-ink-500">
+              The link in bio for Indian creators. Sell, book and get paid by UPI, schedule your Instagram posts and auto-reply to every comment, all free to start.
+            </p>
+            <Link to="/signup" className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-white">
+              Start free <ArrowUpRight className="size-4" />
+            </Link>
+          </div>
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-9 text-sm sm:grid-cols-4">
+            {FOOTER.map(([title, links]) => (
+              <div key={title} className="min-w-0 space-y-2.5">
+                <p className="eyebrow text-ink-400">{title}</p>
+                {links.map(([kind, to, label]) =>
+                  kind === 'a'
+                    ? <a key={label} href={to} className="block font-medium hover:underline">{label}</a>
+                    : <Link key={label} to={to} className="block font-medium hover:underline">{label}</Link>,
+                )}
+              </div>
+            ))}
+          </nav>
         </div>
-        <div className="grid grid-cols-2 gap-8 text-sm sm:grid-cols-4">
-          <div className="space-y-2.5">
-            <p className="eyebrow text-ink-400">Product</p>
-            <a href="/#features" className="block font-medium hover:underline">Features</a>
-            <a href="/#pricing" className="block font-medium hover:underline">Pricing</a>
-            <Link to="/academy" className="block font-medium hover:underline">Creator guides</Link>
-            <a href="/#faq" className="block font-medium hover:underline">Questions</a>
-          </div>
-          <div className="space-y-2.5">
-            <p className="eyebrow text-ink-400">Learn</p>
-            <Link to="/instagram-comment-to-dm-automation" className="block font-medium hover:underline">Free comment to DM automation</Link>
-            <Link to="/how-to-set-up-comment-to-dm" className="block font-medium hover:underline">Set up comment to DM</Link>
-            <Link to="/instagram-post-scheduler" className="block font-medium hover:underline">Free Instagram post scheduler</Link>
-            <Link to="/schedule-instagram-reels-free" className="block font-medium hover:underline">Schedule Reels free</Link>
-            <Link to="/instagram-dm-keywords-that-convert" className="block font-medium hover:underline">Comment keywords that work</Link>
-            <Link to="/manychat-alternative-india" className="block font-medium hover:underline">ManyChat alternative</Link>
-            <Link to="/link-in-bio-for-indian-creators" className="block font-medium hover:underline">Link in bio for India</Link>
-            <Link to="/how-to-add-link-in-bio-instagram" className="block font-medium hover:underline">Add a link in bio</Link>
-            <Link to="/link-in-bio-ideas" className="block font-medium hover:underline">Link in bio ideas</Link>
-            <Link to="/best-link-in-bio-tools-india" className="block font-medium hover:underline">Choosing a tool</Link>
-            <Link to="/link-in-bio-templates" className="block font-medium hover:underline">Templates</Link>
-            <Link to="/sell-on-instagram-with-upi" className="block font-medium hover:underline">Sell with UPI</Link>
-            <Link to="/creator-media-kit-generator" className="block font-medium hover:underline">Media kit</Link>
-            <Link to="/linktree-alternative-india" className="block font-medium hover:underline">Linktree alternative</Link>
-          </div>
-          <div className="space-y-2.5">
-            <p className="eyebrow text-ink-400">Creators</p>
-            <Link to="/about" className="block font-medium hover:underline">About Joinlyy</Link>
-            <Link to="/signup" className="block font-medium hover:underline">Create a page</Link>
-            <Link to="/signin" className="block font-medium hover:underline">Sign in</Link>
-          </div>
-          <div className="space-y-2.5">
-            <p className="eyebrow text-ink-400">Legal</p>
-            <Link to="/privacy" className="block font-medium hover:underline">Privacy Policy</Link>
-            <Link to="/terms" className="block font-medium hover:underline">Terms</Link>
-            <Link to="/refund-policy" className="block font-medium hover:underline">Refund Policy</Link>
-          </div>
+        <div className="mt-10 flex flex-col gap-2 border-t border-ink/10 pt-5 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} {APP_NAME}. Made in India, in Indirapuram, Ghaziabad.</p>
+          <p>Help: <a href="mailto:support@joinlyy.com" className="font-medium underline-offset-2 hover:underline">support@joinlyy.com</a></p>
         </div>
       </div>
-      <p className="mt-5 text-center text-xs text-ink-500">
-        © {new Date().getFullYear()} {APP_NAME}. Made in India.
-      </p>
     </footer>
   )
 }

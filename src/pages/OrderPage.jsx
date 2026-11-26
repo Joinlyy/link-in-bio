@@ -481,6 +481,7 @@ export function OrderView({ token, embedded = false }) {
               ))}
             </dl>
             {order.payment_provider === 'test' && <p className="rounded-2xl bg-cream p-3 text-center text-xs text-ink-500">Test order — no real payment was taken.</p>}
+            {paid && order.payment_provider === 'razorpay' && <a href={`/order/${token}/invoice`} className="block rounded-2xl bg-cream p-3 text-center text-sm font-semibold underline underline-offset-2">Download your invoice</a>}
             <p className="text-center text-xs text-ink-500">Bookmark this page — it’s your access link.</p>
           </div>
         </div>

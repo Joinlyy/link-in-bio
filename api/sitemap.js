@@ -17,6 +17,7 @@ export default async function handler() {
     { loc: '/privacy', priority: '0.2' },
     { loc: '/terms', priority: '0.2' },
     { loc: '/refund-policy', priority: '0.2' },
+    { loc: '/blog', priority: '0.8' },
   ]
 
   const url = process.env.VITE_SUPABASE_URL

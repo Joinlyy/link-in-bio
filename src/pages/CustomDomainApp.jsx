@@ -8,6 +8,7 @@ import PublicPage from './PublicPage'
 
 const ProductPage = lazy(() => import('./ProductPage'))
 const OrderPage = lazy(() => import('./OrderPage'))
+const OrderInvoicePage = lazy(() => import('./OrderInvoicePage'))
 const MediaKit = lazy(() => import('./MediaKit'))
 
 /** A creator's own domain (e.g. links.priya.com) serving only their site at the root */
@@ -41,6 +42,7 @@ export default function CustomDomainApp() {
       <Route path="/media-kit" element={<MediaKit username={u} />} />
       <Route path="/p/:productId" element={<ProductPage username={u} basePath="" />} />
       <Route path="/order/:token" element={<OrderPage />} />
+      <Route path="/order/:token/invoice" element={<OrderInvoicePage />} />
       <Route path="/:slug" element={<PublicPage username={u} base="" />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

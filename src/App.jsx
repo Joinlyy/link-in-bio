@@ -21,6 +21,7 @@ const ProductPage = lazy(() => import('./pages/ProductPage'))
 const OrderPage = lazy(() => import('./pages/OrderPage'))
 const Privacy = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Terms })))
+const Blog = lazy(() => import('./pages/Blog'))
 const RefundPolicy = lazy(() => import('./pages/Legal').then((m) => ({ default: m.RefundPolicy })))
 const DataDeletion = lazy(() => import('./pages/Legal').then((m) => ({ default: m.DataDeletion })))
 const SignIn = lazy(() => import('./pages/auth/SignIn'))
@@ -59,6 +60,7 @@ const AdminFraud = lazy(() => import('./pages/admin/AdminFraud'))
 const AdminDisputes = lazy(() => import('./pages/admin/AdminDisputes'))
 const Invoices = lazy(() => import('./pages/dashboard/Invoices'))
 const InvoicePrint = lazy(() => import('./pages/dashboard/InvoicePrint'))
+const OrderInvoicePage = lazy(() => import('./pages/OrderInvoicePage'))
 const Audience = lazy(() => import('./pages/dashboard/Audience'))
 const Referrals = lazy(() => import('./pages/dashboard/Referrals'))
 const Billing = lazy(() => import('./pages/dashboard/Billing'))
@@ -100,6 +102,7 @@ export default function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/blog" element={<Blog />} />
           <Route path="/data-deletion" element={<DataDeletion />} />
           <Route path="/academy" element={<Academy />} />
           <Route path="/academy/:slug" element={<Academy />} />
@@ -108,6 +111,7 @@ export default function App() {
           <Route path="/:username/p/:productId" element={<ProductPage />} />
           <Route path="/:username/:slug" element={<PublicPage />} />
           <Route path="/order/:token" element={<OrderPage />} />
+          <Route path="/order/:token/invoice" element={<OrderInvoicePage />} />
 
           {/* App (Supabase auth loaded lazily) */}
           <Route element={<AuthLayout />}>
@@ -119,6 +123,7 @@ export default function App() {
             <Route path="/onboarding" element={<RequireAuth><RequireCreator><Onboarding /></RequireCreator></RequireAuth>} />
             <Route path="/instagram/callback" element={<RequireAuth><RequireCreator><InstagramCallback /></RequireCreator></RequireAuth>} />
             <Route path="/invoices/:id/print" element={<RequireAuth><InvoicePrint /></RequireAuth>} />
+            <Route path="/invoices/order/:id/print" element={<RequireAuth><OrderInvoicePage creator /></RequireAuth>} />
 
             <Route path="/dashboard" element={<RequireAuth><RequireCreator><DashboardLayout /></RequireCreator></RequireAuth>}>
               <Route index element={<Overview />} />

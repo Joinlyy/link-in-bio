@@ -105,8 +105,11 @@ function Orders({ orders, onPatch, canEdit }) {
                 {o.payment_provider === 'test' && <Badge>Test</Badge>}
                 <Badge tone={STATUS_TONE[o.status] || 'neutral'}>{STATUS_LABEL[o.status] || o.status}</Badge>
                 <span className="ml-auto w-20 text-right font-display text-lg font-bold sm:ml-0">{formatInr(o.amount_inr)}</span>
+                {o.status === 'paid' && o.payment_provider === 'razorpay' && (
+                  <Link to={`/invoices/order/${o.id}/print`} className="inline-flex h-9 items-center rounded-full px-3 text-sm font-semibold underline underline-offset-2">Invoice</Link>
+                )}
                 {canEdit && o.status === 'paid' && (
-                  <Button variant="ghost" size="sm" className="px-3" loading={busy === o.id} onClick={() => refund(o)} title="Refund this order (test mode)"><Undo2 className="size-4" /> Refund</Button>
+                  <Button variant="ghost" size="sm" className="px-3" loading={busy === o.id} onClick={() => refund(o)} title="Mark this order refunded"><Undo2 className="size-4" /> Refund</Button>
                 )}
               </div>
             </li>
@@ -114,7 +117,7 @@ function Orders({ orders, onPatch, canEdit }) {
         })}
       </ul>
       )}
-      <p className="border-t border-ink/5 px-5 py-3 text-xs text-ink-500">Refunds are in test mode — no real money moves yet. Refunding cancels any booked sessions and ends the buyer’s access.</p>
+      <p className="border-t border-ink/5 px-5 py-3 text-xs text-ink-500">Marking an order refunded cancels any booked sessions and ends the buyer’s access. The money goes back to the buyer through Joinlyy, so email support@joinlyy.com with the order to have it refunded.</p>
     </Card>
   )
 }
