@@ -318,15 +318,18 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** Publish up to a few posts that are due. Safe to run every minute; a post is only ever published once. */
 async function publishDue(admin: SupabaseClient, onlyId?: string) {
-  let q = admin.from('ig_scheduled_posts').select('*').in('status', ['scheduled', 'publishing']).lte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5)
-  if (onlyId) q = admin.from('ig_scheduled_posts').select('*').eq('id', onlyId).in('status', ['scheduled', 'publishing'])
+  // A post is picked up when it is waiting, or when a run that took it more than 4 minutes ago must have died
+  const stale = new Date(Date.now() - 4 * 60_000).toISOString()
+  const due = `status.eq.scheduled,and(status.eq.publishing,or(claimed_at.is.null,claimed_at.lt.${stale}))`
+  let q = admin.from('ig_scheduled_posts').select('*').or(due).lte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5)
+  if (onlyId) q = admin.from('ig_scheduled_posts').select('*').eq('id', onlyId).or(due)
   const { data: posts } = await q
   let published = 0
   let failed = 0
   for (const post of posts ?? []) {
     // Claim it so two runs never publish the same post
     const { data: claimed } = await admin.from('ig_scheduled_posts')
-      .update({ status: 'publishing', attempts: post.attempts + 1 }).eq('id', post.id).eq('attempts', post.attempts).in('status', ['scheduled', 'publishing']).select('id').maybeSingle()
+      .update({ status: 'publishing', attempts: post.attempts + 1, claimed_at: new Date().toISOString() }).eq('id', post.id).eq('attempts', post.attempts).or(due).select('id').maybeSingle()
     if (!claimed) continue
     try {
       const { data: tok } = await admin.from('instagram_tokens').select('access_token').eq('owner_id', post.owner_id).maybeSingle()
