@@ -29,6 +29,12 @@ Deno.serve(handle(async (req) => {
     if (!CRON_SECRET || !safeEqual(cronHeader, CRON_SECRET)) throw new HttpError(401, 'Unauthorized')
     const body = await req.json().catch(() => ({}))
     if (body.action === 'publish_due') return json(await publishDue(admin))
+    if (body.action === 'purge_media') {
+      const { data: old } = await admin.rpc('ig_orphan_media')
+      const names = ((old ?? []) as { name: string }[]).map((o) => o.name)
+      if (names.length) await admin.storage.from('ig-posts').remove(names)
+      return json({ ok: true, removed: names.length })
+    }
     if (body.action !== 'sync_all') throw new HttpError(400, 'Unknown action')
     return json(await syncAll(admin))
   }

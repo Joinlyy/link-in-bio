@@ -123,8 +123,17 @@ async function reminders(db: SupabaseClient) {
   return { checked: due?.length ?? 0, stages: sent }
 }
 
+const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
+function sameSecret(a: string, b: string) {
+  if (!a || !b || a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
 Deno.serve(handle(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed')
+  if (!sameSecret(req.headers.get('x-cron-secret') ?? '', CRON_SECRET)) throw new HttpError(401, 'Unauthorized')
   const body = await req.json().catch(() => ({}))
   const db = adminClient()
   if (body.action === 'event') {

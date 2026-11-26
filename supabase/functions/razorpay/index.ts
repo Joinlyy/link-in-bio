@@ -607,6 +607,17 @@ async function reconcileRoute(db: SupabaseClient) {
   return { settled, closed }
 }
 
+/** Public actions are limited per visitor address (and per order link) so nobody can use them to hammer Razorpay or the database */
+async function limit(db: SupabaseClient, req: Request, action: string, perMinute: number, token?: string) {
+  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown'
+  const keys = [[`rzp:${action}:ip:${ip}`, perMinute]] as [string, number][]
+  if (token) keys.push([`rzp:${action}:tok:${token.slice(0, 40)}`, Math.max(3, Math.floor(perMinute / 2))])
+  for (const [key, max] of keys) {
+    const { data } = await db.rpc('rate_hit', { p_key: key, p_limit: max })
+    if (data === false) throw new HttpError(429, 'Too many requests. Please wait a minute and try again.')
+  }
+}
+
 Deno.serve(handle(async (req) => {
   const db = adminClient()
   if (req.method === 'POST' && req.headers.has('x-razorpay-signature')) return webhook(req, db)
@@ -615,6 +626,7 @@ Deno.serve(handle(async (req) => {
   switch (body.action) {
     case 'config':
     {
+      await limit(db, req, 'config', 120)
       const { data: st } = await db.from('app_settings').select('route_enabled').eq('id', true).maybeSingle()
       return json({ enabled: Boolean(KEY_ID && KEY_SECRET), key_id: KEY_ID || null, mode: MODE, gst_rate: GST_RATE, route_enabled: Boolean(st?.route_enabled) })
     }
@@ -623,10 +635,13 @@ Deno.serve(handle(async (req) => {
     case 'kyc_status':
       return kycStatus(req, db)
     case 'order_create':
+      await limit(db, req, 'order_create', 12, String(body.token ?? ''))
       return orderCreate(db, body)
     case 'order_verify':
+      await limit(db, req, 'order_verify', 30, String(body.token ?? ''))
       return orderVerify(db, body)
     case 'order_check':
+      await limit(db, req, 'order_check', 12, String(body.token ?? ''))
       return orderCheck(db, body)
     case 'test_route': {
       await requireAdmin(req, db)
@@ -674,4 +689,4 @@ Deno.serve(handle(async (req) => {
     default:
       throw new HttpError(400, 'Unknown action')
   }
-}, { anyOrigin: false }))
+}, { anyOrigin: true })) // buyers can pay from a creator's own domain; order links are the credential and creator/admin calls use a bearer token, never cookies
