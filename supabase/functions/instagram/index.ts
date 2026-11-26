@@ -316,7 +316,7 @@ async function publishDue(admin: SupabaseClient, onlyId?: string) {
   for (const post of posts ?? []) {
     // Claim it so two runs never publish the same post
     const { data: claimed } = await admin.from('ig_scheduled_posts')
-      .update({ status: 'publishing', attempts: post.attempts + 1 }).eq('id', post.id).in('status', ['scheduled', 'publishing']).select('id').maybeSingle()
+      .update({ status: 'publishing', attempts: post.attempts + 1 }).eq('id', post.id).eq('attempts', post.attempts).in('status', ['scheduled', 'publishing']).select('id').maybeSingle()
     if (!claimed) continue
     try {
       const { data: tok } = await admin.from('instagram_tokens').select('access_token').eq('owner_id', post.owner_id).maybeSingle()
