@@ -37,7 +37,7 @@ function TestModeNote() {
     </div>
   )
 }
-const statusOf = (p) = (p.is_published ? 'Live' : p.title ? 'Deactivated' : 'Draft')
+const statusOf = (p) => (p.is_published ? 'Live' : p.title ? 'Deactivated' : 'Draft')
 
 function TypeOption({ type, onPick }) {
   const t = PRODUCT_TYPES[type]
