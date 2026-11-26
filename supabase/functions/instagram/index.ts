@@ -17,6 +17,7 @@ const SCOPES = [
   'instagram_business_manage_insights',
   'instagram_business_manage_comments', // DM automation: read comments + reply
   'instagram_business_manage_messages', // DM automation: send DMs
+  'instagram_business_content_publish', // post scheduler: publish the creator's own scheduled posts
 ]
 
 Deno.serve(handle(async (req) => {
@@ -27,6 +28,7 @@ Deno.serve(handle(async (req) => {
   if (cronHeader !== null) {
     if (!CRON_SECRET || !safeEqual(cronHeader, CRON_SECRET)) throw new HttpError(401, 'Unauthorized')
     const body = await req.json().catch(() => ({}))
+    if (body.action === 'publish_due') return json(await publishDue(admin))
     if (body.action !== 'sync_all') throw new HttpError(400, 'Unknown action')
     return json(await syncAll(admin))
   }
@@ -41,6 +43,13 @@ Deno.serve(handle(async (req) => {
       return json({ account: await exchange(admin, user.id, body.code, body.state) })
     case 'sync':
       return json({ account: await sync(admin, user.id) })
+    case 'publish_now': {
+      // The creator pressed "Publish now" on one of their own posts that is waiting
+      const { data: post } = await admin.from('ig_scheduled_posts').select('id, status').eq('id', String(body.id ?? '')).eq('owner_id', user.id).maybeSingle()
+      if (!post || !['scheduled', 'failed'].includes(post.status)) throw new HttpError(409, 'This post can not be published now')
+      await admin.from('ig_scheduled_posts').update({ status: 'scheduled', scheduled_at: new Date().toISOString(), error: null }).eq('id', post.id)
+      return json({ ok: true, ...(await publishDue(admin, post.id)) })
+    }
     case 'disconnect': {
       const { data: tok } = await admin.from('instagram_tokens').select('access_token').eq('owner_id', user.id).maybeSingle()
       if (tok?.access_token) await subscribe(tok.access_token, false)
@@ -283,4 +292,81 @@ async function fetchAndStoreProfile(admin: SupabaseClient, userId: string, token
   const { data, error } = await admin.from('instagram_accounts').upsert(row).select().single()
   if (error) throw new HttpError(500, error.message)
   return data
+}
+
+// ---------- Post scheduling: publish the creator's own posts through the Instagram API ----------
+async function igPost(token: string, path: string, params: Record<string, string>) {
+  const url = new URL(`${GRAPH}/v21.0${path}`)
+  const form = new URLSearchParams({ ...params, access_token: token })
+  const res = await fetch(url, { method: 'POST', body: form, signal: AbortSignal.timeout(30000) })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok || body.error) throw new Error(body.error?.error_user_msg ?? body.error?.message ?? `Instagram API ${res.status}`)
+  return body
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** Publish up to a few posts that are due. Safe to run every minute; a post is only ever published once. */
+async function publishDue(admin: SupabaseClient, onlyId?: string) {
+  let q = admin.from('ig_scheduled_posts').select('*').in('status', ['scheduled', 'publishing']).lte('scheduled_at', new Date().toISOString()).order('scheduled_at').limit(5)
+  if (onlyId) q = admin.from('ig_scheduled_posts').select('*').eq('id', onlyId).in('status', ['scheduled', 'publishing'])
+  const { data: posts } = await q
+  let published = 0
+  let failed = 0
+  for (const post of posts ?? []) {
+    // Claim it so two runs never publish the same post
+    const { data: claimed } = await admin.from('ig_scheduled_posts')
+      .update({ status: 'publishing', attempts: post.attempts + 1 }).eq('id', post.id).in('status', ['scheduled', 'publishing']).select('id').maybeSingle()
+    if (!claimed) continue
+    try {
+      const { data: tok } = await admin.from('instagram_tokens').select('access_token').eq('owner_id', post.owner_id).maybeSingle()
+      const { data: acc } = await admin.from('instagram_accounts').select('ig_user_id').eq('owner_id', post.owner_id).maybeSingle()
+      if (!tok?.access_token || !acc?.ig_user_id) throw new Error('Instagram is not connected. Connect it again and retry.')
+      const token = tok.access_token as string
+
+      let creationId = post.creation_id as string | null
+      if (!creationId) {
+        const params: Record<string, string> = { caption: post.caption ?? '' }
+        if (post.media_type === 'REELS') {
+          params.media_type = 'REELS'
+          params.video_url = post.media_url
+        } else params.image_url = post.media_url
+        creationId = String((await igPost(token, `/${acc.ig_user_id}/media`, params)).id)
+        await admin.from('ig_scheduled_posts').update({ creation_id: creationId }).eq('id', post.id)
+      }
+      // Videos are processed by Instagram first
+      let ready = post.media_type !== 'REELS'
+      for (let i = 0; i < 12 && !ready; i++) {
+        const st = await igGet(token, `/${creationId}`, { fields: 'status_code,status' })
+        if (st.status_code === 'FINISHED') ready = true
+        else if (st.status_code === 'ERROR' || st.status_code === 'EXPIRED') throw new Error(`Instagram could not process the video (${st.status ?? st.status_code})`)
+        else await sleep(8000)
+      }
+      if (!ready) {
+        await admin.from('ig_scheduled_posts').update({ status: 'scheduled' }).eq('id', post.id) // still processing: continue next minute
+        continue
+      }
+      const done = await igPost(token, `/${acc.ig_user_id}/media_publish`, { creation_id: creationId })
+      const mediaId = String(done.id)
+      let permalink: string | null = null
+      try {
+        permalink = String((await igGet(token, `/${mediaId}`, { fields: 'permalink' })).permalink ?? '') || null
+      } catch {
+        /* the post is live either way */
+      }
+      await admin.from('ig_scheduled_posts').update({ status: 'published', ig_media_id: mediaId, permalink, published_at: new Date().toISOString(), error: null }).eq('id', post.id)
+      await admin.storage.from('ig-posts').remove([post.media_path]).catch(() => {}) // the file is on Instagram now
+      published++
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      console.error('publish failed', post.id, message)
+      const permission = /permission|scope|content_publish|OAuth/i.test(message)
+      await admin.from('ig_scheduled_posts').update({
+        status: 'failed',
+        error: (permission ? 'Instagram needs your permission to post for you. Reconnect Instagram in Settings and try again. ' : '') + message.slice(0, 300),
+      }).eq('id', post.id)
+      failed++
+    }
+  }
+  return { ok: true, published, failed }
 }

@@ -33,7 +33,7 @@ const NAV = [
   },
   {
     to: '/dashboard/audience', label: 'Audience', icon: Users,
-    tabs: [['/dashboard/audience', 'Everyone'], ['/dashboard/leads', 'Leads'], ...(INSTAGRAM_ENABLED ? [['/dashboard/automations', 'DM automation']] : [])],
+    tabs: [['/dashboard/audience', 'Everyone'], ['/dashboard/leads', 'Leads'], ...(INSTAGRAM_ENABLED ? [['/dashboard/automations', 'DM automation'], ['/dashboard/schedule', 'Schedule posts']] : [])],
   },
   { to: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   {

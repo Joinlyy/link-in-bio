@@ -62,6 +62,7 @@ const Audience = lazy(() => import('./pages/dashboard/Audience'))
 const Referrals = lazy(() => import('./pages/dashboard/Referrals'))
 const Billing = lazy(() => import('./pages/dashboard/Billing'))
 const Payouts = lazy(() => import('./pages/dashboard/Payouts'))
+const SchedulePosts = lazy(() => import('./pages/dashboard/SchedulePosts'))
 const Team = lazy(() => import('./pages/dashboard/Team'))
 const Templates = lazy(() => import('./pages/dashboard/Templates'))
 const Guide = lazy(() => import('./pages/dashboard/Guide'))
@@ -136,6 +137,7 @@ export default function App() {
               <Route path="referrals" element={<Referrals />} />
               <Route path="billing" element={<Billing />} />
               <Route path="payouts" element={<Payouts />} />
+              <Route path="schedule" element={<SchedulePosts />} />
               <Route path="team" element={<Team />} />
               <Route path="templates" element={<Templates />} />
               <Route path="content" element={<ContentForms />} />
