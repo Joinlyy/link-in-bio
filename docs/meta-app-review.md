@@ -80,6 +80,18 @@ show it only in the creator's own dashboard and media kit, and delete it when th
 
 **Recording must show:** connected account → open Media kit → the "Reach (28 days)" figure.
 
+## Permission: instagram_business_content_publish
+
+**How we use it**
+The Post scheduler (Audience → Schedule posts). A creator uploads a photo or a Reel, writes the caption and either presses
+Post now or picks a future time. Joinlyy publishes exactly that file with exactly that caption to the creator's own connected
+Instagram professional account through the content publishing API (create container, then publish). Creators see each post's
+status, can cancel before it goes out and can open the published post. We never post anything the creator did not upload and
+approve, never edit or delete existing posts, and delete the uploaded file from our storage right after it is published.
+
+**Recording must show:** Schedule posts → choose a photo → write a caption → Post now → status changes to Posted → click View and
+show the post live on Instagram. (Optional: schedule one for a time a few minutes ahead and show it going out, and cancel another.)
+
 ## Data handling answers (Data Use Checkup / reviewer questions)
 
 - **Who sees the data:** only the creator who connected the account, and anyone they share their media kit link with.
