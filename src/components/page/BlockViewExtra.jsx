@@ -170,7 +170,7 @@ export function TipBlock({ block, ctx }) {
     <div className="w-full p-4 text-center sm:p-5" style={surfaceCss(ctx.theme)}>
       <p className="text-[17px] font-bold" style={headingStyle(ctx)}>{block.data.title || (ctx.lang === 'hi' ? 'मुझे सपोर्ट करें' : 'Support my work')}</p>
       {block.data.description && <p className="mt-1 text-sm opacity-75">{block.data.description}</p>}
-      <button type="button" onClick={() => (ctx.preview ? ctx.previewNote('Visitors choose an amount here and pay you. Payments are in test mode for now.', block.id) : setOpen(true))} className="mt-4 flex h-11 w-full items-center justify-center text-sm font-semibold" style={solidButton(ctx)}>
+      <button type="button" onClick={() => (ctx.preview ? ctx.previewNote('Visitors choose an amount here and pay you.', block.id) : setOpen(true))} className="mt-4 flex h-11 w-full items-center justify-center text-sm font-semibold" style={solidButton(ctx)}>
         {block.data.button || (ctx.lang === 'hi' ? '☕ मुझे कॉफ़ी पिलाएँ' : '☕ Buy me a coffee')}
       </button>
       <Suspense fallback={null}>

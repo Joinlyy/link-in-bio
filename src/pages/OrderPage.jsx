@@ -172,7 +172,7 @@ function Upsell({ upsell, token }) {
         <button type="button" onClick={accept} disabled={busy} className="flex h-12 w-full items-center justify-center rounded-full bg-lime text-[15px] font-semibold text-ink disabled:opacity-60">
           {busy ? 'Adding…' : offer ? `Yes, add it for ${formatInr(offer)}` : 'Yes, add it free'}
         </button>
-        <p className="mt-2 text-center text-xs text-ink-500">One click — no need to fill your details again. Test mode: no real payment.</p>
+        <p className="mt-2 text-center text-xs text-ink-500">One click, no need to fill your details again.</p>
       </div>
     </div>
   )

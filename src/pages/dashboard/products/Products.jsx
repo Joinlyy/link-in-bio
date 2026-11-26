@@ -14,7 +14,6 @@ import { Badge, Button, Card, Empty, Input, Modal, Select, Tabs, Toggle, useToas
 import { DataTable, useViewMode, ViewToggle } from '../../../components/DataTable'
 import { PageHeading } from '../DashboardLayout'
 import PayoutNotice from '../../../components/PayoutNotice'
-import { usePayouts } from '../../../lib/payouts'
 import { BLOCK_TYPES } from '../blockTypes'
 import SectionCard from '../SectionCard'
 import { MAIN_PRODUCT_TYPES, missing, PRODUCT_TYPES, productKind, saleActive, typeOf } from './productTypes'
@@ -27,15 +26,6 @@ function priceOf(p) {
   const amount = p.pay_what_you_want ? p.min_price_inr : onSale ? p.sale_price_inr : p.price_inr
   const label = p.type === 'link' ? (p.price_inr ? formatInr(p.price_inr) : productKind(p) === 'course' ? 'Enrol link' : 'Buy link') : p.pay_what_you_want ? `${formatInr(p.min_price_inr)}+` : amount ? formatInr(amount) : 'Free'
   return { label, amount: amount || 0, onSale }
-}
-function TestModeNote() {
-  const { route, loading } = usePayouts()
-  if (loading || route) return null
-  return (
-    <div className="rounded-3xl bg-lilac-100 px-5 py-4 text-sm">
-      <b>Test mode:</b> checkout works end to end but no real money moves yet. Razorpay will be switched on later, your products won’t need any changes.
-    </div>
-  )
 }
 const statusOf = (p) => (p.is_published ? 'Live' : p.title ? 'Deactivated' : 'Draft')
 
@@ -309,7 +299,6 @@ export default function Products() {
       </PageHeading>
 
       <PayoutNotice />
-      <TestModeNote />
 
       {products.length === 0 ? (
         <Empty icon={ShoppingBag} title="No products yet" action={canEdit && <Button onClick={() => setPicking(true)}>Create your first product</Button>}>

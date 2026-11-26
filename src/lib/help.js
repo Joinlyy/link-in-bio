@@ -300,7 +300,7 @@ export const GUIDE = {
     ['Media kit', 'A page that shows brands your reach, audience and past work.'],
     ['Coupon', 'A code buyers enter for a discount.'],
     ['Upsell', 'A second offer shown right after a purchase.'],
-    ['Test mode', 'Checkout works fully but no real money moves. Real payments will be switched on later.'],
+    ['Platform charge', 'A small percentage of each sale that Joinlyy keeps: 15% on Starter, 10% on Creator, 5% on Pro. The rest is your earning, sent to your UPI ID within 2 working days.'],
   ],
   minimum: [
     { title: 'To go live', items: ['A site address', 'Your name and a clear photo', 'A one or two line About', 'At least one thing to do: a button, card, video or form', 'A lead form on Home', 'Your Instagram or another social link'] },

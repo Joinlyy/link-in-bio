@@ -35,12 +35,12 @@ export default function AdminOrders() {
     const { error } = await supabase.rpc('refund_order', { p_order_id: o.id, p_reason: reason.trim() || 'Refunded by admin' })
     if (error) return toast(error.message, 'error')
     setRows((r) => r.filter((x) => x.id !== o.id))
-    toast('Refunded (test mode)')
+    toast('Marked refunded. Now refund the buyer in the Razorpay dashboard.')
   }
 
   return (
     <div className="space-y-4">
-      <PageHeading title="Orders." italic="Across all creators.">Payments are in test mode until Razorpay/Cashfree is connected.</PageHeading>
+      <PageHeading title="Orders." italic="Across all creators.">Payments run through Razorpay. Marking an order refunded does not send money: refund the buyer in the Razorpay dashboard too.</PageHeading>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Tabs label="Status" value={status} onChange={setStatus} tabs={[['paid', 'Paid'], ['pending', 'Pending'], ['failed', 'Failed'], ['refunded', 'Refunded']].map(([key, label]) => ({ key, label }))} />
         <ViewToggle value={view} onChange={setView} />

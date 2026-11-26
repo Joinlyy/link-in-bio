@@ -36,14 +36,14 @@ function ResolveModal({ action, onClose, onDone }) {
     const { error } = await supabase.rpc('admin_resolve_dispute', { p_dispute_id: action.dispute.id, p_refund: refund, p_note: note.trim() })
     setBusy(false)
     if (error) return toast(errorMessage(error), 'error')
-    toast(refund ? 'Buyer refunded (test mode)' : 'Dispute rejected')
+    toast(refund ? 'Marked refunded. Now refund the buyer in the Razorpay dashboard.' : 'Dispute rejected')
     onDone()
   }
   return (
     <Modal open onClose={onClose} title={refund ? 'Refund the buyer?' : 'Reject this dispute?'}>
       <p className="text-sm text-ink-600">
         {refund
-          ? `The ${formatInr(action.dispute.orders?.amount_inr)} order is marked refunded, any booking is cancelled and the dispute is closed. Test mode: no money moves yet.`
+          ? `The ${formatInr(action.dispute.orders?.amount_inr)} order is marked refunded, any booking is cancelled and the dispute is closed. Send the money back to the buyer in the Razorpay dashboard.`
           : 'The order stays paid and the dispute is closed in the creator’s favour.'}
       </p>
       <Textarea className="mt-4" label="Note (kept on the dispute)" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder={refund ? 'e.g. Creator didn’t deliver the file' : 'e.g. Download logs show the buyer accessed the file'} maxLength={1000} />

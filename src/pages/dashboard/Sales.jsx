@@ -40,7 +40,7 @@ const STATUS_TONE = { paid: 'green', refunded: 'red', pending: 'lilac', failed: 
 const STATUS_LABEL = { pending: 'waiting for payment', failed: 'payment not received' }
 
 async function refundOrder(order, toast) {
-  const reason = await askText({ title: `Refund ${formatInr(order.amount_inr)}?`, message: `To ${order.buyer_email}\n\nTest mode: no real money moves yet. The order is marked refunded and the buyer loses access.`, label: 'Reason (shown to the buyer)', defaultValue: 'Refund requested', confirmLabel: 'Refund', danger: true })
+  const reason = await askText({ title: `Refund ${formatInr(order.amount_inr)}?`, message: `To ${order.buyer_email}\n\nThe order is marked refunded and the buyer loses access. Email support@joinlyy.com with this order so we send the money back to the buyer.`, label: 'Reason (shown to the buyer)', defaultValue: 'Refund requested', confirmLabel: 'Refund', danger: true })
   if (reason === null) return null
   const why = reason.trim() || 'Refunded by creator'
   const { error } = await supabase.rpc('refund_order', { p_order_id: order.id, p_reason: why })
@@ -314,7 +314,7 @@ function Disputes({ pageId, orders, onPatch, canEdit }) {
         />
       ) : sorted.map((d) => <div key={d.id}>{card(d)}</div>)}
       <Modal open={Boolean(opened)} onClose={() => setOpenId(null)} title="Dispute" wide>{opened && card(opened)}</Modal>
-      <p className="px-1 text-xs text-ink-500">Unresolved disputes are reviewed by our team. Refunds are in test mode — no real money moves yet.</p>
+      <p className="px-1 text-xs text-ink-500">Unresolved disputes are reviewed by our team. To send money back to a buyer, email support@joinlyy.com with the order.</p>
     </div>
   )
 }

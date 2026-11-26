@@ -131,7 +131,7 @@ export default function AdminPlans() {
         italic="What creators pay."
         actions={<Button onClick={() => setEditing({ plan: { ...BLANK, position: (plans?.length || 0) }, isNew: true })}><Plus className="size-4" /> New plan</Button>}
       >
-        Changes apply instantly to limits and the billing page. Payments are in test mode.
+        Changes apply instantly to limits and the billing page.
       </PageHeading>
       {plans === null ? (
         <div className="grid h-60 place-items-center"><Spinner /></div>
