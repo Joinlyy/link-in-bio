@@ -35,7 +35,7 @@ Deno.serve(handle(async (req) => {
       if (names.length) {
         await admin.storage.from('ig-posts').remove(names)
         // The rows keep the link, time and status; the dead file address is cleared
-        await admin.from('ig_scheduled_posts').update({ media_url: '', media_path: '' }).in('media_path', names).in('status', ['published', 'cancelled', 'failed'])
+        await admin.from('ig_scheduled_posts').update({ media_url: '', media_path: '', items: [] }).in('media_path', names).in('status', ['published', 'cancelled', 'failed'])
       }
       return json({ ok: true, removed: names.length })
     }
@@ -337,7 +337,15 @@ async function publishDue(admin: SupabaseClient, onlyId?: string) {
       let creationId = post.creation_id as string | null
       if (!creationId) {
         const params: Record<string, string> = { caption: post.caption ?? '' }
-        if (post.media_type === 'REELS') {
+        if (post.media_type === 'CAROUSEL') {
+          // One hidden container per photo, then one carousel container that joins them
+          const photos = (post.items ?? []) as { url: string }[]
+          if (photos.length < 2) throw new Error('A multi-photo post needs at least 2 photos')
+          const children: string[] = []
+          for (const ph of photos) children.push(String((await igPost(token, `/${acc.ig_user_id}/media`, { image_url: ph.url, is_carousel_item: 'true' })).id))
+          params.media_type = 'CAROUSEL'
+          params.children = children.join(',')
+        } else if (post.media_type === 'REELS') {
           params.media_type = 'REELS'
           params.video_url = post.media_url
         } else params.image_url = post.media_url
@@ -345,7 +353,7 @@ async function publishDue(admin: SupabaseClient, onlyId?: string) {
         await admin.from('ig_scheduled_posts').update({ creation_id: creationId }).eq('id', post.id)
       }
       // Videos are processed by Instagram first
-      let ready = post.media_type !== 'REELS'
+      let ready = post.media_type === 'IMAGE'
       for (let i = 0; i < 12 && !ready; i++) {
         const st = await igGet(token, `/${creationId}`, { fields: 'status_code,status' })
         if (st.status_code === 'FINISHED') ready = true
@@ -364,8 +372,9 @@ async function publishDue(admin: SupabaseClient, onlyId?: string) {
       } catch {
         /* the post is live either way */
       }
-      await admin.storage.from('ig-posts').remove([post.media_path]).catch(() => {}) // the file is on Instagram now; the hourly cleanup catches it if this fails
-      await admin.from('ig_scheduled_posts').update({ status: 'published', ig_media_id: mediaId, permalink, published_at: new Date().toISOString(), error: null, media_url: '', media_path: '' }).eq('id', post.id)
+      const paths = [post.media_path, ...(((post.items ?? []) as { path: string }[]).map((i) => i.path))].filter(Boolean)
+      await admin.storage.from('ig-posts').remove([...new Set(paths)]).catch(() => {}) // the files are on Instagram now; the hourly cleanup catches any that fail
+      await admin.from('ig_scheduled_posts').update({ status: 'published', ig_media_id: mediaId, permalink, published_at: new Date().toISOString(), error: null, media_url: '', media_path: '', items: [] }).eq('id', post.id)
       published++
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
