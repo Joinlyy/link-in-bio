@@ -21,6 +21,7 @@ const ProductPage = lazy(() => import('./pages/ProductPage'))
 const OrderPage = lazy(() => import('./pages/OrderPage'))
 const Privacy = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Terms })))
+const RefundPolicy = lazy(() => import('./pages/Legal').then((m) => ({ default: m.RefundPolicy })))
 const DataDeletion = lazy(() => import('./pages/Legal').then((m) => ({ default: m.DataDeletion })))
 const SignIn = lazy(() => import('./pages/auth/SignIn'))
 const SignUp = lazy(() => import('./pages/auth/SignUp'))
@@ -98,6 +99,7 @@ export default function App() {
           {SEO_PAGES.map((p) => <Route key={p.slug} path={`/${p.slug}`} element={<SeoLanding slug={p.slug} />} />)}
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
           <Route path="/data-deletion" element={<DataDeletion />} />
           <Route path="/academy" element={<Academy />} />
           <Route path="/academy/:slug" element={<Academy />} />

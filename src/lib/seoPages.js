@@ -8,17 +8,17 @@ const BASE_PAGES = [
   {
     slug: 'link-in-bio-for-indian-creators',
     title: 'Link in Bio for Indian Creators: Sell, Book & Get Paid | Joinlyy',
-    description: 'One link in bio to take UPI payments, sell digital products, book calls and auto-DM every comment. Built for Indian creators, in Hindi and English. Free to start.',
+    description: 'One link in bio to get paid by UPI, sell digital products, book calls, schedule Instagram posts and auto-DM every comment. Built for Indian creators, in Hindi and English. Free to start.',
     h1: 'The link in bio built for Indian creators',
     kicker: 'Link in bio',
-    intro: 'Joinlyy turns the one link in your Instagram, YouTube or WhatsApp bio into a small website that sells for you. Buyers pay by UPI, you get alerted on WhatsApp, and you never copy-paste a payment link into a DM again.',
+    intro: 'Joinlyy turns the one link in your Instagram, YouTube or WhatsApp bio into a small website that sells for you. Buyers pay by UPI, you can schedule your Instagram posts, you get alerted on WhatsApp, and you never copy-paste a payment link into a DM again.',
     sections: [
       { h2: 'Everything a creator needs behind one link', body: [
         'Most link pages only list links. Joinlyy lets you sell, book and collect leads from the same page, so your followers can act without leaving your bio.',
         { list: ['Sell digital products, PDFs, presets, courses and memberships', 'Take paid 1:1 calls and webinar bookings with a calendar', 'Collect emails and phone numbers with lead forms', 'Show your latest Reel, YouTube video or Spotify playlist', 'Add a brand-deal enquiry form so sponsors can reach you'] },
       ] },
       { h2: 'Made for how India pays and chats', body: [
-        'Your customers already pay by UPI and talk on WhatsApp. Joinlyy is built around both: buyers pay you by UPI, and you can get a WhatsApp message the moment an order, lead or brand enquiry arrives.',
+        'Your customers already pay by UPI and talk on WhatsApp. Joinlyy is built around both: buyers pay by UPI at checkout, your earning is sent to your UPI ID, and you can get a WhatsApp message the moment an order, lead or brand enquiry arrives.',
         'Pages work in Hindi and English, with fonts that render Devanagari properly, and there are Hindi templates for recipes, teachers, parents and spiritual creators.',
       ] },
       { h2: '33 templates, then make it yours', body: [
@@ -30,7 +30,8 @@ const BASE_PAGES = [
     ],
     faq: [
       ['Is Joinlyy free?', 'Yes. The Starter plan is free, with one page, free comment to DM automation and the core selling tools. Paid plans add more automations, WhatsApp alerts, more history and extras.'],
-      ['Can I take UPI payments?', 'Yes. Buyers pay your UPI ID and you confirm the payment, so the money goes straight to you.'],
+      ['Can I take UPI payments?', 'Yes. Buyers pay at checkout by UPI, card or net banking, and we send your earning to your UPI ID within 2 working days, after a platform charge of 15%, 10% or 5% by plan.'],
+      ['Can I schedule Instagram posts?', 'Yes, on every plan. Upload photos, a carousel or a Reel, pick a time and Joinlyy posts it for you. Starter allows 1 post a day and 15 Reels a month.'],
       ['Does it work in Hindi?', 'Yes. Pages, buttons and several templates are available in Hindi and English.'],
       ['Do I need to know how to code?', 'No. Pick a template, add your links and products and publish. Most creators finish in about ten minutes.'],
     ],
@@ -73,13 +74,13 @@ const BASE_PAGES = [
     description: 'Sell PDFs, presets, courses, memberships and paid calls straight from your Instagram bio. Buyers pay by UPI. WhatsApp order alerts and automatic delivery.',
     h1: 'Sell on Instagram with UPI, from your bio link',
     kicker: 'Sell online',
-    intro: 'You do not need a website or a payment gateway account to start selling. Add a product to your Joinlyy page, share the link, and your buyers pay by UPI. Digital products are delivered on the order page.',
+    intro: 'You do not need a website or a payment gateway account to start selling. Add a product to your Joinlyy page, share the link, and your buyers pay by UPI, card or net banking at checkout. Digital products are delivered on the order page, and your earning is sent to your UPI ID.',
     sections: [
       { h2: 'What you can sell', body: [
         { list: ['Digital downloads: PDFs, templates, presets, ebooks', 'Courses and communities, with your own course link or private content', 'Paid 1:1 calls and consultations with a booking calendar', 'Webinars and live classes with registration', 'Memberships, bundles and "ask me a question" products', 'Tips, for people who just want to say thanks'] },
       ] },
       { h2: 'How a sale works', body: [
-        'A buyer opens your product, pays your UPI ID and sends the payment reference. You confirm it, and the buyer gets access on their order page right away. You are alerted by WhatsApp on paid plans, so you never miss an order.',
+        'A buyer opens your product and pays at checkout. The moment the payment succeeds, the buyer gets access on their order page. Joinlyy keeps a platform charge (15% on Starter, 10% on Creator, 5% on Pro) and sends the rest to your UPI ID within 2 working days. The price you set is final, so include GST in it if it applies to you. You are alerted by WhatsApp on paid plans, so you never miss an order.',
       ] },
       { h2: 'Sell more with simple tools', body: [
         'Add coupons, limited-time offers, pay-what-you-want pricing, bundles and upsells on the Creator and Pro plans. Collect GST details and generate invoices for brand deals.',
@@ -89,8 +90,10 @@ const BASE_PAGES = [
       ] },
     ],
     faq: [
-      ['Do I need a payment gateway?', 'No. Buyers pay your UPI ID directly and you confirm each payment.'],
-      ['How do buyers get digital products?', 'After you confirm the payment, the buyer opens their order page and downloads the file or accesses the content.'],
+      ['Do I need a payment gateway?', 'No. Joinlyy takes the payment at checkout and sends your earning to your UPI ID within 2 working days.'],
+      ['What does Joinlyy charge on a sale?', 'A platform charge of 15% on Starter, 10% on Creator and 5% on Pro. The rest of the sale price is yours.'],
+      ['How do buyers get digital products?', 'As soon as the payment succeeds, the buyer opens their order page and downloads the file or accesses the content.'],
+      ['What is the refund policy?', 'Buyers email support@joinlyy.com with the creator name, the product and a screenshot of the payment. See the refund policy on joinlyy.com/refund-policy.'],
       ['Can I sell without a website?', 'Yes. Your Joinlyy page is your storefront, and every product has its own shareable link.'],
       ['What does it cost?', 'You can start on the free Starter plan. Creator is ₹199 a month and Pro is ₹399 a month, with two months free on yearly billing.'],
     ],
@@ -179,7 +182,7 @@ const BASE_PAGES = [
     intro: 'The Starter plan is free, with no time limit. You get a full link in bio page, selling tools and Instagram comment to DM automation, so you can grow before you pay anything.',
     sections: [
       { h2: 'Included on Starter, free', body: [
-        { list: ['One link in bio page with all 33 templates', 'Unlimited links, social icons and embeds', 'Free comment to DM automation (10 automations, 1,000 DMs a month)', 'Digital products, paid sessions and lead forms', 'Media kit and PDF download', 'Page analytics and a Hindi and English interface'] },
+        { list: ['One link in bio page with all 33 templates', 'Unlimited links, social icons and embeds', 'Free comment to DM automation (10 automations, 1,000 DMs a month)', 'Free Instagram post scheduler: 1 post a day and 15 Reels a month', 'Digital products, paid sessions and lead forms', 'Media kit and PDF download', 'Page analytics and a Hindi and English interface'] },
       ] },
       { h2: 'Upgrade when it makes sense', body: [
         'Creator is ₹199 a month and Pro is ₹399 a month, with two months free on yearly billing. Paid plans add WhatsApp alerts, more automations and DMs, coupons and offers, longer analytics history, lead export, team access and removing our branding.',

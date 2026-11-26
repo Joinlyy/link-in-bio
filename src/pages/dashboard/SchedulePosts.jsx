@@ -66,6 +66,7 @@ export default function SchedulePosts() {
   const fileRef = useRef(null)
   const [account, setAccount] = useState(undefined)
   const [posts, setPosts] = useState(null)
+  const [allow, setAllow] = useState(null)
   const [items, setItems] = useState([]) // chosen files: { id, file, preview }
   const [caption, setCaption] = useState('')
   const [mode, setMode] = useState('later')
@@ -80,6 +81,7 @@ export default function SchedulePosts() {
     ])
     setAccount(acc || null)
     setPosts(list || [])
+    supabase.rpc('my_post_allowance').then(({ data }) => setAllow(data || null))
   }, [user.id])
   useEffect(() => {
     load()
@@ -213,7 +215,10 @@ export default function SchedulePosts() {
         <Card className="p-5 sm:p-7">
           <div className="flex items-center gap-3">
             {account.profile_picture_url && <img src={account.profile_picture_url} alt="" className="size-10 rounded-full object-cover" />}
-            <p className="text-sm text-ink-600">Posting to <b>@{account.username}</b></p>
+            <div className="min-w-0">
+              <p className="text-sm text-ink-600">Posting to <b>@{account.username}</b></p>
+              {allow && <p className="text-xs text-ink-500">Today: {allow.posts_today} of {allow.posts_per_day} post{allow.posts_per_day === 1 ? '' : 's'} · This month: {allow.reels_this_month} of {allow.reels_per_month} Reels. <a href="/dashboard/billing" className="underline">Plans</a></p>}
+            </div>
           </div>
           <form onSubmit={submit} className="mt-5 grid gap-5 lg:grid-cols-[260px_1fr]">
             <div>

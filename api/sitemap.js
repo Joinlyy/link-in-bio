@@ -16,6 +16,7 @@ export default async function handler() {
     ...ARTICLES.map((a) => ({ loc: `/academy/${a.slug}`, priority: '0.6' })),
     { loc: '/privacy', priority: '0.2' },
     { loc: '/terms', priority: '0.2' },
+    { loc: '/refund-policy', priority: '0.2' },
   ]
 
   const url = process.env.VITE_SUPABASE_URL

@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { applySeo } from '../lib/seo'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowDown, ArrowUpRight, BellRing, CalendarDays, Check, Download, Handshake, IndianRupee,
+  ArrowDown, ArrowUpRight, BellRing, CalendarClock, CalendarDays, Check, Download, Handshake, IndianRupee,
   MessageCircle, Minus, Palette, ShieldCheck, Sparkles, X, Zap,
 } from 'lucide-react'
 import PageRenderer from '../components/page/PageRenderer'
@@ -85,8 +85,8 @@ function Hero() {
               <path d="M0 90 C 80 10, 140 130, 220 60 S 340 20, 400 70" stroke="currentColor" strokeWidth="14" strokeLinecap="round" />
             </svg>
             <p className="relative max-w-lg text-[16px] leading-relaxed text-ink-700 sm:text-[17px]">
-              Sell products, courses and 1:1 calls, take UPI payments straight to your bank
-              {INSTAGRAM_ENABLED ? ', auto-reply to every comment with a DM' : ''} and get a WhatsApp ping for every order. In Hindi and English.
+              Sell products, courses and 1:1 calls, get paid by UPI
+              {INSTAGRAM_ENABLED ? ', schedule your Instagram posts, auto-reply to every comment with a DM' : ''} and get a WhatsApp ping for every order. In Hindi and English.
             </p>
             <div className="relative mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               <ClaimBox />
@@ -170,9 +170,66 @@ function FreeAutomation() {
   )
 }
 
+function FreeScheduler() {
+  if (!INSTAGRAM_ENABLED) return null
+  const points = [
+    'Upload photos, a multi-photo carousel or a Reel, write the caption, pick the time',
+    'Joinlyy publishes it to your Instagram for you, even while you sleep',
+    'Free: 1 post a day and 15 Reels a month. Creator: 3 a day, 40 Reels. Pro: 3 a day, 50 Reels',
+  ]
+  return (
+    <section className="relative overflow-hidden rounded-3xl bg-lilac-100 p-7 sm:p-12">
+      <div className="absolute -bottom-24 -left-16 size-72 rounded-full bg-lime/50" aria-hidden />
+      <div className="relative grid items-center gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12">
+        <div className="relative mx-auto w-full max-w-sm space-y-3" aria-hidden>
+          <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-soft">
+            <span className="grid size-12 place-items-center rounded-xl bg-ink text-lime"><CalendarClock className="size-5" /></span>
+            <div>
+              <p className="text-sm font-semibold">Reel · Tomorrow, 7:00 pm</p>
+              <p className="text-xs text-ink-500">“3 easy dinners under 20 minutes 🍛”</p>
+            </div>
+            <span className="ml-auto rounded-full bg-lilac-100 px-2.5 py-1 text-[11px] font-bold">Scheduled</span>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-soft">
+            <span className="grid size-12 place-items-center rounded-xl bg-lime text-ink"><InstagramIcon className="size-5" /></span>
+            <div>
+              <p className="text-sm font-semibold">Carousel · 5 photos</p>
+              <p className="text-xs text-ink-500">Posted today, 9:00 am</p>
+            </div>
+            <span className="ml-auto rounded-full bg-lime px-2.5 py-1 text-[11px] font-bold">Posted</span>
+          </div>
+        </div>
+        <div>
+          <span className="inline-flex items-center rounded-full bg-ink px-3 py-1 text-xs font-bold text-lime">FREE ON EVERY PLAN</span>
+          <h2 className="display-lg mt-4">
+            Schedule your Instagram posts.
+            <br />
+            <span className="display-italic">Auto-post, free.</span>
+          </h2>
+          <ul className="mt-6 space-y-3 text-[15px]">
+            {points.map((t) => (
+              <li key={t} className="flex items-start gap-2.5">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-ink text-lime"><Check className="size-3" strokeWidth={3} /></span>
+                <span className="text-ink-700">{t}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
+            <a href="/signup" className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-sm font-semibold text-white">
+              Start free <ArrowUpRight className="size-4" />
+            </a>
+            <a href="/instagram-post-scheduler" className="text-sm font-semibold underline underline-offset-4">How the Instagram post scheduler works</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function Features() {
   const items = [
-    { icon: IndianRupee, title: 'Get paid by UPI', text: 'Buyers pay your UPI ID from GPay, PhonePe or Paytm. You confirm in a tap and their access opens. No cut taken on direct UPI payments.', cls: 'bg-lilac-100' },
+    { icon: IndianRupee, title: 'Get paid by UPI', text: 'Buyers pay by UPI, card or net banking and get access at once. After our platform charge (15%, 10% or 5% by plan) your earning is sent to your UPI ID within 2 working days.', cls: 'bg-lilac-100' },
+    ...(INSTAGRAM_ENABLED ? [{ icon: CalendarClock, title: 'Instagram post scheduler', text: 'Schedule photos, carousels and Reels, and Joinlyy posts them for you. Free: 1 post a day and 15 Reels a month.', cls: 'bg-lime' }] : []),
     { icon: Download, title: 'Digital products', text: 'PDFs, presets, templates and bundles, delivered through secure, expiring download links.', cls: 'bg-white' },
     { icon: Sparkles, title: 'Courses & brand picks', text: 'List your course or a product you recommend with its price and a buy link. Buyers pay on your platform or the brand’s site.', cls: 'bg-white' },
     { icon: CalendarDays, title: '1:1 calls & webinars', text: 'Paid sessions with IST time slots and meeting links, or webinars with limited seats.', cls: 'bg-lime' },
@@ -206,8 +263,8 @@ function HowItWorks() {
   const steps = [
     { n: '01', icon: Sparkles, title: 'Claim your name', text: `Pick ${PUBLIC_DOMAIN}/yourname, your niche and language. Free, with no card.`, cls: 'bg-cream-200' },
     INSTAGRAM_ENABLED
-      ? { n: '02', icon: InstagramIcon, title: 'Build your page', text: 'Import your photo and bio from Instagram in one tap, or start from one of 33 designs. Add products and your UPI ID.', cls: 'bg-lilac-100' }
-      : { n: '02', icon: Palette, title: 'Build your page', text: 'Choose one of 33 designs. Add products, a lead form and your UPI ID, and switch designs any time without losing anything.', cls: 'bg-lilac-100' },
+      ? { n: '02', icon: InstagramIcon, title: 'Build your page', text: 'Import your photo and bio from Instagram in one tap, or start from one of 33 designs. Add products and your payout UPI ID.', cls: 'bg-lilac-100' }
+      : { n: '02', icon: Palette, title: 'Build your page', text: 'Choose one of 33 designs. Add products, a lead form and your payout UPI ID, and switch designs any time without losing anything.', cls: 'bg-lilac-100' },
     { n: '03', icon: Zap, title: 'Paste it in your bio', text: 'Put one link in your Instagram, YouTube and WhatsApp bios. Orders, leads and brand enquiries reach you on WhatsApp.', cls: 'bg-lime' },
   ]
   return (
@@ -380,7 +437,7 @@ function CompareModal({ plans, period, onClose }) {
           </table>
         </div>
         <div className="border-t border-ink/10 px-5 py-3 text-center text-xs text-ink-500 sm:px-7">
-          Direct UPI payments from your buyers go straight to you with no fee from us.
+          Prices are before 18% GST. The platform charge is taken from each sale and the rest is paid to your UPI ID within 2 working days.
         </div>
       </div>
     </div>
@@ -444,7 +501,7 @@ function Pricing() {
             })}
           </div>
           <div className="mt-6 flex flex-col items-center justify-between gap-3 sm:flex-row">
-            <p className="text-sm text-ink-500">Every plan has your own website, products, bookings, lead forms and media kit. No setup fees.</p>
+            <p className="text-sm text-ink-500">Every plan has your own website, products, bookings, lead forms, media kit and the Instagram post scheduler. No setup fees. Prices are before 18% GST; paid plans renew automatically and you can turn that off any time.</p>
             <button type="button" onClick={() => setOpen(true)} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-ink/15 px-5 text-sm font-semibold hover:border-ink/40">
               Compare all features <ArrowUpRight className="size-4" />
             </button>
@@ -479,7 +536,9 @@ function Trust() {
 const FAQ = [
   ['What is a link in bio?', 'One link you put in your Instagram, YouTube or WhatsApp bio. It opens a page with everything you want to share: products, bookings, videos, WhatsApp chat and more.'],
   ['Is it really free?', `Yes. The free plan includes your website, products, bookings, lead capture, analytics and media kit${INSTAGRAM_ENABLED ? ', plus up to 10 comment-to-DM automations' : ''}. Paid plans raise the limits and add extras like WhatsApp alerts and your own domain.`],
-  ['How do I get paid, and do you take a cut?', 'Buyers pay your UPI ID directly, you confirm in Sales and their access opens. The money never passes through us, so there’s no cut on direct UPI. Sales through our upcoming card checkout carry a small fee that gets lower on paid plans.'],
+  ['How do I get paid, and do you take a cut?', 'Buyers pay on your page by UPI, card or net banking, and their access opens at once. We keep a platform charge of 15% on Starter, 10% on Creator and 5% on Pro, and send the rest to your UPI ID within 2 working days of each sale. The price you set is final: add GST yourself if it applies to you, we never add anything on top.'],
+  ...(INSTAGRAM_ENABLED ? [['Can I schedule Instagram posts?', 'Yes, on every plan. Upload photos, a carousel of up to 10 photos or a Reel, write the caption and pick a time, and Joinlyy publishes it to your connected Instagram account. Starter allows 1 post a day and 15 Reels a month, Creator 3 a day and 40 Reels, Pro 3 a day and 50 Reels.']] : []),
+  ['What is your refund policy?', 'Refund requests for a purchase from a creator are handled by email. Send the creator’s name, the product and a screenshot of your payment to support@joinlyy.com. Read the full refund policy at /refund-policy.'],
   ...(INSTAGRAM_ENABLED
     ? [['How does comment-to-DM work?', 'Connect your Instagram Creator or Business account, pick a keyword like “GUIDE” and write your message. When someone comments it, they get a DM with your link. We follow Instagram’s rules: one private reply per comment, within seven days.']]
     : []),
@@ -535,7 +594,7 @@ function FinalCta() {
 
 export default function Landing() {
   useEffect(() => {
-    applySeo({ title: `${APP_NAME}: Free Link in Bio + Instagram Comment to DM Automation (India)`, description: 'One link in bio to sell, book and get paid. Take UPI payments, auto-DM every Instagram comment and get WhatsApp alerts. Free for Indian creators, in Hindi and English.', path: '/' })
+    applySeo({ title: `${APP_NAME}: Free Link in Bio + Instagram Comment to DM Automation (India)`, description: 'One link in bio to sell, book and get paid by UPI. Schedule your Instagram posts, auto-DM every comment and get WhatsApp alerts. Free for Indian creators, in Hindi and English.', path: '/' })
     captureRef()
   }, [])
   return (
@@ -544,6 +603,7 @@ export default function Landing() {
       <main className="container-page mt-4 space-y-4">
         <Hero />
         <FreeAutomation />
+        <FreeScheduler />
         <Features />
         <HowItWorks />
         <WhoItsFor />

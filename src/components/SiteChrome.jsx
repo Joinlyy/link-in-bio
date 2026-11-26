@@ -99,6 +99,8 @@ export function SiteFooter() {
             <p className="eyebrow text-ink-400">Learn</p>
             <Link to="/instagram-comment-to-dm-automation" className="block font-medium hover:underline">Free comment to DM automation</Link>
             <Link to="/how-to-set-up-comment-to-dm" className="block font-medium hover:underline">Set up comment to DM</Link>
+            <Link to="/instagram-post-scheduler" className="block font-medium hover:underline">Free Instagram post scheduler</Link>
+            <Link to="/schedule-instagram-reels-free" className="block font-medium hover:underline">Schedule Reels free</Link>
             <Link to="/instagram-dm-keywords-that-convert" className="block font-medium hover:underline">Comment keywords that work</Link>
             <Link to="/manychat-alternative-india" className="block font-medium hover:underline">ManyChat alternative</Link>
             <Link to="/link-in-bio-for-indian-creators" className="block font-medium hover:underline">Link in bio for India</Link>
@@ -120,6 +122,7 @@ export function SiteFooter() {
             <p className="eyebrow text-ink-400">Legal</p>
             <Link to="/privacy" className="block font-medium hover:underline">Privacy Policy</Link>
             <Link to="/terms" className="block font-medium hover:underline">Terms</Link>
+            <Link to="/refund-policy" className="block font-medium hover:underline">Refund Policy</Link>
           </div>
         </div>
       </div>

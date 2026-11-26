@@ -3,19 +3,102 @@
 
 export const SEO_PAGES_MORE = [
   {
+    slug: 'instagram-post-scheduler',
+    title: 'Free Instagram Post Scheduler for Indian Creators: Photos, Carousels & Reels | Joinlyy',
+    description: 'Schedule Instagram photos, carousels and Reels and let Joinlyy post them for you. Free on every plan: 1 post a day and 15 Reels a month. Made in India.',
+    h1: 'A free Instagram post scheduler that posts for you',
+    kicker: 'Auto-post',
+    intro: 'Upload your photos or Reel, write the caption, pick a time and Joinlyy publishes it to your Instagram account. It is free on every plan, and it sits in the same account as your link in bio, your comment to DM automation and your store.',
+    sections: [
+      { h2: 'What you can schedule', body: [
+        { list: ['Single photos', 'Carousels with 2 to 10 photos in one swipeable post', 'Reels (MP4 videos up to 50 MB)', 'Captions with hashtags, up to 2,200 characters', 'A time in India time, up to 75 days ahead, or Post now'] },
+      ] },
+      { h2: 'Limits by plan', body: [
+        { list: ['Starter, free: 1 post a day and 15 Reels a month', 'Creator, Rs 199 a month: 3 posts a day and 40 Reels a month', 'Pro, Rs 399 a month: 3 posts a day and 50 Reels a month'] },
+        'Cancelled and failed posts do not count towards your limits.',
+      ] },
+      { h2: 'Safe and simple', body: [
+        'Joinlyy uses Instagram\'s official publishing API, so your password is never shared. It only publishes what you uploaded, to the account you connected, at the time you chose. Your uploaded files are deleted from our storage once the post is published, and we keep only the post link, time and status.',
+      ] },
+      { h2: 'One tool for your whole Instagram routine', body: [
+        'Pair scheduled posts with free comment to DM automation: post a Reel at 7 pm, and everyone who comments your keyword gets your link in their DMs, even when you are offline.',
+      ] },
+    ],
+    faq: [
+      ['Is the Instagram post scheduler free?', 'Yes. Every plan includes it. Starter allows 1 post a day and 15 Reels a month, and the paid plans allow more.'],
+      ['Can I schedule Reels and carousels?', 'Yes. You can schedule single photos, carousels of up to 10 photos and Reels.'],
+      ['Do I need a Business or Creator account?', 'Yes. Instagram only allows publishing through its API for professional (Business or Creator) accounts.'],
+      ['Is my account safe?', 'Joinlyy connects through Instagram\'s official login. You never share your password, and you can disconnect any time in Settings.'],
+    ],
+    related: ['how-to-schedule-instagram-posts', 'instagram-comment-to-dm-automation', 'link-in-bio-for-indian-creators'],
+  },
+  {
+    slug: 'how-to-schedule-instagram-posts',
+    title: 'How to Schedule Instagram Posts and Reels for Free (Step by Step) | Joinlyy',
+    description: 'A simple guide to scheduling Instagram photos, carousels and Reels for free with Joinlyy: connect your account, upload, write the caption and pick a time.',
+    h1: 'How to schedule Instagram posts and Reels for free',
+    kicker: 'Guide',
+    intro: 'You can plan a week of Instagram content in one sitting and let it post itself. This guide shows the steps in Joinlyy, which has a free Instagram post scheduler on every plan.',
+    howto: { name: 'Schedule an Instagram post with Joinlyy', steps: [
+      ['Connect Instagram', 'In Joinlyy open Settings, then Instagram, then Connect Instagram, and approve the permissions with your Business or Creator account.'],
+      ['Open Schedule posts', 'Go to Audience, then Schedule posts.'],
+      ['Add your photos or Reel', 'Choose one photo, up to 10 photos for a carousel, or one video for a Reel.'],
+      ['Write the caption', 'Add your caption and hashtags.'],
+      ['Pick the time', 'Choose a date and time in India time, or press Post now.'],
+      ['Done', 'Joinlyy publishes the post at that time. You can see its status in the list and cancel it before it goes out.'],
+    ] },
+    sections: [
+      { h2: 'Before you start', body: [
+        { list: ['Switch your Instagram account to Business or Creator (free, in Instagram settings)', 'Have your photos or Reel ready on your phone or computer', 'Decide the best time: when your followers are online'] },
+      ] },
+      { h2: 'Tips for better scheduled posts', body: [
+        'Keep carousel photos in the same shape. Joinlyy fits every photo into a 4:5 frame without cropping. Post Reels at a steady time each day, and pair them with a comment to DM keyword so every comment turns into a lead.',
+      ] },
+    ],
+    faq: [
+      ['How many posts can I schedule for free?', 'On Starter you can post 1 a day and up to 15 Reels a month.'],
+      ['Can I schedule in advance?', 'Yes, up to 75 days ahead, and up to 30 posts can wait at a time.'],
+    ],
+    related: ['instagram-post-scheduler', 'schedule-instagram-reels-free', 'how-to-set-up-comment-to-dm'],
+  },
+  {
+    slug: 'schedule-instagram-reels-free',
+    title: 'Schedule Instagram Reels for Free: 15 Reels a Month on Joinlyy',
+    description: 'Schedule Instagram Reels for free: 15 a month on Starter, 40 on Creator and 50 on Pro. Upload an MP4, write the caption and Joinlyy posts it for you.',
+    h1: 'Schedule Instagram Reels for free',
+    kicker: 'Reels',
+    intro: 'Reels work best when you post on a steady schedule. Joinlyy lets you upload a Reel in advance and publishes it at the time you pick, with no cost on the Starter plan.',
+    sections: [
+      { h2: 'Reel limits', body: [
+        { list: ['Starter, free: 15 Reels a month', 'Creator, Rs 199 a month: 40 Reels a month', 'Pro, Rs 399 a month: 50 Reels a month'] },
+        'Reels are MP4 videos up to 50 MB. Your file is deleted from our storage after it is published.',
+      ] },
+      { h2: 'Turn Reel viewers into leads', body: [
+        'Ask viewers to comment a keyword like GUIDE. Joinlyy replies in public and sends them a DM with your link, using the free comment to DM automation in the same account.',
+      ] },
+    ],
+    faq: [
+      ['Is scheduling Reels free?', 'Yes, 15 Reels a month are free on Starter.'],
+      ['Can I post a Reel right now?', 'Yes. Choose Post now instead of a time.'],
+    ],
+    related: ['instagram-post-scheduler', 'instagram-comment-to-dm-automation', 'instagram-dm-keywords-that-convert'],
+  },
+
+  {
     slug: 'about',
     title: 'About Joinlyy: The Link in Bio Platform for Indian Creators',
     description: 'Joinlyy (pronounced join-lee, spelled with two y) is a link in bio and Instagram comment to DM automation platform made in India for creators. Learn what it does.',
     h1: 'About Joinlyy',
     kicker: 'About',
-    intro: 'Joinlyy is a link in bio platform made in India for creators. It gives you one page for your bio link, free Instagram comment to DM automation, and simple ways to sell, book and get paid by UPI.',
+    intro: 'Joinlyy is a link in bio platform made in India for creators. It gives you one page for your bio link, free Instagram comment to DM automation, and simple ways to sell, book and get paid by UPI. You can also schedule your Instagram posts.',
     sections: [
       { h2: 'How to say and spell Joinlyy', body: [
         'Joinlyy is pronounced "join-lee" and spelled J-O-I-N-L-Y-Y, with two y at the end. If a search engine suggests a different spelling, check that it is spelled with the two y: joinlyy.com.',
         'Joinlyy is not related to other products or companies with a similar-sounding name.',
       ] },
       { h2: 'What Joinlyy does', body: [
-        { list: ['A link in bio page with 33 templates, in Hindi and English', 'Free Instagram comment to DM automation, with public replies', 'Selling tools: digital products, paid calls, webinars, memberships and tips, paid by UPI', 'A media kit PDF and a brand-deal enquiry form', 'WhatsApp alerts for new orders, leads and brand enquiries', 'Analytics, lead capture and a support button on every order'] },
+        { list: ['A link in bio page with 33 templates, in Hindi and English', 'Free Instagram comment to DM automation, with public replies', 'Selling tools: digital products, paid calls, webinars, memberships and tips, paid by UPI',
+        'An Instagram post scheduler for photos, carousels and Reels, free on every plan', 'A media kit PDF and a brand-deal enquiry form', 'WhatsApp alerts for new orders, leads and brand enquiries', 'Analytics, lead capture and a support button on every order'] },
       ] },
       { h2: 'Who it is for', body: [
         'Indian creators, coaches, teachers, small businesses and freelancers who share one link on Instagram, YouTube or WhatsApp and want that link to do more than list links.',
@@ -26,7 +109,7 @@ export const SEO_PAGES_MORE = [
     ],
     faq: [
       ['How do you pronounce Joinlyy?', 'Say it "join-lee". It is written with two y at the end: Joinlyy.'],
-      ['What is Joinlyy?', 'A link in bio platform for Indian creators, with free Instagram comment to DM automation, UPI selling and WhatsApp alerts.'],
+      ['What is Joinlyy?', 'A link in bio platform for Indian creators, with free Instagram comment to DM automation, an Instagram post scheduler, UPI selling and WhatsApp alerts.'],
       ['Is Joinlyy the same as Joinly?', 'No. Joinlyy, spelled with two y, is a link in bio platform for creators. It is not related to products with a similar-sounding name.'],
       ['Is Joinlyy free?', 'Yes, the Starter plan is free, including comment to DM automation. Creator is ₹199 a month and Pro is ₹399 a month.'],
     ],

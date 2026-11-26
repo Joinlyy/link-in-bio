@@ -22,6 +22,7 @@ const ld = (data) => `<script type="application/ld+json">${JSON.stringify(data).
 const STATIC = {
   '/privacy': ['Privacy Policy', `How ${NAME} collects, uses and protects your data.`],
   '/terms': ['Terms of Service', `The terms for using ${NAME}.`],
+  '/refund-policy': ['Refund Policy', `How refunds work on ${NAME}: what to send us and what happens next.`],
   '/data-deletion': ['Data deletion', `How to delete your ${NAME} data, including data from Instagram.`],
 }
 
