@@ -166,7 +166,7 @@ export default function SchedulePosts() {
                 )}
               </button>
               <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime" className="sr-only" onChange={pick} />
-              <p className="mt-2 text-xs text-ink-500">Photos are saved as JPEG and fitted to Instagram’s shapes (white bars are added if needed). Videos become Reels: MP4, up to 50 MB.</p>
+              <p className="mt-2 text-xs text-ink-500">Your file is kept only until the post is published, then deleted. Photos are saved as JPEG and fitted to Instagram’s shapes (white bars are added if needed). Videos become Reels: MP4, up to 50 MB.</p>
             </div>
             <div className="space-y-4">
               <div>
@@ -200,7 +200,7 @@ export default function SchedulePosts() {
             {posts.map((p) => (
               <div key={p.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
                 <div className="size-16 shrink-0 overflow-hidden rounded-2xl bg-cream">
-                  {p.media_type === 'IMAGE' ? <img src={p.media_url} alt="" className="size-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} /> : <span className="grid size-full place-items-center text-xs font-semibold text-ink-500">Reel</span>}
+                  {p.media_type === 'IMAGE' && p.media_url ? <img src={p.media_url} alt="" className="size-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} /> : <span className="grid size-full place-items-center text-xs font-semibold text-ink-500">{p.media_type === 'REELS' ? 'Reel' : 'Photo'}</span>}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-sm font-medium">{p.caption || <span className="text-ink-500">No caption</span>}</p>

@@ -32,7 +32,11 @@ Deno.serve(handle(async (req) => {
     if (body.action === 'purge_media') {
       const { data: old } = await admin.rpc('ig_orphan_media')
       const names = ((old ?? []) as { name: string }[]).map((o) => o.name)
-      if (names.length) await admin.storage.from('ig-posts').remove(names)
+      if (names.length) {
+        await admin.storage.from('ig-posts').remove(names)
+        // The rows keep the link, time and status; the dead file address is cleared
+        await admin.from('ig_scheduled_posts').update({ media_url: '', media_path: '' }).in('media_path', names).in('status', ['published', 'cancelled', 'failed'])
+      }
       return json({ ok: true, removed: names.length })
     }
     if (body.action !== 'sync_all') throw new HttpError(400, 'Unknown action')
@@ -360,8 +364,8 @@ async function publishDue(admin: SupabaseClient, onlyId?: string) {
       } catch {
         /* the post is live either way */
       }
-      await admin.from('ig_scheduled_posts').update({ status: 'published', ig_media_id: mediaId, permalink, published_at: new Date().toISOString(), error: null }).eq('id', post.id)
-      await admin.storage.from('ig-posts').remove([post.media_path]).catch(() => {}) // the file is on Instagram now
+      await admin.storage.from('ig-posts').remove([post.media_path]).catch(() => {}) // the file is on Instagram now; the hourly cleanup catches it if this fails
+      await admin.from('ig_scheduled_posts').update({ status: 'published', ig_media_id: mediaId, permalink, published_at: new Date().toISOString(), error: null, media_url: '', media_path: '' }).eq('id', post.id)
       published++
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
