@@ -1,7 +1,8 @@
+import HelpSlide from '../../components/HelpSlide'
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  BarChart3, BriefcaseBusiness, Check, Copy, ExternalLink, BookOpen, CircleHelp, House, Layers, LayoutList, LoaderCircle, LogOut,
+  BarChart3, BriefcaseBusiness, Check, Copy, ExternalLink, BookOpen, House, Layers, LayoutList, LoaderCircle, LogOut,
   Settings, ShieldCheck, ShoppingBag, Users,
   ChevronsUpDown, Plus, Eye,
 } from 'lucide-react'
@@ -12,8 +13,8 @@ import PlanEndBanner from '../../components/PlanEndBanner'
 import { useAuth } from '../../context/AuthContext'
 import { PageProvider, usePage } from '../../context/PageContext'
 import { Brand } from '../../components/SiteChrome'
-import { Button, FieldHelpContext, FullScreenLoader, Modal, Toggle, useToast } from '../../components/ui'
-import { helpFor, pageHelpFor } from '../../lib/help'
+import { Button, FieldHelpContext, FullScreenLoader, Toggle, useToast } from '../../components/ui'
+import { helpFor } from '../../lib/help'
 import { INSTAGRAM_ENABLED, pageDisplayUrl, pageUrl } from '../../lib/config'
 
 const NAV = [
@@ -319,6 +320,7 @@ function Shell() {
             <Outlet />
           </FieldHelpContext.Provider>
         </main>
+        <HelpSlide />
       </div>
     </div>
   )
@@ -332,33 +334,6 @@ export default function DashboardLayout() {
   )
 }
 
-function PageHelp() {
-  const { pathname } = useLocation()
-  const [open, setOpen] = useState(false)
-  const help = pageHelpFor(pathname)
-  if (!help) return null
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-ink-600 shadow-soft hover:text-ink" aria-label={`How ${help.title} works`}>
-        <CircleHelp className="size-[18px]" />
-      </button>
-      <Modal open={open} onClose={() => setOpen(false)} title={help.title}>
-        <p className="text-[15px] leading-relaxed text-ink-700">{help.what}</p>
-        <ol className="mt-4 space-y-2.5">
-          {help.steps.map((step, i) => (
-            <li key={step} className="flex gap-3 text-sm leading-relaxed">
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-lime text-xs font-bold">{i + 1}</span>
-              {step}
-            </li>
-          ))}
-        </ol>
-        {help.tip && <p className="mt-4 rounded-2xl bg-lilac-100 p-4 text-sm leading-relaxed"><b>Tip:</b> {help.tip}</p>}
-        {help.link && <Link to={help.link.to} onClick={() => setOpen(false)} className="mt-4 inline-block text-sm font-semibold underline underline-offset-2">{help.link.label}</Link>}
-      </Modal>
-    </>
-  )
-}
-
 export function PageHeading({ title, italic, children, actions }) {
   return (
     <div className="mb-4 flex flex-col gap-3 px-1 pt-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4 sm:pt-2">
@@ -367,7 +342,6 @@ export function PageHeading({ title, italic, children, actions }) {
           <h1 className="min-w-0 font-display text-[28px] leading-[1.05] font-bold tracking-[-0.02em] sm:text-[40px]">
             {title} {italic && <span className="display-italic">{italic}</span>}
           </h1>
-          <PageHelp />
         </div>
         {children && <p className="mt-2 max-w-2xl text-[15px] text-ink-500">{children}</p>}
       </div>
