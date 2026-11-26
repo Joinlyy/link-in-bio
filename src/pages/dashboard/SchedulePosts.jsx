@@ -18,17 +18,26 @@ function istNow(plusMinutes = 60) {
   return t.toISOString().slice(0, 16)
 }
 
-/** Instagram only takes JPEG photos: convert whatever was chosen and keep it under 1440 px wide */
+/**
+ * Instagram only takes JPEG photos with a width to height ratio between 4:5 and 1.91:1.
+ * Convert whatever was chosen, keep it under 1440 px wide, and add white bars (nothing is cropped) when the shape is outside that range.
+ */
 async function toJpeg(file) {
   const bitmap = await createImageBitmap(file)
   const scale = Math.min(1, 1440 / bitmap.width)
+  const w = Math.round(bitmap.width * scale)
+  const h = Math.round(bitmap.height * scale)
+  let cw = w
+  let ch = h
+  if (w / h < 0.8) cw = Math.round(h * 0.8)
+  else if (w / h > 1.91) ch = Math.round(w / 1.91)
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
+  canvas.width = cw
+  canvas.height = ch
   const ctx = canvas.getContext('2d')
   ctx.fillStyle = '#fff'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  ctx.fillRect(0, 0, cw, ch)
+  ctx.drawImage(bitmap, Math.round((cw - w) / 2), Math.round((ch - h) / 2), w, h)
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not read that image'))), 'image/jpeg', 0.9))
 }
 
@@ -102,7 +111,9 @@ export default function SchedulePosts() {
       setCaption('')
       if (mode === 'now') {
         toast('Publishing to Instagram…')
-        await invokeFunction('instagram', { action: 'publish_now', id }).catch((e2) => toast(e2.message, 'error'))
+        const r = await invokeFunction('instagram', { action: 'publish_now', id }).catch((e2) => toast(e2.message, 'error'))
+        if (r?.published) toast('Posted to Instagram.')
+        else if (r?.failed) toast('Instagram did not accept this post. See the reason in the list below.', 'error')
       } else toast('Scheduled. It goes out at the time you picked.')
     } catch (e2) {
       setError(errorMessage(e2))
@@ -155,7 +166,7 @@ export default function SchedulePosts() {
                 )}
               </button>
               <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime" className="sr-only" onChange={pick} />
-              <p className="mt-2 text-xs text-ink-500">Photos are saved as JPEG. Videos become Reels: MP4, up to 50 MB.</p>
+              <p className="mt-2 text-xs text-ink-500">Photos are saved as JPEG and fitted to Instagram’s shapes (white bars are added if needed). Videos become Reels: MP4, up to 50 MB.</p>
             </div>
             <div className="space-y-4">
               <div>
