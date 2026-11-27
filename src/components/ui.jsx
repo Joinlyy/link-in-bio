@@ -1,3 +1,4 @@
+import { CharCount } from './CharCount'
 import { createContext, useCallback, useContext, useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
@@ -135,7 +136,27 @@ export function InfoButton({ label }) {
   )
 }
 
-export function Field({ label, hint, error, children, className = '' }) {
+export { CharCount }
+
+const TEXTUAL = new Set([undefined, 'text', 'email', 'tel', 'url', 'search'])
+
+/** The longest a text box accepts when the screen does not say. Longer where the content is naturally long (links, addresses). */
+export function defaultLimit({ type, label, placeholder, textarea }) {
+  if (textarea) return 1000
+  const l = `${typeof label === 'string' ? label : ''} ${placeholder || ''}`.toLowerCase()
+  if (type === 'email') return 200
+  if (type === 'tel' || /\b(phone|whatsapp number|mobile)\b/.test(l)) return 20
+  if (type === 'url' || /\b(link|url|website)\b|https?:/.test(l)) return 500
+  if (/\b(upi)\b/.test(l)) return 100
+  if (/\breference|utr\b/.test(l)) return 40
+  if (/\baccount number\b/.test(l)) return 20
+  if (/\baddress\b/.test(l)) return 300
+  if (/\bnotes?|reason|description|message\b/.test(l)) return 500
+  if (type === 'search') return 100
+  return 150
+}
+
+export function Field({ label, hint, error, count, children, className = '' }) {
   const id = useId()
   return (
     <div className={className}>
@@ -148,15 +169,30 @@ export function Field({ label, hint, error, children, className = '' }) {
         </span>
       )}
       {typeof children === 'function' ? children(id) : children}
-      {error ? <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p> : hint ? <p className="mt-1.5 text-xs text-ink-500">{hint}</p> : null}
+      {(error || hint || count) && (
+        <div className="mt-1.5 flex items-start justify-between gap-3">
+          {error ? <p className="min-w-0 text-xs font-medium text-red-600">{error}</p> : hint ? <p className="min-w-0 text-xs text-ink-500">{hint}</p> : <span />}
+          {count}
+        </div>
+      )}
     </div>
   )
 }
 
+/** Keeps the live length of a box, whether the screen controls its value or not */
+function useLength(props) {
+  const [len, setLen] = useState(String(props.value ?? props.defaultValue ?? '').length)
+  const own = props.value !== undefined ? String(props.value ?? '').length : len
+  return [own, (e) => { setLen(e.currentTarget.value.length); props.onInput?.(e) }]
+}
+
 export function Input({ label, hint, error, className = '', ...props }) {
+  const limited = TEXTUAL.has(props.type) && !props.readOnly
+  const max = limited ? props.maxLength ?? defaultLimit({ type: props.type, label, placeholder: props.placeholder }) : undefined
+  const [length, onInput] = useLength(props)
   return (
-    <Field label={label} hint={hint} error={error} className={className}>
-      {(id) => <input id={id} className="field" {...props} />}
+    <Field label={label} hint={hint} error={error} className={className} count={max ? <CharCount length={length} max={max} /> : null}>
+      {(id) => <input id={id} className="field" {...props} {...(max ? { maxLength: max } : {})} onInput={onInput} />}
     </Field>
   )
 }
@@ -167,7 +203,7 @@ export function PasswordInput({ label, hint, error, className = '', ...props }) 
     <Field label={label} hint={hint} error={error} className={className}>
       {(id) => (
         <div className="relative">
-          <input id={id} className="field pr-12" {...props} type={show ? 'text' : 'password'} />
+          <input id={id} className="field pr-12" maxLength={128} {...props} type={show ? 'text' : 'password'} />
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
@@ -183,9 +219,11 @@ export function PasswordInput({ label, hint, error, className = '', ...props }) 
 }
 
 export function Textarea({ label, hint, error, className = '', ...props }) {
+  const max = props.maxLength ?? defaultLimit({ label, textarea: true })
+  const [own, onInput] = useLength(props)
   return (
-    <Field label={label} hint={hint} error={error} className={className}>
-      {(id) => <textarea id={id} className="field" {...props} />}
+    <Field label={label} hint={hint} error={error} className={className} count={<CharCount length={own} max={max} />}>
+      {(id) => <textarea id={id} className="field" {...props} maxLength={max} onInput={onInput} />}
     </Field>
   )
 }

@@ -1,3 +1,4 @@
+import { CharCount } from '../components/CharCount'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import SupportRequest from '../components/SupportRequest'
@@ -224,6 +225,7 @@ function Dispute({ dispute, paid, token, onChange }) {
               {DISPUTE_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
             <textarea className="field min-h-24" required maxLength={2000} placeholder="Tell us what happened…" value={details} onChange={(e) => setDetails(e.target.value)} />
+            <CharCount value={details} max={2000} className="block text-right" />
             {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p>}
             <div className="flex flex-wrap gap-2">
               <button type="submit" disabled={busy} className="inline-flex h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white disabled:opacity-60">{busy ? 'Sending…' : 'Submit'}</button>

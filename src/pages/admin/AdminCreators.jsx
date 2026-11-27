@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Crown, ExternalLink, Search, Users } from 'lucide-react'
 import { formatInr } from '../../lib/images'
 import { errorMessage, supabase } from '../../lib/supabase'
@@ -94,7 +95,8 @@ export default function AdminCreators() {
   const [plans, setPlans] = useState([])
   const [stats, setStats] = useState({})
   const [view, setView] = useViewMode('admin-creators')
-  const [openId, setOpenId] = useState(null)
+  const [searchParams] = useSearchParams()
+  const [openId, setOpenId] = useState(searchParams.get('open') || null)
   const { setSuspended, setHidden } = useModeration()
 
   useEffect(() => {

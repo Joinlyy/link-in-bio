@@ -439,7 +439,7 @@ export default function PageRenderer({
     <div
       lang={lang}
       onClickCapture={preview && !thumbnail ? onPreviewClick : undefined}
-      className={`relative flex w-full flex-col ${preview ? 'min-h-full' : 'min-h-dvh'} ${theme.caps ? '[&_h1]:uppercase' : ''} ${className}`}
+      className={`relative flex w-full flex-col [overflow-wrap:anywhere] ${preview ? 'min-h-full' : 'min-h-dvh'} ${theme.caps ? '[&_h1]:uppercase' : ''} ${className}`}
       style={{ background: backgroundCss(theme, preview), color: theme.text, fontFamily: FONTS[theme.font]?.css }}
     >
       <div className={`@container w-full flex-1 ${stack ? 'mx-auto max-w-[540px]' : ''}`}>

@@ -1,3 +1,4 @@
+import { CharCount } from '../CharCount'
 import { useEffect, useState } from 'react'
 import { checkoutTip, fetchPaymentMode } from '../../lib/publicApi'
 import { formatInr } from '../../lib/images'
@@ -39,8 +40,9 @@ export default function TipSheet({ block, ctx, onClose }) {
         </div>
         <input className="field" type="number" min={10} max={100000} inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Custom amount" />
         <input className="field" placeholder="Your name" value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input className="field" type="email" required placeholder="Email for your receipt" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        <input className="field" type="email" required maxLength={200} placeholder="Email for your receipt" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         <textarea className="field" rows={2} maxLength={500} placeholder="Say something nice (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+        <CharCount value={form.note} max={500} className="-mt-2 block text-right" />
         {(mode === 'route' || mode === 'platform') && <p className="text-xs text-ink-500">Secure payment by Razorpay: UPI, cards and net banking.</p>}
         {mode === 'off' && <p className="text-xs font-medium text-ink-600">Tips aren’t open yet. Please check back soon.</p>}
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}

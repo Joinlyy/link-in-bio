@@ -164,15 +164,43 @@ function RouteCard() {
   )
 }
 
+const PAGE_SIZE = 25
+const STATUS_TABS = [['', 'All'], ['problems', 'Failed or waiting'], ['processed', 'Processed'], ['ignored', 'Ignored'], ['failed', 'Failed'], ['received', 'Waiting']]
+
+/** Every webhook Razorpay has sent us, with what each one was about and what we did with it */
 function Events() {
   const toast = useToast()
   const [rows, setRows] = useState(null)
+  const [summary, setSummary] = useState(null)
   const [open, setOpen] = useState(null)
-  const [filter, setFilter] = useState('all')
-  const load = useCallback(() => supabase.from('razorpay_events').select('id, event_id, event, status, error, attempts, received_at, processed_at').order('received_at', { ascending: false }).limit(150).then(({ data }) => setRows(data || [])), [])
+  const [status, setStatus] = useState('')
+  const [event, setEvent] = useState('')
+  const [q, setQ] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(async () => {
+    setBusy(true)
+    const [{ data, error }, { data: sum }] = await Promise.all([
+      supabase.rpc('admin_webhook_events', { p_status: status || null, p_event: event || null, p_search: search || null, p_limit: PAGE_SIZE, p_offset: page * PAGE_SIZE }),
+      supabase.rpc('admin_webhook_summary'),
+    ])
+    if (error) toast(errorMessage(error), 'error')
+    setRows(data || [])
+    setSummary(sum || null)
+    setBusy(false)
+  }, [status, event, search, page, toast])
   useEffect(() => {
     load()
   }, [load])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(0)
+      setSearch(q.trim())
+    }, 350)
+    return () => clearTimeout(t)
+  }, [q])
 
   async function show(id) {
     const { data } = await supabase.from('razorpay_events').select('payload').eq('id', id).single()
@@ -187,26 +215,85 @@ function Events() {
     }
     load()
   }
-  if (!rows) return <div className="grid h-40 place-items-center"><Spinner /></div>
-  const shown = rows.filter((r) => filter === 'all' || (filter === 'problems' ? ['failed', 'received'].includes(r.status) : r.status === filter))
+
+  if (!rows || !summary) return <div className="grid h-40 place-items-center"><Spinner /></div>
+  const total = Number(rows[0]?.total_count ?? 0)
+  const by = summary.by_status || {}
+  const stats = [['All webhooks', summary.total, 'bg-white'], ['Last 24 hours', summary.last_24h, 'bg-white'], ['Processed', by.processed || 0, 'bg-lime'], ['Ignored', by.ignored || 0, 'bg-white'], ['Failed', by.failed || 0, (by.failed || 0) > 0 ? 'bg-rose text-white' : 'bg-white'], ['Waiting', by.received || 0, (by.received || 0) > 0 ? 'bg-ink text-white' : 'bg-white']]
+  const from = total ? page * PAGE_SIZE + 1 : 0
+  const to = Math.min(total, (page + 1) * PAGE_SIZE)
+
   return (
-    <div className="space-y-3">
-      <Tabs label="Filter" value={filter} onChange={setFilter} tabs={[['all', 'All'], ['problems', 'Failed or waiting'], ['processed', 'Processed'], ['ignored', 'Ignored']].map(([key, label]) => ({ key, label }))} />
-      {shown.length === 0 ? <Empty icon={CreditCard} title="No webhook events yet">Events appear here when Razorpay calls our webhook.</Empty> : (
-        <Card className="divide-y divide-ink/5">
-          {shown.map((r) => (
-            <div key={r.id} className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-2 font-semibold">{r.event} <Badge tone={TONE[r.status]}>{r.status}</Badge>{r.attempts > 1 && <span className="text-xs font-normal text-ink-500">{r.attempts} tries</span>}</p>
-                <p className="truncate text-xs text-ink-500">{r.event_id} · received {when(r.received_at)}</p>
-                {r.error && <p className="text-xs text-red-700">{r.error}</p>}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => show(r.id)}>View</Button>
-                {r.status !== 'processed' && <Button variant="soft" size="sm" onClick={() => replay(r.id)}>Replay</Button>}
-              </div>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {stats.map(([k, v, cls]) => (
+          <div key={k} className={`rounded-3xl p-4 shadow-soft ${cls}`}>
+            <p className={`text-xs font-semibold ${cls.includes('text-white') ? 'text-white/70' : 'text-ink-500'}`}>{k}</p>
+            <p className="mt-1 font-display text-2xl font-bold">{v}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-ink-500">Last webhook received {ago(summary.last_received)}. Razorpay sends one when a payment, subscription or refund changes.</p>
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <Tabs label="Status" value={status} onChange={(v) => { setPage(0); setStatus(v) }} tabs={STATUS_TABS.map(([key, label]) => ({ key, label }))} />
+        <div className="flex flex-wrap gap-2">
+          <select aria-label="Event type" value={event} onChange={(e) => { setPage(0); setEvent(e.target.value) }} className="field h-10 w-auto min-w-44 text-sm">
+            <option value="">All event types</option>
+            {(summary.events || []).map((ev) => <option key={ev} value={ev}>{ev}</option>)}
+          </select>
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} maxLength={100} placeholder="Search payment, order, email or error" aria-label="Search webhooks" className="field h-10 w-64 text-sm" />
+          <Button variant="outline" size="sm" loading={busy} onClick={load}><RefreshCw className="size-4" /> Refresh</Button>
+        </div>
+      </div>
+
+      {rows.length === 0 ? <Empty icon={CreditCard} title="No webhooks match">Webhooks appear here when Razorpay calls our webhook.</Empty> : (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-left text-sm">
+              <thead className="bg-cream text-xs font-semibold text-ink-500">
+                <tr>
+                  <th className="px-4 py-3">Received</th>
+                  <th className="px-3 py-3">Event</th>
+                  <th className="px-3 py-3">Result</th>
+                  <th className="px-3 py-3">About</th>
+                  <th className="px-3 py-3 text-right">Amount</th>
+                  <th className="px-3 py-3">Who</th>
+                  <th className="px-3 py-3 text-right">Tries</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink/5">
+                {rows.map((r) => (
+                  <tr key={r.id} className="align-top">
+                    <td className="px-4 py-3 whitespace-nowrap text-ink-600">{when(r.received_at)}</td>
+                    <td className="px-3 py-3 font-semibold whitespace-nowrap">{r.event}</td>
+                    <td className="px-3 py-3"><Badge tone={TONE[r.status]}>{r.status}</Badge>{r.error && <p className="mt-1 max-w-56 text-xs text-red-700">{r.error}</p>}</td>
+                    <td className="px-3 py-3 text-xs text-ink-600">
+                      {r.payment_id && <p>Payment {r.payment_id}{r.method ? ` · ${r.method}` : ''}</p>}
+                      {r.order_id && <p>Order {r.order_id}</p>}
+                      {r.subscription_id && <p>Subscription {r.subscription_id}</p>}
+                      {!r.payment_id && !r.order_id && !r.subscription_id && <p className="truncate text-ink-400">{r.event_id}</p>}
+                    </td>
+                    <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">{r.amount_inr != null ? inr(r.amount_inr) : '—'}</td>
+                    <td className="max-w-56 px-3 py-3 text-xs text-ink-600">{r.who || '—'}</td>
+                    <td className="px-3 py-3 text-right text-ink-600">{r.attempts}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <Button variant="ghost" size="sm" onClick={() => show(r.id)}>View</Button>
+                      {r.status !== 'processed' && r.status !== 'ignored' && <Button variant="soft" size="sm" onClick={() => replay(r.id)}>Replay</Button>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/5 px-4 py-3 text-sm">
+            <span className="text-ink-600">{from} to {to} of {total}</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 0 || busy} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+              <Button variant="outline" size="sm" disabled={to >= total || busy} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
-          ))}
+          </div>
         </Card>
       )}
       <Modal open={Boolean(open)} onClose={() => setOpen(null)} title="Webhook payload" wide>

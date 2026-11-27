@@ -1,3 +1,4 @@
+import { CharCount } from '../CharCount'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { checkCoupon, checkoutOrder, fetchPaymentMode } from '../../lib/publicApi'
@@ -101,6 +102,7 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
         <label className="block">
           <span className="mb-1.5 block text-sm font-semibold">Your question</span>
           <textarea className="field min-h-32" required maxLength={1000} placeholder="Be specific — share context so the answer is useful to you." value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} />
+          <CharCount value={form.question} max={1000} className="block text-right" />
           <span className="mt-1 block text-right text-[11px] text-ink-400">{form.question.length}/1000</span>
         </label>
       )}
@@ -111,8 +113,8 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
         </label>
       )}
       <input className="field" placeholder="Your name" required maxLength={120} autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-      <input className="field" type="email" required placeholder="Email (we’ll show your access link)" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-      <input className="field" type="tel" placeholder="WhatsApp number (optional)" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+      <input className="field" type="email" required maxLength={200} placeholder="Email (we’ll show your access link)" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+      <input className="field" type="tel" maxLength={20} placeholder="WhatsApp number (optional)" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
       {(mode === 'route' || mode === 'platform') && page.wa_updates !== false && form.phone.trim() && (
         <label className="flex items-start gap-2.5 text-sm">
           <input type="checkbox" className="mt-0.5 size-4 accent-ink" checked={form.waUpdates} onChange={(e) => setForm({ ...form, waUpdates: e.target.checked })} />
@@ -122,7 +124,7 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
       {base > 0 && (
         <div>
           <div className="flex gap-2">
-            <input className="field h-11 min-w-0 uppercase" placeholder="Coupon code" value={form.coupon} onChange={(e) => setForm({ ...form, coupon: e.target.value })} />
+            <input className="field h-11 min-w-0 uppercase" maxLength={40} placeholder="Coupon code" value={form.coupon} onChange={(e) => setForm({ ...form, coupon: e.target.value })} />
             <button type="button" onClick={applyCoupon} className="h-11 shrink-0 rounded-full bg-cream px-5 text-sm font-semibold hover:bg-cream-300">Apply</button>
           </div>
           {couponMsg && <p className={`mt-1.5 text-xs font-semibold ${discount ? 'text-teal' : 'text-red-600'}`}>{couponMsg}</p>}

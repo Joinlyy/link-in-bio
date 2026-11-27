@@ -1,3 +1,4 @@
+import { CharCount } from '../CharCount'
 import { useState } from 'react'
 import { reportPage } from '../../lib/publicApi'
 import Sheet from './Sheet'
@@ -49,7 +50,8 @@ export default function ReportDialog({ page, onClose }) {
             ))}
           </fieldset>
           <textarea className="field" rows={3} maxLength={1000} placeholder="Tell us more (optional)" value={details} onChange={(e) => setDetails(e.target.value)} />
-          <input className="field" type="email" placeholder="Your email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <CharCount value={details} max={1000} className="block text-right" />
+          <input className="field" type="email" maxLength={200} placeholder="Your email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
           <button type="submit" disabled={status === 'loading'} className="h-12 w-full rounded-full bg-ink text-sm font-semibold text-white disabled:opacity-60">
             {status === 'loading' ? 'Sending…' : 'Submit report'}

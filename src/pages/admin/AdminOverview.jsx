@@ -1,3 +1,4 @@
+import RecentActivity from '../../components/admin/RecentActivity'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -101,6 +102,7 @@ export default function AdminOverview() {
           </div>
         </section>
       ))}
+      <RecentActivity days={3} />
       <div className="grid gap-4 lg:grid-cols-2">
         {[
           ['signups', 'Sign-ups per day', '#15161A'],

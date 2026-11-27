@@ -1,3 +1,4 @@
+import { CharCount } from './CharCount'
 import { useCallback, useEffect, useState } from 'react'
 import { createSupportTicket, fetchSupportTickets } from '../lib/publicApi'
 
@@ -62,6 +63,7 @@ export default function SupportRequest({ token }) {
             {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
           <textarea required minLength={5} maxLength={1500} rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="field" placeholder="Tell us what happened. Include your UPI reference if you paid." aria-label="Message" />
+          <CharCount value={message} max={1500} className="block text-right" />
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
           <div className="flex gap-2">
             <button type="submit" disabled={busy || !category || message.trim().length < 5} className="inline-flex h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white disabled:opacity-50">{busy ? 'Sending…' : 'Send'}</button>
