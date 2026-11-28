@@ -260,6 +260,21 @@ Deno.serve(handle(async (req) => {
     return json({ ok: true })
   }
   if (body.action === 'reminders') return json({ ok: true, ...(await reminders(db)) })
+  if (body.action === 'sample') {
+    // Sends one of each redesigned email to an address, for checking how they look. Needs the cron secret like every other call.
+    const to = String(body.to ?? '')
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) throw new HttpError(400, 'Invalid address')
+    const mails: T.Mail[] = [
+      T.welcome('Ayush Kumar'),
+      T.subscriptionReceipt({ plan: 'Pro', period: 'month', base: 399, gst: 71.82, total: 470.82, until: '28 December 2026', paymentId: 'pay_SAMPLE12345', method: 'UPI' }),
+      T.planApproved({ plan: 'Pro', until: '28 December 2026' }),
+      T.orderConfirmedBuyer({ creator: 'Ayush Kumar', product: '40 min Calls', amount: 10, orderUrl: APP, session: { kind: 'session', when: 'Mon, 30 Nov, 8:30 pm', link: 'https://meet.google.com/abc-defg-hij' } }),
+      T.sessionMoved({ to: 'buyer', by: 'creator', product: '40 min Calls', other: 'Ayush Kumar', oldWhen: 'Mon, 30 Nov, 8:00 pm', newWhen: 'Tue, 1 Dec, 6:00 pm', link: 'https://meet.google.com/abc-defg-hij', url: APP }),
+    ]
+    const results: string[] = []
+    for (const m of mails) results.push(await sendEmail({ to, subject: `[Sample] ${m.subject}`, html: m.html }))
+    return json({ ok: true, results })
+  }
   if (body.action === 'session_reminders') return json({ ok: true, ...(await sessionReminders(db)) })
   throw new HttpError(400, 'Unknown action')
 }))
