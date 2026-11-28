@@ -13,34 +13,14 @@ if (!TOKEN || !WABA) {
 
 const TEMPLATES = [
   {
-    name: 'creator_upi_payment',
-    text: 'A buyer, {{1}}, says they paid {{2}} for {{3}} by UPI with reference {{4}}. Please check your bank app, then confirm it at {{5}} so they get access.',
-    example: ['Priya Sharma', '₹2,499', 'Instagram growth call', '412356789012', 'https://joinlyy.com/dashboard/sales'],
-  },
-  {
     name: 'creator_new_order',
     text: 'New order on your page: {{1}} bought {{2}} for {{3}}. You can see it at {{4}} anytime.',
     example: ['Priya Sharma', 'Instagram growth call', '₹2,499', 'https://joinlyy.com/dashboard/sales'],
   },
   {
-    name: 'creator_new_lead',
-    text: 'New lead on your page: {{1}} ({{2}}). See all your leads at {{3}} anytime.',
-    example: ['Priya Sharma', 'priya@example.com', 'https://joinlyy.com/dashboard/leads'],
-  },
-  {
-    name: 'creator_brand_enquiry',
-    text: 'New brand enquiry from {{1}}: "{{2}}". Reply and track it at {{3}} in your dashboard.',
-    example: ['Nykaa', 'We would love to work with you on our festive campaign', 'https://joinlyy.com/dashboard/deals'],
-  },
-  {
-    name: 'buyer_order_confirmed',
-    text: 'Good news: your payment to {{1}} for {{2}} is confirmed. Open your order at {{3}} to get access.',
-    example: ['Ayush Kumar', 'Instagram growth call', 'https://joinlyy.com/order/abc123'],
-  },
-  {
-    name: 'buyer_payment_rejected',
-    text: 'Sorry, {{1}} could not find your payment for {{2}}. See their note at {{3}} and contact them with your UPI reference.',
-    example: ['Ayush Kumar', 'Instagram growth call', 'https://joinlyy.com/order/abc123'],
+    name: 'creator_new_contact',
+    text: 'New {{1}} received on your page from {{2}}: "{{3}}". Reply and track it at {{4}} in your dashboard.',
+    example: ['lead', 'Priya Sharma', 'priya@example.com', 'https://joinlyy.com/dashboard/leads'],
   },
   {
     name: 'admin_support_ticket',
@@ -48,9 +28,9 @@ const TEMPLATES = [
     example: ['12', 'Payment failed or pending', 'priya@example.com', 'https://joinlyy.com/admin/support'],
   },
   {
-    name: 'creator_alerts_on',
-    text: 'WhatsApp alerts are on for your page. You will get messages here about new orders, UPI payments to confirm, leads and brand enquiries.',
-    example: [],
+    name: 'creator_post_status',
+    text: 'Your scheduled Instagram post for {{1}} {{2}}. {{3}} You can review it at {{4}}.',
+    example: ['28 Nov, 7:00 pm IST', 'was published successfully', 'It is now live on your Instagram profile.', 'https://joinlyy.com/dashboard/schedule'],
   },
 ]
 

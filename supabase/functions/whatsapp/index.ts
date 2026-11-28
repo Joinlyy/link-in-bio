@@ -4,7 +4,7 @@
 // `supabase secrets set WHATSAPP_TOKEN=…`; it's read on every request.
 //
 // Actions:
-//   event  (from database triggers) { kind: 'order' | 'lead' | 'enquiry', id } — no secret needed:
+//   event  (from database triggers) { kind: 'order' | 'lead' | 'enquiry' | 'post', id } — no secret needed:
 //          the row is re-read and each alert is recorded once, so a forged call sends nothing new.
 //   test   (signed-in creator) — sends a test alert to the page's alert number.
 //   GET / POST without action — Meta webhook: subscription check and delivery receipts.
@@ -17,13 +17,9 @@ const RECENT_MS = 30 * 60_000 // only alert about things that just happened
 
 /** Approved message templates. Parameter order must match the template text in scripts/whatsapp-templates.mjs */
 const T = {
-  upi_submitted: 'creator_upi_payment',
-  new_order: 'creator_new_order',
-  new_lead: 'creator_new_lead',
-  brand_enquiry: 'creator_brand_enquiry',
-  order_confirmed: 'buyer_order_confirmed',
-  payment_rejected: 'buyer_payment_rejected',
-  test: 'creator_alerts_on',
+  new_order: 'creator_new_order', // every paid order, tips included
+  new_contact: 'creator_new_contact', // a lead or a brand enquiry
+  post_status: 'creator_post_status', // a scheduled Instagram post went live or failed
 } as const
 
 const inr = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN')}`
@@ -38,7 +34,7 @@ function cleanPhone(raw?: string | null) {
   return p.length === 10 ? `91${p}` : p
 }
 
-type Alert = { key: string; pageId: string; event: keyof typeof T; recipient: 'creator' | 'buyer' | 'test'; to: string; params: string[] }
+type Alert = { key: string; pageId: string; event: keyof typeof T; recipient: 'creator' | 'test'; to: string; params: string[] }
 
 async function send(db: SupabaseClient, a: Alert) {
   const to = cleanPhone(a.to)
@@ -91,20 +87,9 @@ async function alertsFor(db: SupabaseClient, kind: string, id: string): Promise<
     const creator = page?.alert_on && page.alert_whatsapp ? page.alert_whatsapp : null
     const what = o.kind === 'tip' ? 'a tip' : clip(o.product_title)
     const who = clip(o.buyer_name || o.buyer_email, 40)
-    const orderLink = `${APP}/order/${o.access_token}`
     const out: Alert[] = []
-    if (o.payment_provider === 'upi' && o.status === 'pending' && o.payment_ref && recent(o.payment_submitted_at) && creator) {
-      out.push({ key: `upi_submitted:${o.id}`, pageId: o.page_id, event: 'upi_submitted', recipient: 'creator', to: creator, params: [who, inr(o.amount_inr), what, o.payment_ref, `${APP}/dashboard/sales`] })
-    }
-    if (o.status === 'paid' && recent(o.paid_at)) {
-      if (creator) out.push({ key: `new_order:${o.id}`, pageId: o.page_id, event: 'new_order', recipient: 'creator', to: creator, params: [who, what, inr(o.amount_inr), `${APP}/dashboard/sales`] })
-      if (o.payment_provider === 'upi' && o.wa_updates && o.buyer_phone) {
-        out.push({ key: `order_confirmed:${o.id}`, pageId: o.page_id, event: 'order_confirmed', recipient: 'buyer', to: o.buyer_phone, params: [clip(page?.display_name || page?.username, 40), what, orderLink] })
-      }
-    }
-    // A rejection has no timestamp of its own; the unique key still means at most one message per order
-    if (o.status === 'failed' && o.payment_provider === 'upi' && o.wa_updates && o.buyer_phone && o.payment_ref) {
-      out.push({ key: `payment_rejected:${o.id}`, pageId: o.page_id, event: 'payment_rejected', recipient: 'buyer', to: o.buyer_phone, params: [clip(page?.display_name || page?.username, 40), what, orderLink] })
+    if (o.status === 'paid' && recent(o.paid_at) && creator) {
+      out.push({ key: `new_order:${o.id}`, pageId: o.page_id, event: 'new_order', recipient: 'creator', to: creator, params: [who, what, inr(o.amount_inr), `${APP}/dashboard/sales`] })
     }
     return out
   }
@@ -112,13 +97,23 @@ async function alertsFor(db: SupabaseClient, kind: string, id: string): Promise<
     const { data: l } = await db.from('leads').select('id, page_id, name, email, phone, created_at, pages(alert_whatsapp, alert_on)').eq('id', id).maybeSingle()
     const page = l && (Array.isArray(l.pages) ? l.pages[0] : l.pages)
     if (!l || !recent(l.created_at) || !page?.alert_on || !page.alert_whatsapp) return []
-    return [{ key: `new_lead:${l.id}`, pageId: l.page_id, event: 'new_lead', recipient: 'creator', to: page.alert_whatsapp, params: [clip(l.name || 'Someone', 40), clip(l.email || (l.phone ? `+${cleanPhone(l.phone)}` : ''), 60), `${APP}/dashboard/leads`] }]
+    return [{ key: `new_lead:${l.id}`, pageId: l.page_id, event: 'new_contact', recipient: 'creator', to: page.alert_whatsapp, params: ['lead', clip(l.name || 'Someone', 40), clip(l.email || (l.phone ? `+${cleanPhone(l.phone)}` : ''), 60), `${APP}/dashboard/leads`] }]
   }
   if (kind === 'enquiry') {
     const { data: e } = await db.from('enquiries').select('id, page_id, brand_name, message, stage, created_at, pages(alert_whatsapp, alert_on)').eq('id', id).maybeSingle()
     const page = e && (Array.isArray(e.pages) ? e.pages[0] : e.pages)
     if (!e || e.stage !== 'enquiry' || !recent(e.created_at) || !page?.alert_on || !page.alert_whatsapp) return []
-    return [{ key: `brand_enquiry:${e.id}`, pageId: e.page_id, event: 'brand_enquiry', recipient: 'creator', to: page.alert_whatsapp, params: [clip(e.brand_name, 40), clip(e.message, 80), `${APP}/dashboard/deals`] }]
+    return [{ key: `brand_enquiry:${e.id}`, pageId: e.page_id, event: 'new_contact', recipient: 'creator', to: page.alert_whatsapp, params: ['brand enquiry', clip(e.brand_name, 40), clip(e.message, 80), `${APP}/dashboard/deals`] }]
+  }
+  if (kind === 'post') {
+    const { data: sp } = await db.from('ig_scheduled_posts').select('id, owner_id, status, scheduled_at, published_at, error, media_type').eq('id', id).maybeSingle()
+    if (!sp || !['published', 'failed'].includes(sp.status)) return []
+    const { data: pg } = await db.from('pages').select('id, alert_whatsapp, alert_on').eq('owner_id', sp.owner_id).eq('alert_on', true).not('alert_whatsapp', 'is', null).order('created_at').limit(1).maybeSingle()
+    if (!pg?.alert_whatsapp) return []
+    const when = new Date(sp.scheduled_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })
+    const ok = sp.status === 'published'
+    return [{ key: `post_status:${sp.id}:${sp.status}`, pageId: pg.id, event: 'post_status', recipient: 'creator', to: pg.alert_whatsapp,
+      params: [`${when} IST`, ok ? 'was published successfully' : 'could not be published', ok ? 'It is now live on your Instagram profile.' : `Reason: ${clip(sp.error, 120)}`, `${APP}/dashboard/schedule`] }]
   }
   return []
 }
@@ -174,7 +169,7 @@ Deno.serve(handle(async (req) => {
   const body = JSON.parse(raw || '{}')
 
   if (body.action === 'event') {
-    if (!['order', 'lead', 'enquiry'].includes(body.kind) || !/^[0-9a-f-]{36}$/i.test(body.id || '')) throw new HttpError(400, 'Bad event')
+    if (!['order', 'lead', 'enquiry', 'post'].includes(body.kind) || !/^[0-9a-f-]{36}$/i.test(body.id || '')) throw new HttpError(400, 'Bad event')
     const alerts = await alertsFor(db, body.kind, body.id)
     if (alerts.length && !(await pageHasWhatsApp(db, alerts[0].pageId))) return json({ ok: true, skipped: 'plan' })
     for (const a of alerts) await send(db, a)
@@ -190,7 +185,7 @@ Deno.serve(handle(async (req) => {
     if (!(await pageHasWhatsApp(db, page.id))) throw new HttpError(403, 'WhatsApp alerts are on the Creator and Pro plans. Upgrade to turn them on.')
     if (!page.alert_whatsapp) throw new HttpError(400, 'Add your WhatsApp number first')
     const key = `test:${page.id}:${Math.floor(Date.now() / 60_000)}` // one test a minute
-    await send(db, { key, pageId: page.id, event: 'test', recipient: 'test', to: page.alert_whatsapp, params: [] })
+    await send(db, { key, pageId: page.id, event: 'new_order', recipient: 'test', to: page.alert_whatsapp, params: ['Test buyer', 'Sample product (test alert)', '₹0', `${APP}/dashboard/sales`] })
     const { data: n } = await db.from('notifications').select('status, error').eq('key', key).maybeSingle()
     if (!n) throw new HttpError(429, 'Please wait a minute before sending another test')
     return json(n)
