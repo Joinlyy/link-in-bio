@@ -14,6 +14,7 @@ export default function AdminPayouts() {
   const [rows, setRows] = useState(null)
   const [history, setHistory] = useState(null)
   const [ledger, setLedger] = useState(null)
+  const [gone, setGone] = useState(null)
   const [error, setError] = useState('')
   const [tab, setTab] = useState('owed')
   const [pay, setPay] = useState(null)
@@ -23,22 +24,24 @@ export default function AdminPayouts() {
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const [{ data, error: err }, { data: hist }, { data: led }] = await Promise.all([
+    const [{ data, error: err }, { data: hist }, { data: led }, { data: goneRows }] = await Promise.all([
       supabase.rpc('admin_creator_earnings'),
       supabase.from('creator_payouts').select('id, user_id, amount_inr, upi_id, reference, note, created_at').order('created_at', { ascending: false }).limit(200),
       supabase.rpc('admin_sales_ledger', { p_limit: 300 }),
+      supabase.rpc('admin_gone_accounts'),
     ])
     if (err) return setError(errorMessage(err))
     setRows(data || [])
     setHistory(hist || [])
     setLedger(led || [])
+    setGone(goneRows || [])
   }, [])
   useEffect(() => {
     load()
   }, [load])
 
   if (error) return <Alert>{error}</Alert>
-  if (!rows || !history || !ledger) return <div className="grid h-60 place-items-center"><Spinner /></div>
+  if (!rows || !history || !ledger || !gone) return <div className="grid h-60 place-items-center"><Spinner /></div>
 
   const who = (id) => rows.find((r) => r.user_id === id)
   const owed = rows.reduce((s, r) => s + Number(r.balance), 0)
@@ -100,7 +103,7 @@ export default function AdminPayouts() {
       </div>
       <p className="text-sm text-ink-600">Check: buyers paid {inr(gross)} = your platform charge {inr(commission)} + creators earned {inr(sum('share'))}. Creators earned {inr(sum('share'))} − sent {inr(paidOut)} = owed {inr(owed)}, of which {inr(ready)} is past the 2-day refund window and ready to pay, and {inr(held)} is still inside it.</p>
 
-      <Tabs label="Show" value={tab} onChange={setTab} tabs={[['owed', 'Owed now'], ['all', 'All creators'], ['sales', 'Every sale'], ['history', 'Payments sent']].map(([key, label]) => ({ key, label }))} />
+      <Tabs label="Show" value={tab} onChange={setTab} tabs={[['owed', 'Owed now'], ['all', 'All creators'], ['sales', 'Every sale'], ['history', 'Payments sent'], ['gone', `Gone accounts (${gone.length})`]].map(([key, label]) => ({ key, label }))} />
 
       {tab === 'sales' ? (
         ledger.length === 0 ? <Empty icon={IndianRupee} title="No paid sales yet" /> : (
@@ -120,6 +123,29 @@ export default function AdminPayouts() {
               ]}
             />
           </Card>
+        )
+      ) : tab === 'gone' ? (
+        gone.length === 0 ? <Empty icon={IndianRupee} title="No deleted accounts" /> : (
+          <div className="space-y-3">
+            <p className="text-sm text-ink-600">When a creator deletes their account all their data is erased. Only these money totals stay (named Gone_), and they remain in your all-time revenue and commission. Nothing here is payable, because the creator can no longer be paid.</p>
+            <Card className="divide-y divide-ink/5">
+              <DataTable
+                bare
+                rows={gone}
+                minWidth={980}
+                columns={[
+                  { key: 'name', label: 'Account', value: (g) => g.name, render: (g) => <span>{g.name}{g.username && <span className="block text-xs text-ink-500">{g.username}</span>}</span> },
+                  { key: 'plan', label: 'Plan', value: (g) => g.plan || '', render: (g) => g.plan || '—' },
+                  { key: 'since', label: 'Joined', value: (g) => g.signed_up_at || '', className: 'whitespace-nowrap', render: (g) => when(g.signed_up_at) },
+                  { key: 'gone', label: 'Deleted', value: (g) => g.deleted_at, className: 'whitespace-nowrap', render: (g) => when(g.deleted_at) },
+                  { key: 'gross', label: 'Buyers paid', align: 'right', value: (g) => Number(g.gross_inr), render: (g) => <span>{inr(g.gross_inr)}<span className="block text-xs text-ink-500">{g.orders} sale{Number(g.orders) === 1 ? '' : 's'}</span></span> },
+                  { key: 'fee', label: 'Platform charge', align: 'right', value: (g) => Number(g.commission_inr), render: (g) => inr(g.commission_inr) },
+                  { key: 'sent', label: 'Sent to them', align: 'right', value: (g) => Number(g.paid_out_inr), render: (g) => inr(g.paid_out_inr) },
+                  { key: 'left', label: 'Unpaid at deletion', align: 'right', value: (g) => Number(g.balance_inr), className: 'font-semibold', render: (g) => inr(g.balance_inr) },
+                ]}
+              />
+            </Card>
+          </div>
         )
       ) : tab === 'history' ? (
         history.length === 0 ? <Empty icon={IndianRupee} title="No payouts recorded yet" /> : (
