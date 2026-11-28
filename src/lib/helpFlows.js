@@ -29,8 +29,8 @@ export const FLOWS = {
       ['Website', '/dashboard/editor', 'Build what visitors see', ['Edit your pages and sections', 'Change colours and fonts (Design)', 'Switch to a new look (Templates)']],
       ['Products', '/dashboard/products', 'Sell things and see orders', ['Add products, sessions, webinars, courses', 'Sales tab: orders, invoices, refunds', 'See what you earn after our charge']],
       ['Content & forms', '/dashboard/content', 'Add extras to your page', ['Email sign-up form', 'Videos, Spotify, reviews, FAQ, countdown']],
-      ['Brand', '/dashboard/deals', 'Work with brands', ['Track collabs from enquiry to payment', 'Brand enquiry form', 'Invoices for brand deals', 'Media kit PDF for pitches']],
-      ['Audience', '/dashboard/audience', 'Your people and Instagram tools', ['Everyone: buyers and sign-ups', 'Leads: people who joined your form', 'DM automation (free): auto-reply to comments', 'Schedule posts (free): post to Instagram later']],
+      ['Brands & Audience', '/dashboard/audience', 'Your people and the brands who write to you', ['Audience: everyone who bought or signed up, and your leads', 'Brands: collabs, brand form, invoices and media kit']],
+      ['Automations', '/dashboard/automations', 'Let Joinlyy work for you', ['DM automation (free): auto-reply to comments', 'Schedule posts: Instagram, LinkedIn, YouTube', 'Accounts: connect the accounts it works on']],
       ['Analytics', '/dashboard/analytics', 'See what works', ['Visits, clicks and sales', 'Which links get the most taps', 'Free plan shows the last 30 days']],
       ['Settings', '/dashboard/settings', 'Your account and connections', ['Social links and Instagram connection', 'Payouts: your UPI ID, earnings, tax details', 'Plan and autopay', 'Team, referrals, messages to our team']],
       ['Guide', '/dashboard/guide', 'The full guide', ['What each word means', 'The minimum you need before you go live']],
@@ -240,16 +240,16 @@ export const FLOWS = {
   },
 
   '/dashboard/audience': {
-    title: 'Audience',
-    purpose: 'Everyone who bought from you or signed up. The tabs on top also hold your free Instagram tools.',
+    title: 'Brands & Audience',
+    purpose: 'Choose Audience or Brands at the top. Audience is everyone who bought from you or signed up. Brands is where brands and collabs live.',
     flows: [
       {
         name: 'What the tabs do',
         steps: [
           { t: 'Everyone', d: 'All buyers and sign-ups in one list. Filter, tag and export.' },
           { t: 'Leads', d: 'People who filled your sign-up form.' },
-          { t: 'DM automation', d: 'Free. Replies to comments automatically.', go: ['Open DM automation', '/dashboard/automations'] },
-          { t: 'Schedule posts', d: 'Free. Posts to Instagram at a time you pick.', go: ['Open Schedule posts', '/dashboard/schedule'] },
+          { t: 'Brands (top switch)', d: 'Collabs, the brand form, invoices and your media kit.', go: ['Open Brands', '/dashboard/deals'] },
+          { t: 'Automations (menu)', d: 'DM automation and post scheduling live in their own menu now.', go: ['Open Automations', '/dashboard/automations'] },
         ],
       },
     ],
@@ -257,7 +257,7 @@ export const FLOWS = {
   },
 
   '/dashboard/leads': {
-    title: 'Audience: Leads',
+    title: 'Brands & Audience: Leads',
     purpose: 'People who gave you their email or number through your form.',
     flows: [
       {
@@ -271,14 +271,31 @@ export const FLOWS = {
     ],
   },
 
+  '/dashboard/connections': {
+    title: 'Automations: Accounts',
+    purpose: 'Connect the accounts that automations and the post scheduler work on: Instagram, LinkedIn and YouTube.',
+    flows: [
+      {
+        name: 'Connect an account',
+        steps: [
+          { t: 'Press Connect next to the account', d: 'You go to that site to allow Joinlyy.' },
+          { t: 'Allow Joinlyy', d: 'Joinlyy only posts and replies for you. You can disconnect any time.' },
+          { t: 'Come back and see Connected', d: 'Now tick it when you schedule a post.', go: ['Open Schedule posts', '/dashboard/schedule'] },
+        ],
+      },
+    ],
+    tips: ['LinkedIn asks you to reconnect every 60 days.'],
+    stuck: [['It says Opening soon', 'That account is not switched on yet. Try again later.']],
+  },
+
   '/dashboard/automations': {
-    title: 'Audience: DM automation',
+    title: 'Automations: DM automation',
     purpose: 'Free. When someone comments a word you choose (like GUIDE) on your post or Reel, Joinlyy replies in public and sends them a DM with your link. You do nothing.',
     flows: [
       {
         name: 'Create a comment-to-DM reply',
         steps: [
-          { t: 'Connect Instagram', d: 'Use a Business or Creator account. Do it once.', go: ['Open Settings', '/dashboard/settings'] },
+          { t: 'Connect Instagram', d: 'Use a Business or Creator account. Do it once.', go: ['Open Accounts', '/dashboard/connections'] },
           { t: 'Press “New automation” or pick a template', d: 'The template “Comment GUIDE → DM” fills most of it.' },
           { t: 'Choose the keyword', d: 'A short word people will type, like GUIDE or PRICE.' },
           { t: 'Write the DM and add your link', d: 'This is what they receive in their messages.' },

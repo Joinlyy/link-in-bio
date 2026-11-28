@@ -89,7 +89,7 @@ export default function Overview() {
     { done: !!page.bio, label: 'Write a short bio', to: '/dashboard/editor' },
     { done: !blocks.some((b) => b.data?.sample && b.type !== 'products'), label: 'Replace the examples with your own content', to: '/dashboard/editor' },
     { done: blocks.filter((b) => b.is_active).length >= 3, label: 'Add at least 3 sections', to: '/dashboard/editor' },
-    ...(INSTAGRAM_ENABLED ? [{ done: !!instagram, label: 'Connect Instagram', to: '/dashboard/settings' }] : []),
+    ...(INSTAGRAM_ENABLED ? [{ done: !!instagram, label: 'Connect Instagram', to: '/dashboard/connections' }] : []),
     { done: page.is_published, label: 'Make your page live', action: () => updatePage({ is_published: true }, { immediate: true }) },
   ]
   const doneCount = checklist.filter((c) => c.done).length

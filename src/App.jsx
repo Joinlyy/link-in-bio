@@ -63,6 +63,7 @@ const Invoices = lazy(() => import('./pages/dashboard/Invoices'))
 const InvoicePrint = lazy(() => import('./pages/dashboard/InvoicePrint'))
 const OrderInvoicePage = lazy(() => import('./pages/OrderInvoicePage'))
 const Audience = lazy(() => import('./pages/dashboard/Audience'))
+const Connections = lazy(() => import('./pages/dashboard/Connections'))
 const Referrals = lazy(() => import('./pages/dashboard/Referrals'))
 const Billing = lazy(() => import('./pages/dashboard/Billing'))
 const Payouts = lazy(() => import('./pages/dashboard/Payouts'))
@@ -141,6 +142,7 @@ export default function App() {
               <Route path="sales" element={<Sales />} />
               <Route path="deals" element={<BrandDeals />} />
               <Route path="automations" element={<Automations />} />
+              <Route path="connections" element={<Connections />} />
               <Route path="messages" element={<Support />} />
               <Route path="invoices" element={<Invoices />} />
               <Route path="audience" element={<Audience />} />

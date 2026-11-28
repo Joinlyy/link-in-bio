@@ -297,7 +297,7 @@ export default function SchedulePosts() {
 
       {!account && !connected.linkedin && !connected.youtube ? (
         <Card className="p-6">
-          <Empty icon={CalendarClock} title="Connect an account first" action={<Button to="/dashboard/settings">Open Settings</Button>}>
+          <Empty icon={CalendarClock} title="Connect an account first" action={<Button to="/dashboard/connections">Connect accounts</Button>}>
             Posts are published to the accounts you connect in Settings: Instagram, LinkedIn and YouTube.
           </Empty>
         </Card>
@@ -388,7 +388,7 @@ export default function SchedulePosts() {
                           <span className={`size-2.5 rounded-full ${pf.dot}`} />{pf.label}
                         </button>
                       ) : (
-                        <Link key={pf.id} to="/dashboard/settings#connected-accounts" className="inline-flex h-10 items-center gap-2 rounded-full border-2 border-dashed border-ink/20 px-4 text-sm font-semibold text-ink-500 hover:border-ink/40">
+                        <Link key={pf.id} to="/dashboard/connections" className="inline-flex h-10 items-center gap-2 rounded-full border-2 border-dashed border-ink/20 px-4 text-sm font-semibold text-ink-500 hover:border-ink/40">
                           <Plus className="size-4" />Connect {pf.label}
                         </Link>
                       )

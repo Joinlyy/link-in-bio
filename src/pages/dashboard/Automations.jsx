@@ -446,7 +446,7 @@ export default function Automations() {
 
       {!instagram ? (
         <Alert tone="info">
-          Connect Instagram first in <Link to="/dashboard/settings" className="font-semibold underline">Settings</Link>. Automation needs a Creator or Business account and the app’s messaging permission.
+          Connect Instagram first in <Link to="/dashboard/connections" className="font-semibold underline">Accounts</Link>. Automation needs a Creator or Business account and the app’s messaging permission.
         </Alert>
       ) : (
         <Alert tone="info">

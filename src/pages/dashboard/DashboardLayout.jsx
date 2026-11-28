@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3, BriefcaseBusiness, Check, Copy, ExternalLink, BookOpen, House, Layers, LayoutList, LoaderCircle, LogOut,
-  Settings, ShieldCheck, ShoppingBag, Users,
+  Settings, ShieldCheck, ShoppingBag, Users, Zap,
   ChevronsUpDown, Plus, Eye,
 } from 'lucide-react'
 import { Avatar } from '../../components/page/PageRenderer'
@@ -29,12 +29,16 @@ const NAV = [
   },
   { to: '/dashboard/content', label: 'Content & forms', icon: Layers },
   {
-    to: '/dashboard/deals', label: 'Brand', icon: BriefcaseBusiness,
-    tabs: [['/dashboard/deals', 'Collabs'], ['/dashboard/brand-form', 'Brand form'], ['/dashboard/invoices', 'Invoices'], ['/dashboard/media-kit', 'Media kit']],
+    // One place for the people who follow you and the brands who write to you: pick a side, then a tab
+    to: '/dashboard/audience', label: 'Brands & Audience', icon: Users,
+    sides: [
+      { label: 'Audience', icon: Users, tabs: [['/dashboard/audience', 'Everyone'], ['/dashboard/leads', 'Leads']] },
+      { label: 'Brands', icon: BriefcaseBusiness, tabs: [['/dashboard/deals', 'Collabs'], ['/dashboard/brand-form', 'Brand form'], ['/dashboard/invoices', 'Invoices'], ['/dashboard/media-kit', 'Media kit']] },
+    ],
   },
   {
-    to: '/dashboard/audience', label: 'Audience', icon: Users,
-    tabs: [['/dashboard/audience', 'Everyone'], ['/dashboard/leads', 'Leads'], ...(INSTAGRAM_ENABLED ? [['/dashboard/automations', 'DM automation'], ['/dashboard/schedule', 'Schedule posts']] : [])],
+    to: INSTAGRAM_ENABLED ? '/dashboard/automations' : '/dashboard/connections', label: 'Automations', icon: Zap,
+    tabs: [...(INSTAGRAM_ENABLED ? [['/dashboard/automations', 'DM automation'], ['/dashboard/schedule', 'Schedule posts']] : []), ['/dashboard/connections', 'Accounts']],
   },
   { to: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   {
@@ -44,8 +48,9 @@ const NAV = [
   { to: '/dashboard/guide', label: 'Guide', icon: BookOpen },
 ]
 
-const activeGroup = (path) =>
-  NAV.find((n) => n.tabs?.some(([to]) => path === to || path.startsWith(`${to}/`)))
+const tabsOf = (n) => n.tabs || n.sides?.flatMap((s) => s.tabs) || []
+const onTab = (path, to) => path === to || path.startsWith(`${to}/`)
+const activeGroup = (path) => NAV.find((n) => tabsOf(n).some(([to]) => onTab(path, to)))
 
 /** Keeps the current tab visible in a row that scrolls sideways */
 function useActiveInView() {
@@ -64,14 +69,27 @@ function SubTabs() {
   const group = activeGroup(pathname)
   const ref = useActiveInView()
   if (!group) return null
+  const side = group.sides?.find((s) => s.tabs.some(([to]) => onTab(pathname, to)))
+  const tabs = side ? side.tabs : group.tabs
   return (
-    <nav ref={ref} className="scrollbar-none relative flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-white p-1 shadow-soft" aria-label={group.label}>
-      {group.tabs.map(([to, label]) => (
-        <NavLink key={to} to={to} data-current={pathname === to} className={({ isActive }) => `h-9 shrink-0 rounded-full px-4 text-sm leading-9 font-semibold transition ${isActive ? 'bg-ink text-white' : 'text-ink-600 hover:text-ink'}`}>
-          {label}
-        </NavLink>
-      ))}
-    </nav>
+    <div className="flex flex-col gap-2">
+      {group.sides && (
+        <nav className="flex w-fit max-w-full gap-1 rounded-full bg-ink/5 p-1" aria-label={`${group.label}: choose one`}>
+          {group.sides.map((s) => (
+            <NavLink key={s.label} to={s.tabs[0][0]} className={`flex h-10 items-center gap-2 rounded-full px-5 text-sm font-bold transition ${s === side ? 'bg-lime text-ink shadow-soft' : 'text-ink-600 hover:text-ink'}`}>
+              <s.icon className="size-4" />{s.label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
+      <nav ref={ref} className="scrollbar-none relative flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-white p-1 shadow-soft" aria-label={side ? side.label : group.label}>
+        {tabs.map(([to, label]) => (
+          <NavLink key={to} to={to} data-current={pathname === to} className={({ isActive }) => `h-9 shrink-0 rounded-full px-4 text-sm leading-9 font-semibold transition ${isActive ? 'bg-ink text-white' : 'text-ink-600 hover:text-ink'}`}>
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+    </div>
   )
 }
 

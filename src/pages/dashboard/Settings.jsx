@@ -130,7 +130,7 @@ function WhatsappAlertsCard() {
 }
 
 /** LinkedIn and YouTube: connect once, then tick them when scheduling a post */
-function ConnectedAccountsCard() {
+export function ConnectedAccountsCard() {
   const toast = useToast()
   const [status, setStatus] = useState(null)
   const [busy, setBusy] = useState('')
@@ -144,7 +144,7 @@ function ConnectedAccountsCard() {
   async function connect(platform) {
     setBusy(platform)
     try {
-      await startSocialConnect(platform)
+      await startSocialConnect(platform, window.location.pathname)
     } catch (err) {
       toast(err.message, 'error')
       setBusy('')
@@ -193,7 +193,7 @@ function ConnectedAccountsCard() {
   )
 }
 
-function InstagramCard() {
+export function InstagramCard() {
   const { instagram, setInstagram, isOwner } = usePage()
   const toast = useToast()
   const [busy, setBusy] = useState('')
@@ -257,7 +257,7 @@ function InstagramCard() {
           </div>
         </>
       ) : (
-        <Button className="mt-5" loading={busy === 'connect'} onClick={() => run('connect', () => startInstagramConnect({ returnTo: '/dashboard/settings', importProfile: true }))}>
+        <Button className="mt-5" loading={busy === 'connect'} onClick={() => run('connect', () => startInstagramConnect({ returnTo: window.location.pathname, importProfile: true }))}>
           <InstagramIcon size={16} /> Connect Instagram
         </Button>
       )}
