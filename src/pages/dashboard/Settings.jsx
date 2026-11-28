@@ -44,7 +44,8 @@ function PaymentsCard() {
   return <PayoutsPointer />
 }
 
-const ALERT_EVENT = { new_order: 'New order', new_contact: 'New lead or brand enquiry', post_status: 'Instagram post update', new_lead: 'New lead', brand_enquiry: 'Brand enquiry', test: 'Test message' }
+const ALERT_EVENT = { new_order: 'New order', new_contact: 'New lead or brand enquiry', post_status: 'Scheduled post update', new_lead: 'New lead', brand_enquiry: 'Brand enquiry', test: 'Test message' }
+const ALERT_STATUS = { queued: 'Sending', sent: 'Sent', delivered: 'Delivered', read: 'Read', failed: 'Failed', skipped: 'Not sent' }
 
 /** WhatsApp alerts from Joinlyy's number about orders, payments, leads and enquiries */
 function WhatsappAlertsCard() {
