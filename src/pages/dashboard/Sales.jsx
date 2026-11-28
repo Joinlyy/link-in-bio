@@ -41,7 +41,7 @@ const STATUS_TONE = { paid: 'green', refunded: 'red', pending: 'lilac', failed: 
 const STATUS_LABEL = { pending: 'waiting for payment', failed: 'payment not received' }
 
 async function refundOrder(order, toast) {
-  const reason = await askText({ title: `Refund ${formatInr(order.amount_inr)}?`, message: `To ${order.buyer_email}\n\nThe order is marked refunded and the buyer loses access. Email support@joinlyy.com with this order so we send the money back to the buyer.`, label: 'Reason (shown to the buyer)', defaultValue: 'Refund requested', confirmLabel: 'Refund', danger: true })
+  const reason = await askText({ title: `Refund ${formatInr(order.amount_inr)}?`, message: `To ${order.buyer_email}\n\nThe order is marked refunded and the buyer loses access. Our team is alerted and sends the money back to the buyer. Your earning for this order is removed.`, label: 'Reason (shown to the buyer)', defaultValue: 'Refund requested', confirmLabel: 'Refund', danger: true })
   if (reason === null) return null
   const why = reason.trim() || 'Refunded by creator'
   const { error } = await supabase.rpc('refund_order', { p_order_id: order.id, p_reason: why })
