@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
+import { askConfirm } from '../../components/ui'
 import { Activity, Ban, CreditCard, LifeBuoy, Wallet, Crown, Flag, Gauge, LogOut, MessagesSquare, Receipt, Scale, ScrollText, ShieldAlert, Users, IndianRupee } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Logo } from '../../components/icons'
@@ -30,6 +31,9 @@ const IDLE_MS = 30 * 60 * 1000 // signed out after 30 minutes without activity
 
 export default function AdminLayout() {
   const { profile, signOut } = useAuth()
+  async function confirmSignOut() {
+    if (await askConfirm({ title: 'Sign out?', message: 'You will need to sign in again to open your dashboard.', confirmLabel: 'Sign out', danger: false })) signOut()
+  }
   const [tickets, setTickets] = useState(0)
 
   // Admin sessions end on their own when left open
@@ -71,7 +75,7 @@ export default function AdminLayout() {
               <span className="block text-xs font-semibold tracking-widest text-lime uppercase">Super admin</span>
             </span>
           </Link>
-          <button type="button" onClick={signOut} className="grid size-10 place-items-center rounded-full bg-white/10 lg:hidden" aria-label="Sign out">
+          <button type="button" onClick={confirmSignOut} className="grid size-10 place-items-center rounded-full bg-white/10 lg:hidden" aria-label="Sign out">
             <LogOut className="size-4" />
           </button>
         </div>
@@ -88,7 +92,7 @@ export default function AdminLayout() {
           <p className="truncate text-sm font-semibold">{profile?.full_name || 'Admin'}</p>
           <p className="truncate text-xs text-white/50">{profile?.email}</p>
           <div className="mt-2 flex gap-3 text-xs font-semibold text-white/70">
-            <button type="button" onClick={signOut} className="inline-flex items-center gap-1 hover:text-white"><LogOut className="size-3.5" /> Sign out</button>
+            <button type="button" onClick={confirmSignOut} className="inline-flex items-center gap-1 hover:text-white"><LogOut className="size-3.5" /> Sign out</button>
           </div>
         </div>
       </aside>

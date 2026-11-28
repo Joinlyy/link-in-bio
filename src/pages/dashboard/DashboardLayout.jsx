@@ -13,7 +13,7 @@ import PlanEndBanner from '../../components/PlanEndBanner'
 import { useAuth } from '../../context/AuthContext'
 import { PageProvider, usePage } from '../../context/PageContext'
 import { Brand } from '../../components/SiteChrome'
-import { Button, FieldHelpContext, FullScreenLoader, Toggle, useToast } from '../../components/ui'
+import { Button, FieldHelpContext, FullScreenLoader, Toggle, useToast, askConfirm } from '../../components/ui'
 import { helpFor } from '../../lib/help'
 import { INSTAGRAM_ENABLED, pageDisplayUrl, pageUrl } from '../../lib/config'
 
@@ -257,6 +257,9 @@ function PublishSwitch() {
 function Shell() {
   const { page, status, saving, canEdit } = usePage()
   const { profile, isAdmin, signOut } = useAuth()
+  async function confirmSignOut() {
+    if (await askConfirm({ title: 'Sign out?', message: 'You will need to sign in again to open your dashboard.', confirmLabel: 'Sign out', danger: false })) signOut()
+  }
 
   if (status === 'loading') return <FullScreenLoader />
   if (status === 'none') return <Navigate to="/onboarding" replace />
@@ -290,7 +293,7 @@ function Shell() {
         <div className="rounded-2xl bg-cream p-3">
           <p className="truncate text-sm font-semibold">{profile?.full_name || page.display_name || page.username}</p>
           <p className="truncate text-xs text-ink-500">{profile?.email}</p>
-          <button type="button" onClick={signOut} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-ink-600 hover:text-ink">
+          <button type="button" onClick={confirmSignOut} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-ink-600 hover:text-ink">
             <LogOut className="size-3.5" /> Sign out
           </button>
         </div>
@@ -315,7 +318,7 @@ function Shell() {
             </span>
           </div>
           <PublishSwitch />
-          <button type="button" onClick={signOut} className="grid size-10 shrink-0 place-items-center rounded-full bg-cream lg:hidden" aria-label="Sign out">
+          <button type="button" onClick={confirmSignOut} className="grid size-10 shrink-0 place-items-center rounded-full bg-cream lg:hidden" aria-label="Sign out">
             <LogOut className="size-4" />
           </button>
         </header>
