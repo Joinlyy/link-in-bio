@@ -165,17 +165,18 @@ export function ConnectedAccountsCard() {
     <Card className="p-5 sm:p-7">
       <div id="connected-accounts" className="scroll-mt-24">
         <h2 className="text-lg font-bold">Connected accounts</h2>
-        <p className="mt-1 text-sm text-ink-500">Post to LinkedIn and YouTube from Schedule posts, next to Instagram.</p>
+        <p className="mt-1 text-sm text-ink-500">Post to LinkedIn, YouTube and Facebook Pages from Schedule posts, next to Instagram.</p>
       </div>
       <div className="mt-4 divide-y divide-ink/5">
-        {['linkedin', 'youtube'].map((pf) => {
-          const acc = status?.accounts?.find((a) => a.platform === pf)
+        {['linkedin', 'youtube', 'facebook'].map((pf) => {
+          const accs = (status?.accounts || []).filter((a) => a.platform === pf)
+          const acc = accs[0]
           const available = status?.available?.[pf]
           return (
             <div key={pf} className="flex flex-wrap items-center gap-3 py-3.5">
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{SOCIAL[pf].name} {acc && <Badge tone="green">Connected</Badge>}</p>
-                <p className="text-sm text-ink-500">{acc ? `Posting as ${acc.display_name || SOCIAL[pf].name}` : SOCIAL[pf].note}</p>
+                <p className="text-sm text-ink-500">{acc ? `${pf === 'facebook' ? 'Pages' : 'Posting as'}: ${accs.map((a) => a.display_name || SOCIAL[pf].name).join(', ')}` : SOCIAL[pf].note}</p>
               </div>
               {acc ? (
                 <div className="flex gap-2">

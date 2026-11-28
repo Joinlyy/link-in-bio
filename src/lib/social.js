@@ -6,6 +6,7 @@ const RETURN_KEY = 'lib_social_return'
 export const SOCIAL = {
   linkedin: { name: 'LinkedIn', note: 'Post text, photos, carousels and videos to your profile. LinkedIn asks you to reconnect every 60 days.' },
   youtube: { name: 'YouTube', note: 'Upload videos and Shorts to your channel.' },
+  facebook: { name: 'Facebook', note: 'Post text, photos and videos to the Facebook Pages you manage. You choose which Pages to share.' },
 }
 
 /** What is available and what this creator has connected */
@@ -28,8 +29,8 @@ export function finishSocialConnect(platform, code, state) {
   return invokeFunction('social', { action: 'exchange', platform, code, state })
 }
 
-export function disconnectSocial(platform) {
-  return invokeFunction('social', { action: 'disconnect', platform })
+export function disconnectSocial(platform, accountId) {
+  return invokeFunction('social', { action: 'disconnect', platform, ...(accountId ? { account_id: accountId } : {}) })
 }
 
 export function socialReturnTo() {

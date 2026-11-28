@@ -1,7 +1,7 @@
-// Cross-platform publishing: LinkedIn and YouTube (Instagram has its own function).
+// Cross-platform publishing: LinkedIn, YouTube and Facebook Pages (Instagram has its own function).
 //   User actions (signed in):  status | authorize | exchange | disconnect | publish_now
 //   Cron (x-cron-secret):      publish_due   (every minute, from pg_cron)
-// Secrets: LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, CRON_SECRET.
+// Secrets: LINKEDIN_CLIENT_ID/SECRET, YOUTUBE_CLIENT_ID/SECRET, FACEBOOK_APP_ID/SECRET, CRON_SECRET.
 // A platform whose keys are missing simply shows as "not available yet".
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminClient, handle, HttpError, json, requireUser } from '../_shared/utils.ts'
@@ -9,18 +9,21 @@ import { adminClient, handle, HttpError, json, requireUser } from '../_shared/ut
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
 const LI = { id: Deno.env.get('LINKEDIN_CLIENT_ID') ?? '', secret: Deno.env.get('LINKEDIN_CLIENT_SECRET') ?? '' }
 const YT = { id: Deno.env.get('YOUTUBE_CLIENT_ID') ?? '', secret: Deno.env.get('YOUTUBE_CLIENT_SECRET') ?? '' }
+const FB = { id: Deno.env.get('FACEBOOK_APP_ID') ?? '', secret: Deno.env.get('FACEBOOK_APP_SECRET') ?? '' }
+const FB_GRAPH = 'https://graph.facebook.com/v21.0'
 const LI_VERSION = Deno.env.get('LINKEDIN_API_VERSION') ?? '202606'
 const ALLOWED_REDIRECT_HOSTS = new Set(['joinlyy.com', 'www.joinlyy.com', 'localhost'])
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
-type Platform = 'linkedin' | 'youtube'
+type Platform = 'linkedin' | 'youtube' | 'facebook'
 type Post = {
   id: string; owner_id: string; platform: Platform; kind: 'TEXT' | 'IMAGE' | 'CAROUSEL' | 'VIDEO'; caption: string; title: string | null
-  media_path: string | null; media_url: string | null; items: { path: string; url: string }[]; options: Record<string, unknown>; attempts: number
+  media_path: string | null; media_url: string | null; items: { path: string; url: string }[]; options: Record<string, unknown>; attempts: number; account_id: string | null
 }
 
-const configured = (p: Platform) => (p === 'linkedin' ? Boolean(LI.id && LI.secret) : Boolean(YT.id && YT.secret))
+const configured = (p: Platform) => (p === 'linkedin' ? Boolean(LI.id && LI.secret) : p === 'youtube' ? Boolean(YT.id && YT.secret) : Boolean(FB.id && FB.secret))
+const NAME: Record<Platform, string> = { linkedin: 'LinkedIn', youtube: 'YouTube', facebook: 'Facebook' }
 const clip = (s: unknown, n = 300) => String(s ?? '').slice(0, n)
 
 function safeEqual(a: string, b: string) {
@@ -47,8 +50,8 @@ Deno.serve(handle(async (req) => {
 
   switch (body.action) {
     case 'status': {
-      const { data } = await admin.from('social_accounts').select('platform, display_name, avatar_url, token_expires_at, connected_at').eq('owner_id', user.id)
-      return json({ available: { linkedin: configured('linkedin'), youtube: configured('youtube') }, accounts: data ?? [] })
+      const { data } = await admin.from('social_accounts').select('id, platform, kind, external_id, display_name, avatar_url, token_expires_at, connected_at').eq('owner_id', user.id).order('connected_at')
+      return json({ available: { linkedin: configured('linkedin'), youtube: configured('youtube'), facebook: configured('facebook') }, accounts: data ?? [] })
     }
     case 'authorize':
       assertPlatform(platform)
@@ -58,14 +61,19 @@ Deno.serve(handle(async (req) => {
       return json({ account: await exchange(admin, user.id, platform, String(body.code ?? ''), String(body.state ?? '')) })
     case 'disconnect': {
       assertPlatform(platform)
-      const { data: tok } = await admin.from('social_tokens').select('access_token, refresh_token').eq('owner_id', user.id).eq('platform', platform).maybeSingle()
-      if (platform === 'youtube' && (tok?.refresh_token || tok?.access_token)) {
+      let q = admin.from('social_accounts').select('id').eq('owner_id', user.id).eq('platform', platform)
+      if (body.account_id) q = q.eq('id', String(body.account_id))
+      const { data: accs } = await q
+      const ids = (accs ?? []).map((x: { id: string }) => x.id)
+      if (platform === 'youtube' && ids.length) {
+        const { data: tok } = await admin.from('social_tokens').select('access_token, refresh_token').in('account_id', ids).limit(1).maybeSingle()
         // Tell Google to forget the permission; failure doesn't matter, we delete our copy either way
-        await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(tok.refresh_token || tok.access_token)}`, { method: 'POST' }).catch(() => {})
+        if (tok?.refresh_token || tok?.access_token) await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(tok.refresh_token || tok.access_token)}`, { method: 'POST' }).catch(() => {})
       }
-      await admin.from('social_tokens').delete().eq('owner_id', user.id).eq('platform', platform)
-      await admin.from('social_accounts').delete().eq('owner_id', user.id).eq('platform', platform)
-      await admin.from('social_posts').update({ status: 'cancelled' }).eq('owner_id', user.id).eq('platform', platform).in('status', ['scheduled', 'failed'])
+      if (ids.length) {
+        await admin.from('social_posts').update({ status: 'cancelled' }).eq('owner_id', user.id).in('account_id', ids).in('status', ['scheduled', 'failed'])
+        await admin.from('social_accounts').delete().in('id', ids) // tokens go with them
+      }
       return json({ ok: true })
     }
     case 'publish_now': {
@@ -80,8 +88,8 @@ Deno.serve(handle(async (req) => {
 }))
 
 function assertPlatform(p: string): asserts p is Platform {
-  if (p !== 'linkedin' && p !== 'youtube') throw new HttpError(400, 'Unknown platform')
-  if (!configured(p)) throw new HttpError(503, `${p === 'linkedin' ? 'LinkedIn' : 'YouTube'} is not available yet. Please try again later.`)
+  if (p !== 'linkedin' && p !== 'youtube' && p !== 'facebook') throw new HttpError(400, 'Unknown platform')
+  if (!configured(p)) throw new HttpError(503, `${NAME[p]} is not available yet. Please try again later.`)
 }
 
 // ---------------------------------------------------------------------------
@@ -100,13 +108,15 @@ async function authorizeUrl(admin: SupabaseClient, userId: string, platform: Pla
   const state = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '')
   const { error } = await admin.from('social_oauth_states').insert({ state, owner_id: userId, platform, redirect_uri: redirect.href })
   if (error) throw new HttpError(500, error.message)
-  const url = new URL(platform === 'linkedin' ? 'https://www.linkedin.com/oauth/v2/authorization' : 'https://accounts.google.com/o/oauth2/v2/auth')
-  url.searchParams.set('client_id', platform === 'linkedin' ? LI.id : YT.id)
+  const url = new URL(platform === 'linkedin' ? 'https://www.linkedin.com/oauth/v2/authorization' : platform === 'facebook' ? 'https://www.facebook.com/v21.0/dialog/oauth' : 'https://accounts.google.com/o/oauth2/v2/auth')
+  url.searchParams.set('client_id', platform === 'linkedin' ? LI.id : platform === 'facebook' ? FB.id : YT.id)
   url.searchParams.set('redirect_uri', redirect.href)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('state', state)
   if (platform === 'linkedin') {
     url.searchParams.set('scope', 'openid profile w_member_social')
+  } else if (platform === 'facebook') {
+    url.searchParams.set('scope', 'pages_show_list,pages_manage_posts,pages_read_engagement,public_profile')
   } else {
     url.searchParams.set('scope', 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly')
     url.searchParams.set('access_type', 'offline')
@@ -119,6 +129,8 @@ async function exchange(admin: SupabaseClient, userId: string, platform: Platfor
   if (!code || !state) throw new HttpError(400, 'Missing authorization code')
   const { data: st } = await admin.from('social_oauth_states').delete().eq('state', state).eq('owner_id', userId).eq('platform', platform).select().maybeSingle()
   if (!st || Date.now() - new Date(st.created_at).getTime() > 15 * 60_000) throw new HttpError(400, 'This connection link expired. Please try again.')
+
+  if (platform === 'facebook') return await exchangeFacebook(admin, userId, code, st.redirect_uri)
 
   const tokenUrl = platform === 'linkedin' ? 'https://www.linkedin.com/oauth/v2/accessToken' : 'https://oauth2.googleapis.com/token'
   const res = await fetch(tokenUrl, {
@@ -154,37 +166,81 @@ async function exchange(admin: SupabaseClient, userId: string, platform: Platfor
     avatar = item.snippet?.thumbnails?.default?.url ?? null
   }
 
-  const previous = await admin.from('social_tokens').select('refresh_token').eq('owner_id', userId).eq('platform', platform).maybeSingle()
+  // One profile or channel per platform for LinkedIn and YouTube: reconnecting replaces it
+  const { data: account, error } = await admin.from('social_accounts').upsert(
+    { owner_id: userId, platform, kind: 'profile', external_id: externalId, display_name: name, avatar_url: avatar, token_expires_at: expiresAt, connected_at: new Date().toISOString() },
+    { onConflict: 'owner_id,platform,external_id' },
+  ).select('id, platform, display_name, avatar_url, token_expires_at').single()
+  if (error) throw new HttpError(500, error.message)
+  const { data: others } = await admin.from('social_accounts').select('id').eq('owner_id', userId).eq('platform', platform).neq('id', account.id)
+  if (others?.length) {
+    // The creator switched to another profile or channel: the old one goes, and its waiting posts move to the new one
+    await admin.from('social_posts').update({ account_id: account.id }).in('account_id', others.map((o: { id: string }) => o.id)).in('status', ['scheduled', 'failed'])
+    await admin.from('social_accounts').delete().in('id', others.map((o: { id: string }) => o.id))
+  }
+  const previous = await admin.from('social_tokens').select('refresh_token').eq('account_id', account.id).maybeSingle()
   await admin.from('social_tokens').upsert({
-    owner_id: userId, platform, access_token: tok.access_token, refresh_token: tok.refresh_token ?? previous.data?.refresh_token ?? null,
+    account_id: account.id, owner_id: userId, platform, access_token: tok.access_token, refresh_token: tok.refresh_token ?? previous.data?.refresh_token ?? null,
     expires_at: expiresAt, scope: tok.scope ?? null, updated_at: new Date().toISOString(),
   })
-  const { data: account, error } = await admin.from('social_accounts').upsert(
-    { owner_id: userId, platform, external_id: externalId, display_name: name, avatar_url: avatar, token_expires_at: expiresAt, connected_at: new Date().toISOString() },
-    { onConflict: 'owner_id,platform' },
-  ).select('platform, display_name, avatar_url, token_expires_at').single()
-  if (error) throw new HttpError(500, error.message)
   return account
 }
 
-/** A valid access token for this creator, refreshed when it is about to expire */
-async function accessToken(admin: SupabaseClient, ownerId: string, platform: Platform): Promise<string> {
-  const { data: tok } = await admin.from('social_tokens').select('access_token, refresh_token, expires_at').eq('owner_id', ownerId).eq('platform', platform).maybeSingle()
-  if (!tok) throw new Error(`${platform === 'linkedin' ? 'LinkedIn' : 'YouTube'} is not connected. Connect it again in Settings.`)
+/** Facebook: the creator picks which Pages to share; each Page becomes an account with its own long-lived Page token */
+async function exchangeFacebook(admin: SupabaseClient, userId: string, code: string, redirectUri: string) {
+  const short = await fetch(`${FB_GRAPH}/oauth/access_token?${new URLSearchParams({ client_id: FB.id, client_secret: FB.secret, redirect_uri: redirectUri, code })}`).then((r) => r.json()).catch(() => ({}))
+  if (!short.access_token) {
+    console.error('facebook token exchange failed', clip(JSON.stringify(short)))
+    throw new HttpError(400, 'Facebook did not accept the connection. Please try again.')
+  }
+  // A long-lived user token makes the Page tokens it hands out last until the person removes access
+  const long = await fetch(`${FB_GRAPH}/oauth/access_token?${new URLSearchParams({ grant_type: 'fb_exchange_token', client_id: FB.id, client_secret: FB.secret, fb_exchange_token: short.access_token })}`).then((r) => r.json()).catch(() => ({}))
+  const userToken = long.access_token || short.access_token
+  const pages = await fetch(`${FB_GRAPH}/me/accounts?${new URLSearchParams({ fields: 'id,name,picture{url},access_token', limit: '100', access_token: userToken })}`).then((r) => r.json()).catch(() => ({}))
+  const list = (pages.data ?? []) as { id: string; name: string; access_token: string; picture?: { data?: { url?: string } } }[]
+  if (!list.length) throw new HttpError(400, 'No Facebook Page was shared. Connect again and choose the Pages you want to post to.')
+  const saved = []
+  for (const pg of list) {
+    const { data: account, error } = await admin.from('social_accounts').upsert(
+      { owner_id: userId, platform: 'facebook', kind: 'page', external_id: pg.id, display_name: pg.name, avatar_url: pg.picture?.data?.url ?? null, token_expires_at: null, connected_at: new Date().toISOString() },
+      { onConflict: 'owner_id,platform,external_id' },
+    ).select('id, platform, display_name, avatar_url').single()
+    if (error) throw new HttpError(500, error.message)
+    await admin.from('social_tokens').upsert({ account_id: account.id, owner_id: userId, platform: 'facebook', access_token: pg.access_token, refresh_token: null, expires_at: null, scope: null, updated_at: new Date().toISOString() })
+    saved.push(account)
+  }
+  // Pages the creator no longer shares are removed
+  const keep = list.map((x) => x.id)
+  const { data: all } = await admin.from('social_accounts').select('id, external_id').eq('owner_id', userId).eq('platform', 'facebook')
+  const gone = (all ?? []).filter((a: { external_id: string }) => !keep.includes(a.external_id)).map((a: { id: string }) => a.id)
+  if (gone.length) {
+    await admin.from('social_posts').update({ status: 'cancelled' }).eq('owner_id', userId).in('account_id', gone).in('status', ['scheduled', 'failed'])
+    await admin.from('social_accounts').delete().in('id', gone)
+  }
+  return saved[0]
+}
+
+/** A valid access token for the account a post goes to, refreshed when it is about to expire */
+async function accessToken(admin: SupabaseClient, post: { owner_id: string; platform: Platform; account_id: string | null }): Promise<string> {
+  const platform = post.platform
+  let q = admin.from('social_tokens').select('account_id, access_token, refresh_token, expires_at')
+  q = post.account_id ? q.eq('account_id', post.account_id) : q.eq('owner_id', post.owner_id).eq('platform', platform)
+  const { data: tok } = await q.limit(1).maybeSingle()
+  if (!tok) throw new Error(`${NAME[platform]} is not connected. Connect it again in Automations, Accounts.`)
   const expiring = tok.expires_at && new Date(tok.expires_at).getTime() < Date.now() + 120_000
   if (!expiring) return tok.access_token
-  if (platform === 'linkedin' || !tok.refresh_token) {
-    throw new Error(`${platform === 'linkedin' ? 'LinkedIn' : 'YouTube'} access ended. Connect it again in Settings (LinkedIn asks every 60 days).`)
+  if (platform !== 'youtube' || !tok.refresh_token) {
+    throw new Error(`${NAME[platform]} access ended. Connect it again in Automations, Accounts${platform === 'linkedin' ? ' (LinkedIn asks every 60 days)' : ''}.`)
   }
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: tok.refresh_token, client_id: YT.id, client_secret: YT.secret }),
   })
   const fresh = await res.json().catch(() => ({}))
-  if (!res.ok || !fresh.access_token) throw new Error('YouTube access ended. Connect it again in Settings.')
+  if (!res.ok || !fresh.access_token) throw new Error('YouTube access ended. Connect it again in Automations, Accounts.')
   const expiresAt = new Date(Date.now() + Number(fresh.expires_in ?? 3600) * 1000).toISOString()
-  await admin.from('social_tokens').update({ access_token: fresh.access_token, expires_at: expiresAt, updated_at: new Date().toISOString() }).eq('owner_id', ownerId).eq('platform', platform)
-  await admin.from('social_accounts').update({ token_expires_at: expiresAt }).eq('owner_id', ownerId).eq('platform', platform)
+  await admin.from('social_tokens').update({ access_token: fresh.access_token, expires_at: expiresAt, updated_at: new Date().toISOString() }).eq('account_id', tok.account_id)
+  await admin.from('social_accounts').update({ token_expires_at: expiresAt }).eq('id', tok.account_id)
   return fresh.access_token
 }
 
@@ -196,7 +252,7 @@ async function publishDue(admin: SupabaseClient, onlyId?: string) {
   const nowIso = new Date().toISOString()
   const stale = new Date(Date.now() - 10 * 60_000).toISOString()
   let q = admin.from('social_posts')
-    .select('id, owner_id, platform, kind, caption, title, media_path, media_url, items, options, attempts, status')
+    .select('id, owner_id, platform, account_id, kind, caption, title, media_path, media_url, items, options, attempts, status')
     .lte('scheduled_at', nowIso)
     .or(`status.eq.scheduled,and(status.eq.publishing,claimed_at.lt.${stale})`)
     .order('scheduled_at').limit(5)
@@ -217,8 +273,8 @@ async function publishDue(admin: SupabaseClient, onlyId?: string) {
       .eq('id', post.id).eq('attempts', post.attempts).select('id').maybeSingle()
     if (!claimed) continue
     try {
-      const token = await accessToken(admin, post.owner_id, post.platform)
-      const result = post.platform === 'linkedin' ? await publishLinkedIn(admin, token, post) : await publishYouTube(token, post)
+      const token = await accessToken(admin, post)
+      const result = post.platform === 'linkedin' ? await publishLinkedIn(admin, token, post) : post.platform === 'facebook' ? await publishFacebook(admin, token, post) : await publishYouTube(token, post)
       await admin.from('social_posts').update({
         status: 'published', external_id: result.id, permalink: result.url, published_at: new Date().toISOString(), error: null,
       }).eq('id', post.id)
@@ -294,8 +350,9 @@ async function liUploadVideo(token: string, owner: string, url: string): Promise
 }
 
 async function publishLinkedIn(admin: SupabaseClient, token: string, post: Post): Promise<{ id: string; url: string }> {
-  const { data: acc } = await admin.from('social_accounts').select('external_id').eq('owner_id', post.owner_id).eq('platform', 'linkedin').maybeSingle()
-  if (!acc) throw new Error('LinkedIn is not connected. Connect it again in Settings.')
+  const accQ = admin.from('social_accounts').select('external_id')
+  const { data: acc } = await (post.account_id ? accQ.eq('id', post.account_id) : accQ.eq('owner_id', post.owner_id).eq('platform', 'linkedin')).limit(1).maybeSingle()
+  if (!acc) throw new Error('LinkedIn is not connected. Connect it again in Automations, Accounts.')
   const owner = `urn:li:person:${acc.external_id}`
   const body: Record<string, unknown> = {
     author: owner, commentary: post.caption, visibility: 'PUBLIC',
@@ -351,4 +408,50 @@ async function publishYouTube(token: string, post: Post): Promise<{ id: string; 
   const done = await put.json().catch(() => ({}))
   if (!put.ok || !done.id) throw new Error(`YouTube did not accept the video (${put.status}): ${clip(done?.error?.message, 200)}`)
   return { id: String(done.id), url: short ? `https://www.youtube.com/shorts/${done.id}` : `https://www.youtube.com/watch?v=${done.id}` }
+}
+
+// ---- Facebook Pages ----
+async function fbError(res: Response) {
+  const b = await res.json().catch(() => ({}))
+  const e = b?.error ?? {}
+  if (e.code === 190 || res.status === 401) return 'Facebook access ended. Connect it again in Automations, Accounts.'
+  if (e.code === 200 || e.code === 10) return 'Facebook did not allow this post. Make sure you gave Joinlyy permission to post for this Page.'
+  return `Facebook said no (${res.status}): ${clip(e.message || JSON.stringify(b), 200)}`
+}
+
+async function fbPost(path: string, token: string, params: Record<string, string>) {
+  const res = await fetch(`${FB_GRAPH}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ ...params, access_token: token }) })
+  if (!res.ok) throw new Error(await fbError(res))
+  return await res.json()
+}
+
+async function publishFacebook(admin: SupabaseClient, token: string, post: Post): Promise<{ id: string; url: string }> {
+  const accQ = admin.from('social_accounts').select('external_id')
+  const { data: acc } = await (post.account_id ? accQ.eq('id', post.account_id) : accQ.eq('owner_id', post.owner_id).eq('platform', 'facebook')).limit(1).maybeSingle()
+  if (!acc) throw new Error('This Facebook Page is not connected. Connect it again in Automations, Accounts.')
+  const page = acc.external_id
+  let id = ''
+  if (post.kind === 'TEXT') {
+    const r = await fbPost(`${page}/feed`, token, { message: post.caption })
+    id = r.id
+  } else if (post.kind === 'IMAGE' && post.media_url) {
+    const r = await fbPost(`${page}/photos`, token, { url: post.media_url, caption: post.caption, published: 'true' })
+    id = r.post_id || r.id
+  } else if (post.kind === 'CAROUSEL') {
+    // Upload each photo unpublished, then one post that attaches them all
+    const attached: Record<string, string> = {}
+    let i = 0
+    for (const it of post.items) {
+      const r = await fbPost(`${page}/photos`, token, { url: it.url, published: 'false' })
+      attached[`attached_media[${i++}]`] = JSON.stringify({ media_fbid: r.id })
+    }
+    const r = await fbPost(`${page}/feed`, token, { message: post.caption, ...attached })
+    id = r.id
+  } else if (post.kind === 'VIDEO' && post.media_url) {
+    const r = await fbPost(`${page}/videos`, token, { file_url: post.media_url, description: post.caption, title: post.title ?? '' })
+    id = r.id
+  } else {
+    throw new Error('Nothing to post.')
+  }
+  return { id: String(id), url: id.includes('_') ? `https://www.facebook.com/${id}` : `https://www.facebook.com/${page}/posts/${id}` }
 }

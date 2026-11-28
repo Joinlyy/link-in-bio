@@ -124,6 +124,7 @@ export default function App() {
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/onboarding" element={<RequireAuth><RequireCreator><Onboarding /></RequireCreator></RequireAuth>} />
             <Route path="/linkedin/callback" element={<RequireAuth><RequireCreator><SocialCallback platform="linkedin" /></RequireCreator></RequireAuth>} />
+            <Route path="/facebook/callback" element={<RequireAuth><RequireCreator><SocialCallback platform="facebook" /></RequireCreator></RequireAuth>} />
             <Route path="/youtube/callback" element={<RequireAuth><RequireCreator><SocialCallback platform="youtube" /></RequireCreator></RequireAuth>} />
             <Route path="/instagram/callback" element={<RequireAuth><RequireCreator><InstagramCallback /></RequireCreator></RequireAuth>} />
             <Route path="/invoices/:id/print" element={<RequireAuth><InvoicePrint /></RequireAuth>} />

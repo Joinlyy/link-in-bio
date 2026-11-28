@@ -81,7 +81,7 @@ async function describe(path) {
   }
 
   // Return pages of account connections: private, never a creator page
-  if (['instagram', 'linkedin', 'youtube'].includes(parts[0]) && parts[1] === 'callback') return { title: `Connecting your account | ${NAME}`, description: '', path, noindex: true }
+  if (['instagram', 'linkedin', 'youtube', 'facebook'].includes(parts[0]) && parts[1] === 'callback') return { title: `Connecting your account | ${NAME}`, description: '', path, noindex: true }
 
   // Creator pages: /:username and /:username/:page (media-kit and product pages share the shell)
   if (parts.length >= 1 && parts.length <= 2 && !(parts[1] === 'media-kit' || parts[1] === 'p')) {

@@ -10,16 +10,16 @@ const MAX_CAPTION = 2200
 const MAX_VIDEO = 50 * 1024 * 1024
 const MAX_PHOTOS = 10
 const PLATFORMS = [
-  { id: 'instagram', label: 'Instagram', dot: 'bg-pink-500' },
-  { id: 'linkedin', label: 'LinkedIn', dot: 'bg-sky-600' },
-  { id: 'youtube', label: 'YouTube', dot: 'bg-red-600' },
+  { id: 'instagram', platform: 'instagram', label: 'Instagram', dot: 'bg-pink-500' },
+  { id: 'linkedin', platform: 'linkedin', label: 'LinkedIn', dot: 'bg-sky-600' },
+  { id: 'youtube', platform: 'youtube', label: 'YouTube', dot: 'bg-red-600' },
 ]
-const PLATFORM_NAME = { instagram: 'Instagram', linkedin: 'LinkedIn', youtube: 'YouTube' }
+const PLATFORM_NAME = { instagram: 'Instagram', linkedin: 'LinkedIn', youtube: 'YouTube', facebook: 'Facebook' }
 const KINDS = [
   { id: 'image', label: 'Image', hint: 'One photo', icon: ImageIcon },
   { id: 'carousel', label: 'Carousel', hint: '2 to 10 photos', icon: Images },
   { id: 'reel', label: 'Reel', hint: 'One video', icon: Film },
-  { id: 'text', label: 'Text', hint: 'LinkedIn only', icon: Type },
+  { id: 'text', label: 'Text', hint: 'LinkedIn, Facebook', icon: Type },
 ]
 const TONE = { scheduled: 'lilac', publishing: 'lilac', published: 'green', failed: 'red', cancelled: 'neutral' }
 const LABEL = { scheduled: 'Scheduled', publishing: 'Publishing…', published: 'Posted', failed: 'Failed', cancelled: 'Cancelled' }
@@ -90,6 +90,7 @@ export default function SchedulePosts() {
   const [allow, setAllow] = useState(null)
   const [connected, setConnected] = useState({}) // LinkedIn and YouTube accounts, by platform
   const [social, setSocial] = useState([])
+  const [accounts, setAccounts] = useState([]) // every connected LinkedIn, YouTube and Facebook account
   const [targets, setTargets] = useState({ instagram: true, linkedin: false, youtube: false })
   const [ytTitle, setYtTitle] = useState('')
   const [ytShort, setYtShort] = useState(false)
@@ -110,12 +111,13 @@ export default function SchedulePosts() {
     const [{ data: acc }, { data: list }, { data: soc }, { data: sp }] = await Promise.all([
       supabase.from('instagram_accounts').select('username, profile_picture_url').eq('owner_id', user.id).maybeSingle(),
       supabase.from('ig_scheduled_posts').select('id, media_type, media_url, items, caption, scheduled_at, status, permalink, error, published_at').eq('owner_id', user.id).order('scheduled_at', { ascending: false }).limit(60),
-      supabase.from('social_accounts').select('platform, display_name').eq('owner_id', user.id),
-      supabase.from('social_posts').select('id, platform, kind, caption, title, media_url, scheduled_at, status, permalink, error, published_at').eq('owner_id', user.id).order('scheduled_at', { ascending: false }).limit(60),
+      supabase.from('social_accounts').select('id, platform, display_name').eq('owner_id', user.id).order('connected_at'),
+      supabase.from('social_posts').select('id, platform, account_id, kind, caption, title, media_url, scheduled_at, status, permalink, error, published_at').eq('owner_id', user.id).order('scheduled_at', { ascending: false }).limit(60),
     ])
     setAccount(acc || null)
     setPosts(list || [])
-    setConnected(Object.fromEntries((soc || []).map((a) => [a.platform, a])))
+    setConnected(Object.fromEntries((soc || []).slice().reverse().map((a) => [a.platform, a])))
+    setAccounts(soc || [])
     setSocial(sp || [])
     supabase.rpc('my_post_allowance').then(({ data }) => setAllow(data || null))
   }, [user.id])
@@ -137,28 +139,31 @@ export default function SchedulePosts() {
     items.forEach((i) => URL.revokeObjectURL(i.preview))
     setItems([])
   }
+  const fbPages = accounts.filter((a) => a.platform === 'facebook')
+  const ALL = [...PLATFORMS, ...fbPages.map((a) => ({ id: `facebook:${a.id}`, platform: 'facebook', accountId: a.id, label: a.display_name || 'Facebook Page', dot: 'bg-blue-600' }))]
   function changeKind(k) {
     if (k === kind) return
     clearItems()
     setError('')
     setKind(k)
     // A text post can only go to LinkedIn; leaving it, Instagram is the usual starting point again
-    setTargets(k === 'text' ? { instagram: false, linkedin: true, youtube: false } : (t) => (kind === 'text' ? { instagram: !!account, linkedin: !account && !!connected.linkedin, youtube: false } : t))
+    setTargets(k === 'text' ? { instagram: false, youtube: false, linkedin: !!connected.linkedin, ...(connected.linkedin || !fbPages[0] ? {} : { [`facebook:${fbPages[0].id}`]: true }) } : (t) => (kind === 'text' ? { instagram: !!account, linkedin: !account && !!connected.linkedin, youtube: false } : t))
   }
   const can = { instagram: Boolean(account) && kind !== 'text', linkedin: Boolean(connected.linkedin), youtube: Boolean(connected.youtube) && kind === 'reel' }
-  const chosen = PLATFORMS.filter((x) => targets[x.id] && can[x.id])
+  const canUse = (x) => (x.platform === 'facebook' ? true : can[x.platform])
+  const chosen = ALL.filter((x) => targets[x.id] && canUse(x))
   const multi = chosen.length > 1
   const split = multi && !sameCaption
-  const CAP_MAX = { instagram: 2200, linkedin: 3000, youtube: 5000 }
+  const CAP_MAX = { instagram: 2200, linkedin: 3000, youtube: 5000, facebook: 5000 }
   const captionFor = (id) => (split ? captions[id] ?? caption : caption)
   const atFor = (id) => (multi && !sameTime ? ats[id] || at : at)
   function splitCaptions() {
     // Start every account from what is already written
-    setCaptions(Object.fromEntries(PLATFORMS.map((x) => [x.id, captions[x.id] ?? caption])))
+    setCaptions(Object.fromEntries(ALL.map((x) => [x.id, captions[x.id] ?? caption])))
     setSameCaption(false)
   }
   function splitTimes() {
-    setAts(Object.fromEntries(PLATFORMS.map((x) => [x.id, ats[x.id] || at])))
+    setAts(Object.fromEntries(ALL.map((x) => [x.id, ats[x.id] || at])))
     setSameTime(false)
   }
   useEffect(() => {
@@ -218,12 +223,12 @@ export default function SchedulePosts() {
     if (kind !== 'text' && !items.length) return setError(kind === 'reel' ? 'Choose a video first.' : kind === 'carousel' ? 'Choose 2 to 10 photos first.' : 'Choose a photo first.')
     if (kind === 'carousel' && items.length < 2) return setError('A carousel needs at least 2 photos.')
     if (!chosen.length) return setError('Choose where to post: tick at least one account below.')
-    if (targets.linkedin && can.linkedin && kind === 'carousel' && items.length > 9) return setError('LinkedIn carousels take up to 9 photos. Remove one, or untick LinkedIn.')
+    if (kind === 'carousel' && items.length > 9 && chosen.some((c) => c.platform !== 'instagram')) return setError('LinkedIn and Facebook take up to 9 photos in one post. Remove one, or untick them.')
     for (const c of chosen) {
-      if (captionFor(c.id).length > CAP_MAX[c.id]) return setError(`The ${c.label} caption is too long (${CAP_MAX[c.id]} characters at most).`)
+      if (captionFor(c.id).length > CAP_MAX[c.platform]) return setError(`The ${c.label} caption is too long (${CAP_MAX[c.platform]} characters at most).`)
       if (mode === 'later' && !(new Date(fromIst(atFor(c.id))) > new Date(Date.now() + 2 * 60000))) return setError(`Pick a time in the future${multi ? ` for ${c.label}` : ''}.`)
     }
-    if (chosen.some((c) => c.id === 'youtube') && !(ytTitle.trim() || captionFor('youtube').trim())) return setError('Add a title for YouTube.')
+    if (chosen.some((c) => c.platform === 'youtube') && !(ytTitle.trim() || captionFor('youtube').trim())) return setError('Add a title for YouTube.')
     setBusy(true)
     const uploaded = []
     let scheduledAny = false
@@ -250,7 +255,7 @@ export default function SchedulePosts() {
       const isVideo = kind === 'reel'
       const ids = [] // { platform, id }
       for (const t of chosen) {
-        if (t.id === 'instagram') {
+        if (t.platform === 'instagram') {
           const { data, error: err } = kind === 'carousel'
             ? await supabase.rpc('schedule_ig_carousel', { p_items: ups, p_caption: captionFor('instagram'), p_at: whenOf('instagram') })
             : await supabase.rpc('schedule_ig_post', { p_type: isVideo ? 'REELS' : 'IMAGE', p_path: ups[0].path, p_url: ups[0].url, p_caption: captionFor('instagram'), p_at: whenOf('instagram') })
@@ -259,14 +264,14 @@ export default function SchedulePosts() {
           ids.push({ platform: 'instagram', id: data })
         } else {
           const { data, error: err } = await supabase.rpc('schedule_social_post', {
-            p_platform: t.id, p_kind: kind === 'text' ? 'TEXT' : kind === 'carousel' ? 'CAROUSEL' : isVideo ? 'VIDEO' : 'IMAGE', p_caption: captionFor(t.id),
-            p_title: t.id === 'youtube' ? (ytTitle.trim() || captionFor('youtube').split('\n')[0]).slice(0, 100) : null,
+            p_account: t.accountId ?? null, p_platform: t.platform, p_kind: kind === 'text' ? 'TEXT' : kind === 'carousel' ? 'CAROUSEL' : isVideo ? 'VIDEO' : 'IMAGE', p_caption: captionFor(t.id),
+            p_title: t.platform === 'youtube' ? (ytTitle.trim() || captionFor('youtube').split('\n')[0]).slice(0, 100) : null,
             p_path: kind === 'carousel' || kind === 'text' ? null : ups[0].path, p_url: kind === 'carousel' || kind === 'text' ? null : ups[0].url, p_items: kind === 'carousel' ? ups : [],
-            p_at: whenOf(t.id), p_group: group, p_options: t.id === 'youtube' ? { short: ytShort, privacy: ytPrivacy } : {},
+            p_at: whenOf(t.id), p_group: group, p_options: t.platform === 'youtube' ? { short: ytShort, privacy: ytPrivacy } : {},
           })
           if (err) throw err
           scheduledAny = true
-          ids.push({ platform: t.id, id: data })
+          ids.push({ platform: t.platform, id: data })
         }
       }
       clearItems()
@@ -327,10 +332,10 @@ export default function SchedulePosts() {
         Choose what to post (an image, a carousel or a video), upload it, write the caption, tick where it goes (Instagram, LinkedIn, YouTube) and pick a time. Joinlyy posts it for you.
       </PageHeading>
 
-      {!account && !connected.linkedin && !connected.youtube ? (
+      {!account && !connected.linkedin && !connected.youtube && !fbPages.length ? (
         <Card className="p-6">
           <Empty icon={CalendarClock} title="Connect an account first" action={<Button to="/dashboard/connections">Connect accounts</Button>}>
-            Posts are published to the accounts you connect in Settings: Instagram, LinkedIn and YouTube.
+            Posts are published to the accounts you connect: Instagram, LinkedIn, YouTube and Facebook Pages.
           </Empty>
         </Card>
       ) : (
@@ -338,15 +343,15 @@ export default function SchedulePosts() {
           <div className="flex items-center gap-3">
             {account?.profile_picture_url && <img src={account.profile_picture_url} alt="" className="size-10 rounded-full object-cover" />}
             <div className="min-w-0">
-              <p className="text-sm text-ink-600">Posting to {[account && <b key="i">@{account.username}</b>, connected.linkedin && <b key="l">{connected.linkedin.display_name || 'LinkedIn'}</b>, connected.youtube && <b key="y">{connected.youtube.display_name || 'YouTube'}</b>].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ', ', el] : [el]), [])}</p>
+              <p className="text-sm text-ink-600">Posting to {[account && <b key="i">@{account.username}</b>, connected.linkedin && <b key="l">{connected.linkedin.display_name || 'LinkedIn'}</b>, connected.youtube && <b key="y">{connected.youtube.display_name || 'YouTube'}</b>, ...fbPages.map((f) => <b key={f.id}>{f.display_name}</b>)].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ', ', el] : [el]), [])}</p>
               {allow && account && <p className="text-xs text-ink-500">Instagram today: {allow.posts_today} of {allow.posts_per_day} post{allow.posts_per_day === 1 ? '' : 's'} · This month: {allow.reels_this_month} of {allow.reels_per_month} Reels. <a href="/dashboard/billing" className="underline">Plans</a></p>}
             </div>
           </div>
           <form onSubmit={submit} className="mt-5 space-y-6">
             <div>
               <p className="text-sm font-semibold">What do you want to post?</p>
-              <div className={`mt-2.5 grid gap-2 sm:max-w-2xl sm:gap-3 ${connected.linkedin ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`} role="radiogroup" aria-label="Post type">
-                {KINDS.filter((k) => k.id !== 'text' || connected.linkedin).map((k) => (
+              <div className={`mt-2.5 grid gap-2 sm:max-w-2xl sm:gap-3 ${connected.linkedin || fbPages.length ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`} role="radiogroup" aria-label="Post type">
+                {KINDS.filter((k) => k.id !== 'text' || connected.linkedin || fbPages.length).map((k) => (
                   <button key={k.id} type="button" role="radio" aria-checked={kind === k.id} onClick={() => changeKind(k.id)}
                     className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-3.5 text-center transition sm:py-4 ${kind === k.id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white hover:border-ink/30'}`}>
                     <k.icon className="size-6" />
@@ -405,14 +410,14 @@ export default function SchedulePosts() {
               <div className="space-y-5">
                 {!split && (
                   <div>
-                    <Textarea label={multi ? 'Caption (same on every account)' : 'Caption'} rows={kind === 'carousel' ? 4 : 6} maxLength={chosen.some((c) => c.id === 'instagram') || !chosen.length ? MAX_CAPTION : 3000} placeholder="Write your caption, hashtags included" value={caption} onChange={(e) => setCaption(e.target.value)} />
+                    <Textarea label={multi ? 'Caption (same on every account)' : 'Caption'} rows={kind === 'carousel' ? 4 : 6} maxLength={chosen.some((c) => c.platform === 'instagram') || !chosen.length ? MAX_CAPTION : 3000} placeholder="Write your caption, hashtags included" value={caption} onChange={(e) => setCaption(e.target.value)} />
                   </div>
                 )}
                 {split && (
                   <div className="space-y-4">
                     {chosen.map((c) => (
                       <div key={c.id}>
-                        <Textarea label={`${c.label} caption`} rows={4} maxLength={CAP_MAX[c.id]} placeholder={`Caption for ${c.label}`} value={captions[c.id] ?? ''} onChange={(e) => setCaptions((m) => ({ ...m, [c.id]: e.target.value }))} />
+                        <Textarea label={`${c.label} caption`} rows={4} maxLength={CAP_MAX[c.platform]} placeholder={`Caption for ${c.label}`} value={captions[c.id] ?? ''} onChange={(e) => setCaptions((m) => ({ ...m, [c.id]: e.target.value }))} />
                       </div>
                     ))}
                   </div>
@@ -420,9 +425,9 @@ export default function SchedulePosts() {
                 <div>
                   <p className="text-sm font-semibold">Post to</p>
                   <div className="mt-2.5 flex flex-wrap gap-2">
-                    {PLATFORMS.map((pf) => {
-                      const ok = pf.id === 'youtube' ? Boolean(connected.youtube) : can[pf.id]
-                      const hidden = pf.id === 'youtube' && kind !== 'reel'
+                    {ALL.map((pf) => {
+                      const ok = pf.platform === 'youtube' ? Boolean(connected.youtube) : canUse(pf)
+                      const hidden = pf.platform === 'youtube' && kind !== 'reel'
                       if (hidden) return null
                       return ok ? (
                         <button key={pf.id} type="button" role="checkbox" aria-checked={!!targets[pf.id]} onClick={() => setTargets((t) => ({ ...t, [pf.id]: !t[pf.id] }))}
@@ -449,6 +454,9 @@ export default function SchedulePosts() {
                         </label>
                       )}
                     </div>
+                  )}
+                  {!fbPages.length && (
+                    <div className="mt-2"><Link to="/dashboard/connections" className="inline-flex h-10 items-center gap-2 rounded-full border-2 border-dashed border-ink/20 px-4 text-sm font-semibold text-ink-500 hover:border-ink/40"><Plus className="size-4" />Connect Facebook</Link></div>
                   )}
                   {targets.youtube && can.youtube && (
                     <div className="mt-4 space-y-3 rounded-2xl bg-cream p-4">
@@ -517,7 +525,7 @@ export default function SchedulePosts() {
                   {p.status === 'failed' && p.error && <p className="mt-1 text-xs text-red-700">{p.error}</p>}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge>{PLATFORM_NAME[p.platform]}{p.kindLabel === 'Carousel' ? ' carousel' : ''}</Badge>
+                  <Badge>{PLATFORM_NAME[p.platform]}{p.platform === 'facebook' && accounts.find((a) => a.id === p.account_id) ? `: ${accounts.find((a) => a.id === p.account_id).display_name}` : ''}{p.kindLabel === 'Carousel' ? ' carousel' : ''}</Badge>
                   <Badge tone={TONE[p.status]}>{LABEL[p.status]}</Badge>
                   {p.permalink && <a href={p.permalink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-2">View <ExternalLink className="size-3.5" /></a>}
                   {p.status === 'scheduled' && <Button size="sm" variant="outline" onClick={() => postNow(p)}>Post now</Button>}
