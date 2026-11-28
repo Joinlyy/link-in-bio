@@ -328,10 +328,10 @@ function Bookings({ pageId }) {
   const [moving, setMoving] = useState(null)
 
   const load = useCallback(async () => {
-    let q = supabase.from('bookings').select('*, products(title, private, data)').eq('page_id', pageId)
+    let q = supabase.from('bookings').select('*, products(title, private, data), orders(status)').eq('page_id', pageId)
     q = past ? q.lt('starts_at', new Date().toISOString()).order('starts_at', { ascending: false }) : q.gte('starts_at', new Date(Date.now() - 2 * 3600_000).toISOString()).order('starts_at')
     const { data } = await q.limit(200)
-    setRows(data || [])
+    setRows((data || []).filter((b) => !b.order_id || b.orders?.status === 'paid' || b.orders?.status === 'refunded'))
   }, [pageId, past])
   useEffect(() => {
     load()

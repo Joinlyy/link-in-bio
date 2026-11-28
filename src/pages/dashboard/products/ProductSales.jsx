@@ -34,11 +34,11 @@ export default function ProductSales() {
       if (!p) return
       const [{ data: o }, { data: b }] = await Promise.all([
         supabase.from('orders').select(ORDER_COLUMNS).eq('product_id', id).order('created_at', { ascending: false }).limit(500),
-        supabase.from('bookings').select('*').eq('product_id', id).order('starts_at', { ascending: true }).limit(500),
+        supabase.from('bookings').select('*, orders(status)').eq('product_id', id).order('starts_at', { ascending: true }).limit(500),
       ])
       if (!live) return
       setOrders(o || [])
-      setBookings(b || [])
+      setBookings((b || []).filter((x) => !x.order_id || x.orders?.status === 'paid' || x.orders?.status === 'refunded'))
     })()
     return () => { live = false }
   }, [id, page.id, tick])

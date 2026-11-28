@@ -206,12 +206,12 @@ async function sessionReminders(db: SupabaseClient) {
   type Item = { id: string; product: string; start: string; link: string | null; buyers: { email: string; name: string | null; key: string }[]; ownerId: string }
   const items: Item[] = []
   const { data: bks } = await db.from('bookings')
-    .select('id, order_id, starts_at, buyer_name, buyer_email, status, products(title, private), pages(owner_id)')
+    .select('id, order_id, starts_at, buyer_name, buyer_email, status, products(title, private), pages(owner_id), orders(status)')
     .eq('status', 'confirmed').gt('starts_at', new Date(now).toISOString()).lt('starts_at', new Date(now + 25 * 3600_000).toISOString())
   for (const b of bks ?? []) {
     const pr = first(b.products)
     const pg = first(b.pages)
-    if (!pg) continue
+    if (!pg || (b.order_id && first(b.orders)?.status !== 'paid')) continue
     items.push({ id: `bk:${b.id}`, product: pr?.title || 'Your session', start: b.starts_at, link: urlOf(pr?.private?.meeting_url), buyers: [{ email: b.buyer_email, name: b.buyer_name, key: b.id }], ownerId: pg.owner_id })
   }
   const { data: wps } = await db.from('products').select('id, title, data, private, page_id, pages(owner_id)').eq('type', 'webinar')

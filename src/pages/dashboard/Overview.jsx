@@ -78,8 +78,8 @@ export default function Overview() {
   const max = Math.max(1, ...(stats?.series || []).map((s) => s.views))
   const [sessions, setSessions] = useState([])
   useEffect(() => {
-    supabase.from('bookings').select('id, starts_at, buyer_name, buyer_email, products(title)').eq('page_id', page.id).eq('status', 'confirmed')
-      .gte('starts_at', new Date(Date.now() - 2 * 3600_000).toISOString()).order('starts_at').limit(4).then(({ data }) => setSessions(data || []))
+    supabase.from('bookings').select('id, order_id, starts_at, buyer_name, buyer_email, products(title), orders(status)').eq('page_id', page.id).eq('status', 'confirmed')
+      .gte('starts_at', new Date(Date.now() - 2 * 3600_000).toISOString()).order('starts_at').limit(8).then(({ data }) => setSessions((data || []).filter((b) => !b.order_id || b.orders?.status === 'paid').slice(0, 4)))
   }, [page.id])
 
   // Google sign-ups can't carry ?ref= metadata — claim it once after login
