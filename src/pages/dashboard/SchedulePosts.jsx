@@ -313,7 +313,7 @@ export default function SchedulePosts() {
   }
   // One list for every platform, newest first
   const allPosts = [
-    ...posts.map((p) => ({ ...p, platform: 'instagram', kindLabel: p.media_type === 'REELS' ? 'Reel' : p.media_type === 'CAROUSEL' ? 'Carousel' : 'Photo' })),
+    ...(posts || []).map((p) => ({ ...p, platform: 'instagram', kindLabel: p.media_type === 'REELS' ? 'Reel' : p.media_type === 'CAROUSEL' ? 'Carousel' : 'Photo' })),
     ...social.map((p) => ({ ...p, kindLabel: p.kind === 'VIDEO' ? 'Video' : p.kind === 'CAROUSEL' ? 'Carousel' : p.kind === 'IMAGE' ? 'Photo' : 'Text', media_type: p.kind === 'VIDEO' ? 'REELS' : p.kind })),
   ].sort((x, y) => new Date(y.scheduled_at) - new Date(x.scheduled_at))
 
