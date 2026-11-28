@@ -77,7 +77,7 @@ export const TEMPLATES = [
     id: 'spotlight', name: 'Spotlight', category: 'Creator', blurb: 'Big photo up top. Your newest thing right under it.',
     sampleName: 'Ananya Rao', bio: 'Lifestyle creator from Bengaluru. New videos every Friday.', avatar: P.portrait,
     theme: theme({ layout: 'hero', cover: img(P.portrait, 1000), bg: '#15161A', text: '#FFFFFF', buttonBg: '#FFFFFF', buttonText: '#15161A', accent: '#D5F05C', tagline: '2.1L followers · 40+ brand collabs' }),
-    blocks: [main('Watch my latest video', '▶️', 'New this Friday'), link('Shop my favourites', '🛍️'), link('My free weekly letter', '💌'), wa('Brand enquiries on WhatsApp'), brands('Work with me', 'Reels, Stories and long-form integrations.')],
+    blocks: [main('Watch my latest video', '▶️', 'New this Friday'), link('Shop my favourites', '🛍️'), link('My free weekly letter', '💌'), brands('Work with me', 'Reels, Stories and long-form integrations.')],
   },
   {
     id: 'essentials', name: 'Essentials', category: 'Creator', blurb: 'Clean, simple and quick to set up.',
@@ -95,7 +95,7 @@ export const TEMPLATES = [
     id: 'bento', name: 'Bento Grid', category: 'Creator', blurb: 'Photo tiles instead of a long list of buttons.',
     sampleName: 'Meera Joshi', bio: 'Everyday style, food and travel.', avatar: P.woman,
     theme: theme({ bg: '#EFECFE', bgType: 'gradient', bg2: '#DFDAFB', text: '#15161A', buttonBg: '#15161A', buttonText: '#FFFFFF', accent: '#B9AFF5', radius: 'rounded', tagline: 'Featured in Femina' }),
-    blocks: [main('My new Reel is up', '🎥', 'Watch now'), tile('Outfits', P.fashion, 'Shop the looks'), tile('Recipes', P.salad, 'Quick & healthy'), tile('Travel', P.lake, 'Trip guides'), tile('Wellness', P.yoga, 'Morning routine'), wa('Say hi on WhatsApp')],
+    blocks: [main('My new Reel is up', '🎥', 'Watch now'), tile('Outfits', P.fashion, 'Shop the looks'), tile('Recipes', P.salad, 'Quick & healthy'), tile('Travel', P.lake, 'Trip guides'), tile('Wellness', P.yoga, 'Morning routine')],
   },
 
   // ---- Fashion & Beauty ----
@@ -109,13 +109,13 @@ export const TEMPLATES = [
     id: 'street-drop', name: 'Street Drop', category: 'Fashion & Beauty', blurb: 'Shoppable photo grid for outfits and hauls.',
     sampleName: 'Kabir Style', bio: 'Streetwear on a student budget.', avatar: P.man2,
     theme: theme({ bg: '#15161A', text: '#FFFFFF', buttonBg: '#FFFFFF', buttonText: '#15161A', accent: '#F26B5B', font: 'space', headingFont: 'space', radius: 'rounded', tagline: 'New fits every Sunday' }),
-    blocks: [main('This week’s haul', '🔥', 'All links inside'), tile('Sneakers', P.store, 'Under ₹3K'), tile('Jackets', P.fashion, 'Winter picks'), tile('Accessories', P.model, 'Small upgrades'), tile('Full fits', P.portrait, 'Copy the look'), wa('Ask me for sizing')],
+    blocks: [main('This week’s haul', '🔥', 'All links inside'), tile('Sneakers', P.store, 'Under ₹3K'), tile('Jackets', P.fashion, 'Winter picks'), tile('Accessories', P.model, 'Small upgrades'), tile('Full fits', P.portrait, 'Copy the look')],
   },
   {
     id: 'rose-glow', name: 'Rose Glow', category: 'Fashion & Beauty', blurb: 'Soft, romantic page for beauty creators.',
     sampleName: 'Ishita Beauty', bio: 'Honest skincare for Indian skin. No sponsored lies.', avatar: P.portrait,
     theme: theme({ layout: 'banner', cover: img(P.model, 1000), bg: '#FFF1F2', text: '#4C0519', buttonBg: '#E11D48', buttonText: '#FFFFFF', accent: '#FDA4AF', headingFont: 'playfair', radius: 'rounded', tagline: 'Trusted by 80K+ readers' }),
-    blocks: [main('Get my 5-step skincare routine', '🌸', 'Free PDF'), link('Products I repurchase', '🧴'), link('Book a skin consult', '💬', '₹499 · 20 minutes'), reviews('Real results', [['My acne cleared in 8 weeks.', 'Nidhi', 'Follower']]), faq('Quick answers', [['Do you do paid reviews?', 'Only products I’ve used for 30+ days, always disclosed.']])],
+    blocks: [main('Get my 5-step skincare routine', '🌸', 'Free PDF'), link('Products I repurchase', '🧴'), reviews('Real results', [['My acne cleared in 8 weeks.', 'Nidhi', 'Follower']]), faq('Quick answers', [['Do you do paid reviews?', 'Only products I’ve used for 30+ days, always disclosed.']])],
   },
   {
     id: 'skin-diary', name: 'Skin Diary', category: 'Fashion & Beauty', blurb: 'Floating card layout with a calm lilac feel.',
@@ -129,19 +129,19 @@ export const TEMPLATES = [
     id: 'iron-mode', name: 'Iron Mode', category: 'Fitness & Wellness', blurb: 'Bold, high-energy page for trainers.',
     sampleName: 'Coach Vikram', bio: 'Certified trainer. 500+ transformations.', avatar: P.man,
     theme: theme({ layout: 'hero', cover: img(P.gym, 1000), bg: '#15161A', text: '#FFFFFF', buttonBg: '#EF4444', buttonText: '#FFFFFF', accent: '#EF4444', font: 'space', headingFont: 'space', radius: 'square', tagline: '500+ transformations' }),
-    blocks: [main('Start my 12-week programme', '💪', 'Limited slots this month'), link('Free home workout plan', '📄'), link('Book a 1:1 consultation', '📞', '₹999 · 30 minutes'), reviews('Transformations', [['Lost 14 kg in 4 months.', 'Amit', 'Client'], ['Finally consistent for the first time.', 'Pooja', 'Client']]), wa('Ask me anything on WhatsApp')],
+    blocks: [main('Start my 12-week programme', '💪', 'Limited slots this month'), link('Free home workout plan', '📄'), reviews('Transformations', [['Lost 14 kg in 4 months.', 'Amit', 'Client'], ['Finally consistent for the first time.', 'Pooja', 'Client']])],
   },
   {
     id: 'yoga-flow', name: 'Morning Flow', category: 'Fitness & Wellness', blurb: 'Calm gradient for yoga and wellness.',
     sampleName: 'Aditi Yoga', bio: 'Gentle yoga and breathwork for busy people.', avatar: P.woman,
     theme: theme({ bg: '#0F6B5F', bgType: 'gradient', bg2: '#15161A', text: '#FFFFFF', buttonBg: '#FFFFFF', buttonText: '#0F6B5F', accent: '#D5F05C', font: 'outfit', headingFont: 'outfit', tagline: 'RYT-500 certified' }),
-    blocks: [main('Join tomorrow’s live class', '🧘', '7 AM IST on Zoom'), webinar('21-day yoga challenge', 'A short guided practice every morning.', 'Reserve my spot'), link('Free 10-minute morning flow', '🌅'), wa('Questions? Message me')],
+    blocks: [main('Join tomorrow’s live class', '🧘', '7 AM IST on Zoom'), webinar('21-day yoga challenge', 'A short guided practice every morning.', 'Reserve my spot'), link('Free 10-minute morning flow', '🌅')],
   },
   {
     id: 'nourish', name: 'Nourish', category: 'Fitness & Wellness', blurb: 'Fresh photo banner for nutritionists.',
     sampleName: 'Dr. Riya Sen', bio: 'Clinical nutritionist. Indian diet plans that actually fit your life.', avatar: P.portrait,
     theme: theme({ layout: 'banner', cover: img(P.healthy, 1000), bg: '#F7FBEF', text: '#1E3A1A', buttonBg: '#3F7D2C', buttonText: '#FFFFFF', accent: '#D5F05C', radius: 'rounded', tagline: '10+ years in practice' }),
-    blocks: [main('Get a personal diet plan', '🥗', 'Starts at ₹1,499'), link('Free PCOS meal guide', '📘'), link('Book a video consult', '🩺'), faq('Good to know', [['Will I have to stop eating rice?', 'No. Plans are built around the food you already eat at home.']])],
+    blocks: [main('Get a personal diet plan', '🥗', 'Starts at ₹1,499'), link('Free PCOS meal guide', '📘'), faq('Good to know', [['Will I have to stop eating rice?', 'No. Plans are built around the food you already eat at home.']])],
   },
 
   // ---- Food ----
@@ -155,7 +155,7 @@ export const TEMPLATES = [
     id: 'cloud-kitchen', name: 'Cloud Kitchen', category: 'Food', blurb: 'A photo menu for food businesses.',
     sampleName: 'The Tiffin Co.', bio: 'Home-style meals delivered across Pune.', avatar: P.salad,
     theme: theme({ bg: '#FEF3C7', text: '#422006', buttonBg: '#B45309', buttonText: '#FFFFFF', accent: '#F59E0B', radius: 'rounded', headingFont: 'bricolage', tagline: '⭐ 4.8 on Zomato' }),
-    blocks: [wa('Order on WhatsApp'), tile('Thalis', P.food, 'From ₹149'), tile('Salads', P.salad, 'From ₹129'), tile('Pizza', P.pizza, 'From ₹199'), tile('Healthy bowls', P.healthy, 'From ₹169'), link('Monthly tiffin plan', '🍱', 'Save 20%')],
+    blocks: [tile('Thalis', P.food, 'From ₹149'), tile('Salads', P.salad, 'From ₹129'), tile('Pizza', P.pizza, 'From ₹199'), tile('Healthy bowls', P.healthy, 'From ₹169'), link('Monthly tiffin plan', '🍱', 'Save 20%')],
   },
 
   // ---- Travel ----
@@ -163,7 +163,7 @@ export const TEMPLATES = [
     id: 'wanderlust', name: 'Wanderlust', category: 'Travel', blurb: 'Full-photo adventure page.',
     sampleName: 'Dev on the Road', bio: 'Budget travel across India. 27 states and counting.', avatar: P.man2,
     theme: theme({ layout: 'hero', cover: img(P.lake, 1000), bg: '#0C2A3A', text: '#FFFFFF', buttonBg: '#FFFFFF', buttonText: '#0C2A3A', accent: '#7DD3FC', font: 'outfit', headingFont: 'outfit', tagline: '27 states · 14 countries' }),
-    blocks: [main('Join my next group trip', '🏔️', 'Spiti · 12 seats left'), link('Free Ladakh itinerary', '🗺️'), link('My travel gear list', '🎒'), link('Book a trip-planning call', '📞', '₹399'), wa('Ask me about any place')],
+    blocks: [main('Join my next group trip', '🏔️', 'Spiti · 12 seats left'), link('Free Ladakh itinerary', '🗺️'), link('My travel gear list', '🎒')],
   },
   {
     id: 'trip-notes', name: 'Trip Notes', category: 'Travel', blurb: 'Compact, side-by-side profile with guides.',
@@ -177,13 +177,13 @@ export const TEMPLATES = [
     id: 'study-room', name: 'Study Room', category: 'Education', blurb: 'Built around your next live class.',
     sampleName: 'Prof. Arora', bio: 'Helping students crack CAT without expensive coaching.', avatar: P.man,
     theme: theme({ layout: 'left', bg: '#EEF2FF', text: '#1E1B4B', buttonBg: '#4338CA', buttonText: '#FFFFFF', accent: '#A5B4FC', radius: 'rounded', tagline: '12,000+ students taught' }),
-    blocks: [webinar('Free CAT strategy masterclass', 'Plan your last 90 days.', 'Register free'), main('Download the formula book', '📐', 'Free PDF'), link('Book a doubt session', '🎓', '₹299 · 30 minutes'), reviews('Student results', [['Scored 98.7 percentile.', 'Rahul', 'CAT 2025']])],
+    blocks: [webinar('Free CAT strategy masterclass', 'Plan your last 90 days.', 'Register free'), main('Download the formula book', '📐', 'Free PDF'), reviews('Student results', [['Scored 98.7 percentile.', 'Rahul', 'CAT 2025']])],
   },
   {
     id: 'skill-school', name: 'Skill School', category: 'Education', blurb: 'Photo banner for teachers selling resources.',
     sampleName: 'Learn with Kavya', bio: 'Spoken English made easy.', avatar: P.woman,
     theme: theme({ layout: 'banner', cover: img(P.books, 1000), bg: '#FFFBEB', text: '#292524', buttonBg: '#292524', buttonText: '#FFFFFF', accent: '#FCD34D', radius: 'rounded', tagline: '1 lakh+ learners' }),
-    blocks: [main('Start the 30-day English challenge', '🗣️', 'Free for everyone'), link('Interview English workbook', '📗', '₹149'), link('Live speaking batch', '🎤', 'Starts next month'), faq('Questions', [['Is this for beginners?', 'Yes, we start from the basics.']]), wa('Join the WhatsApp group')],
+    blocks: [main('Start the 30-day English challenge', '🗣️', 'Free for everyone'), link('Interview English workbook', '📗', '₹149'), link('Live speaking batch', '🎤', 'Starts next month'), faq('Questions', [['Is this for beginners?', 'Yes, we start from the basics.']])],
   },
 
   // ---- Business ----
@@ -211,14 +211,14 @@ export const TEMPLATES = [
     pages: [
       { slug: 'work', title: 'Work', blocks: [photo(P.craft, 'Packaging project'), photo(P.art, 'Brand identity'), text('Identity, packaging and social templates.')] },
       { slug: 'shop', title: 'Shop', blocks: [link('Canva social kit', '🎨', '₹799'), link('Brand starter pack', '📦', '₹1,499'), tip('Like my free resources?', 'Buy me a chai.')] },
-      { slug: 'contact', title: 'Contact', blocks: [wa('Message me on WhatsApp'), brands('Project enquiry', 'Tell me about your brand.')] },
+      { slug: 'contact', title: 'Contact', blocks: [brands('Project enquiry', 'Tell me about your brand.')] },
     ],
   },
   {
     id: 'webinar-hub', name: 'Webinar Hub', category: 'Education', blurb: 'For teachers who run live sessions.',
     sampleName: 'Sameer Academy', bio: 'Practical digital marketing, taught live.', avatar: P.man,
     theme: theme({ layout: 'card', cardBg: '#FFFFFF', bg: '#1E3A8A', bgType: 'gradient', bg2: '#15161A', text: '#15161A', buttonBg: '#1D4ED8', buttonText: '#FFFFFF', accent: '#93C5FD', radius: 'rounded', tagline: '200+ live sessions' }),
-    blocks: [webinar('Instagram growth live workshop', 'Two hours. Real accounts reviewed live.', 'Register now'), main('Get the free content calendar', '🗓️', 'Notion + PDF'), wa('Join the community')],
+    blocks: [webinar('Instagram growth live workshop', 'Two hours. Real accounts reviewed live.', 'Register now'), main('Get the free content calendar', '🗓️', 'Notion + PDF')],
     pages: [
       { slug: 'resources', title: 'Resources', blocks: [link('Reels hook swipe file', '🪝', 'Free'), link('Ads budget calculator', '🧮', 'Free'), link('Client proposal template', '📑', '₹499')] },
       { slug: 'reviews', title: 'Reviews', blocks: [reviews('Students say', [['My first client came within 3 weeks.', 'Farah', 'Freelancer'], ['Clear, no fluff, very practical.', 'Harsh', 'Founder']])] },
@@ -256,7 +256,7 @@ export const TEMPLATES = [
     id: 'dance-studio', name: 'Dance Studio', category: 'Entertainment', blurb: 'Warm gradient and class bookings.',
     sampleName: 'Rhea Moves', bio: 'Bollywood and contemporary classes for all levels.', avatar: P.dance,
     theme: theme({ layout: 'banner', cover: img(P.dance, 1000), bg: '#FFB88C', bgType: 'gradient', bg2: '#DE6262', text: '#FFFFFF', buttonBg: '#FFFFFF', buttonText: '#7A2E2E', accent: '#FFE29A', font: 'poppins', headingFont: 'poppins', tagline: '5,000+ students danced' }),
-    blocks: [main('Join this weekend’s workshop', '💃', 'Online · ₹299'), link('Wedding sangeet choreography', '💍'), video('Latest routine'), wa('Enquire on WhatsApp')],
+    blocks: [main('Join this weekend’s workshop', '💃', 'Online · ₹299'), link('Wedding sangeet choreography', '💍'), video('Latest routine')],
   },
   {
     id: 'on-air', name: 'On Air', category: 'Entertainment', blurb: 'Episode-first page for podcasters.',
@@ -270,7 +270,7 @@ export const TEMPLATES = [
     id: 'frame-gallery', name: 'Frame Gallery', category: 'Art & Photo', blurb: 'Lets your photographs do the talking.',
     sampleName: 'Lens by Arjun', bio: 'Wedding and portrait photographer, Jaipur.', avatar: P.camera,
     theme: theme({ layout: 'hero', cover: img(P.camera, 1000), bg: '#0A0A0A', text: '#FAFAFA', buttonBg: '#FAFAFA', buttonText: '#0A0A0A', accent: '#A3A3A3', headingFont: 'playfair', radius: 'square', tagline: '300+ weddings shot' }),
-    blocks: [main('Check my availability', '📷', 'Booking for next season'), photo(P.portrait, 'Portrait work'), photo(P.india, 'Travel work'), link('Lightroom preset pack', '🎞️', '₹599'), wa('Enquire on WhatsApp')],
+    blocks: [main('Check my availability', '📷', 'Booking for next season'), photo(P.portrait, 'Portrait work'), photo(P.india, 'Travel work'), link('Lightroom preset pack', '🎞️', '₹599')],
   },
   {
     id: 'art-studio', name: 'Art Studio', category: 'Art & Photo', blurb: 'A colourful shop grid for artists.',
@@ -284,19 +284,19 @@ export const TEMPLATES = [
     id: 'ghar-ka-khana', name: 'घर का खाना', category: 'Hindi', language: 'hi', blurb: 'हिंदी में रेसिपी पेज।',
     sampleName: 'सीमा की रसोई', bio: 'रोज़ की आसान और स्वादिष्ट रेसिपी।', avatar: P.woman,
     theme: theme({ layout: 'banner', cover: img(P.food, 1000), bg: '#FFF7ED', text: '#431407', buttonBg: '#C2410C', buttonText: '#FFFFFF', accent: '#FDBA74', font: 'mukta', headingFont: 'mukta', radius: 'rounded', tagline: '5 लाख+ परिवारों का भरोसा' }),
-    blocks: [main('मेरी 50 रेसिपी की किताब पाएं', '📖', 'सिर्फ़ ₹149'), link('इस हफ़्ते का मेन्यू', '🗓️'), video('नई रेसिपी देखें'), wa('WhatsApp पर जुड़ें')],
+    blocks: [main('मेरी 50 रेसिपी की किताब पाएं', '📖', 'सिर्फ़ ₹149'), link('इस हफ़्ते का मेन्यू', '🗓️'), video('नई रेसिपी देखें')],
   },
   {
     id: 'exam-guru', name: 'परीक्षा गुरु', category: 'Hindi', language: 'hi', blurb: 'शिक्षकों और कोचिंग के लिए।',
     sampleName: 'अमित सर', bio: 'UPSC और SSC की तैयारी, सरल हिंदी में।', avatar: P.man,
     theme: theme({ layout: 'left', bg: '#EFF6FF', text: '#172554', buttonBg: '#1D4ED8', buttonText: '#FFFFFF', accent: '#93C5FD', font: 'mukta', headingFont: 'mukta', radius: 'rounded', tagline: '2 लाख+ छात्र' }),
-    blocks: [webinar('मुफ़्त लाइव क्लास', 'पहले प्रयास में सफलता की रणनीति।', 'अभी रजिस्टर करें'), main('मुफ़्त नोट्स डाउनलोड करें', '📚', 'PDF'), wa('छात्र WhatsApp ग्रुप'), faq('सवाल', [['क्या यह शुरुआती छात्रों के लिए है?', 'हाँ, हम बिल्कुल शुरुआत से पढ़ाते हैं।']])],
+    blocks: [webinar('मुफ़्त लाइव क्लास', 'पहले प्रयास में सफलता की रणनीति।', 'अभी रजिस्टर करें'), main('मुफ़्त नोट्स डाउनलोड करें', '📚', 'PDF'), faq('सवाल', [['क्या यह शुरुआती छात्रों के लिए है?', 'हाँ, हम बिल्कुल शुरुआत से पढ़ाते हैं।']])],
   },
   {
     id: 'maa-ki-diary', name: 'माँ की डायरी', category: 'Hindi', language: 'hi', blurb: 'पेरेंटिंग के लिए प्यारा कार्ड पेज।',
     sampleName: 'रश्मि', bio: 'बच्चों की परवरिश के सच्चे अनुभव।', avatar: P.family,
     theme: theme({ layout: 'card', cardBg: '#FFFFFF', bg: '#FCE7F3', bgType: 'gradient', bg2: '#FBCFE8', text: '#500724', buttonBg: '#BE185D', buttonText: '#FFFFFF', accent: '#F9A8D4', font: 'mukta', headingFont: 'mukta', radius: 'rounded', tagline: '1 लाख+ माता-पिता' }),
-    blocks: [main('बच्चों का डाइट चार्ट पाएं', '🍎', 'मुफ़्त PDF'), link('स्क्रीन टाइम गाइड', '📱'), wa('माताओं के ग्रुप से जुड़ें'), lead('हर रविवार एक नई सीख', '', 'मुझे भेजें')],
+    blocks: [main('बच्चों का डाइट चार्ट पाएं', '🍎', 'मुफ़्त PDF'), link('स्क्रीन टाइम गाइड', '📱'), lead('हर रविवार एक नई सीख', '', 'मुझे भेजें')],
   },
   {
     id: 'shanti', name: 'शांति', category: 'Hindi', language: 'hi', blurb: 'आध्यात्म और ध्यान के लिए शांत पेज।',

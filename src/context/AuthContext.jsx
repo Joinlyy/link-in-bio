@@ -5,6 +5,8 @@ import { Button, FullScreenLoader, ToastProvider } from '../components/ui'
 import { Logo } from '../components/icons'
 
 const AuthCtx = createContext(null)
+// Set once at load: the page was opened by an OAuth redirect (it carries ?code=)
+let cameFromOAuth = typeof window !== 'undefined' && /[?&]code=/.test(window.location.search)
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
@@ -40,6 +42,11 @@ export function AuthProvider({ children }) {
     })
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
+      // Google sent us to the landing page instead of /auth/callback (redirect not on the allow list): go to the dashboard
+      if (event === 'SIGNED_IN' && cameFromOAuth && window.location.pathname === '/') {
+        cameFromOAuth = false
+        window.location.replace('/dashboard')
+      }
       // Defer DB calls out of the auth callback (supabase-js recommendation)
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'SIGNED_OUT') {
         setTimeout(() => loadProfile(s?.user), 0)
