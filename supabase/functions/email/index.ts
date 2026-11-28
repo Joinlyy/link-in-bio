@@ -33,17 +33,17 @@ async function scheduleFor(db: SupabaseClient, o: { id: string; product_id: stri
   const { data: pr } = o.product_id ? await db.from('products').select('type, title, data, private').eq('id', o.product_id).maybeSingle() : { data: null }
   const link = urlOf(pr?.private?.meeting_url)
   if (pr?.type === 'session') {
-    const { data: b } = await db.from('bookings').select('starts_at, ends_at').eq('order_id', o.id).neq('status', 'cancelled').order('starts_at').limit(1).maybeSingle()
-    if (b) return { kind: 'session' as const, start: b.starts_at as string, end: b.ends_at as string, link }
+    const { data: b } = await db.from('bookings').select('id, starts_at, ends_at').eq('order_id', o.id).neq('status', 'cancelled').order('starts_at').limit(1).maybeSingle()
+    if (b) return { kind: 'session' as const, start: b.starts_at as string, end: b.ends_at as string, link, uid: b.id as string }
   }
   if (pr?.type === 'webinar' && pr.data?.starts_at) {
     const start = new Date(pr.data.starts_at).toISOString()
-    return { kind: 'webinar' as const, start, end: new Date(Date.parse(start) + Number(pr.data.duration || 60) * 60000).toISOString(), link }
+    return { kind: 'webinar' as const, start, end: new Date(Date.parse(start) + Number(pr.data.duration || 60) * 60000).toISOString(), link, uid: o.id }
   }
   return null
 }
-const icsFor = (id: string, title: string, s: { start: string; end: string; link: string | null }, who: string) =>
-  [{ name: 'invite.ics', content: b64(makeIcs({ uid: `${id}-${who}`, title, start: s.start, end: s.end, details: s.link ? `Join: ${s.link}` : 'Booked on Joinlyy', url: s.link || undefined })) }]
+const icsFor = (_id: string, title: string, s: { start: string; end: string; link: string | null; uid: string }, who: string) =>
+  [{ name: 'invite.ics', content: b64(makeIcs({ uid: `${s.uid}-${who}`, title, start: s.start, end: s.end, details: s.link ? `Join: ${s.link}` : 'Booked on Joinlyy', url: s.link || undefined })) }]
 
 async function planName(db: SupabaseClient, id: string) {
   const { data } = await db.from('plans').select('name').eq('id', id).maybeSingle()
@@ -101,6 +101,30 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
     const { data: owner } = await db.from('profiles').select('email').eq('id', sp.owner_id).maybeSingle()
     const when = `${new Date(sp.scheduled_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })} IST`
     await deliver(db, `post_${sp.status}:${sp.id}`, `post_${sp.status}`, owner?.email, T.postStatusCreator({ ok: sp.status === 'published', when, reason: sp.error, url: `${APP}/dashboard/schedule` }))
+    return
+  }
+
+  if (kind === 'booking_moved') {
+    const { data: b } = await db.from('bookings')
+      .select('id, order_id, product_id, starts_at, ends_at, rescheduled_from, rescheduled_by, rescheduled_at, buyer_name, buyer_email, status, products(title, private), pages(owner_id, display_name, username)')
+      .eq('id', id).maybeSingle()
+    if (!b || b.status !== 'confirmed' || !b.rescheduled_from || !recent(b.rescheduled_at)) return
+    const pr = first(b.products)
+    const pg = first(b.pages)
+    if (!pg) return
+    const { data: owner } = await db.from('profiles').select('email').eq('id', pg.owner_id).maybeSingle()
+    const { data: ord } = b.order_id ? await db.from('orders').select('access_token').eq('id', b.order_id).maybeSingle() : { data: null }
+    const link = urlOf(pr?.private?.meeting_url)
+    const title = pr?.title || 'Your session'
+    const stamp = Date.parse(b.starts_at)
+    const buyerName = b.buyer_name || b.buyer_email
+    const creatorName = pg.display_name || pg.username || 'your host'
+    const by = (b.rescheduled_by === 'buyer' ? 'buyer' : 'creator') as 'buyer' | 'creator'
+    const seq = Math.floor(Date.parse(b.rescheduled_at) / 60000)
+    const ics = (who: string, with_: string) => [{ name: 'invite.ics', content: b64(makeIcs({ uid: `${b.id}-${who}`, title: `${title} with ${with_}`, start: b.starts_at, end: b.ends_at, details: link ? `Join: ${link}` : 'Booked on Joinlyy', url: link || undefined, sequence: seq })) }]
+    const base = { by, product: title, oldWhen: istWhen(b.rescheduled_from), newWhen: istWhen(b.starts_at), link }
+    await deliver(db, `moved:${b.id}:${stamp}:buyer`, 'booking_moved', b.buyer_email, T.sessionMoved({ ...base, to: 'buyer', other: creatorName, url: ord?.access_token ? `${APP}/order/${ord.access_token}` : APP }), ics('buyer', creatorName))
+    await deliver(db, `moved:${b.id}:${stamp}:creator`, 'booking_moved', owner?.email, T.sessionMoved({ ...base, to: 'creator', other: buyerName, url: `${APP}/dashboard/sales` }), ics('creator', buyerName))
     return
   }
 
@@ -206,11 +230,11 @@ async function sessionReminders(db: SupabaseClient) {
     const when = istWhen(it.start)
     const { data: owner } = await db.from('profiles').select('email').eq('id', it.ownerId).maybeSingle()
     for (const by of it.buyers) {
-      await deliver(db, `rem${stage}:${it.id}:buyer:${by.key}`, `session_reminder_${stage}`, by.email, T.sessionReminder({ who: 'buyer', hours: stage, product: it.product, when, link: it.link, other: 'your host', url: APP }))
+      await deliver(db, `rem${stage}:${it.id}:${Date.parse(it.start)}:buyer:${by.key}`, `session_reminder_${stage}`, by.email, T.sessionReminder({ who: 'buyer', hours: stage, product: it.product, when, link: it.link, other: 'your host', url: APP }))
       sent++
     }
     const names = it.buyers.map((b) => b.name || b.email).join(', ')
-    await deliver(db, `rem${stage}:${it.id}:creator`, `session_reminder_${stage}`, owner?.email, T.sessionReminder({ who: 'creator', hours: stage, product: it.product, when, link: it.link, other: names, url: `${APP}/dashboard/sales` }))
+    await deliver(db, `rem${stage}:${it.id}:${Date.parse(it.start)}:creator`, `session_reminder_${stage}`, owner?.email, T.sessionReminder({ who: 'creator', hours: stage, product: it.product, when, link: it.link, other: names, url: `${APP}/dashboard/sales` }))
     sent++
   }
   return { checked: items.length, sent }
@@ -231,7 +255,7 @@ Deno.serve(handle(async (req) => {
   const db = adminClient()
   if (body.action === 'event') {
     const id = String(body.id ?? '')
-    if (!/^[0-9a-f-]{36}$/i.test(id) || !['welcome', 'order', 'creator_payout', 'billing_payment', 'billing_sub', 'lead', 'enquiry', 'post'].includes(String(body.kind))) throw new HttpError(400, 'Invalid event')
+    if (!/^[0-9a-f-]{36}$/i.test(id) || !['welcome', 'order', 'creator_payout', 'billing_payment', 'billing_sub', 'lead', 'enquiry', 'post', 'booking_moved'].includes(String(body.kind))) throw new HttpError(400, 'Invalid event')
     await handleEvent(db, String(body.kind), id)
     return json({ ok: true })
   }

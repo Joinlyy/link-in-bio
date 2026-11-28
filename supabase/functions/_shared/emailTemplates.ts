@@ -7,46 +7,73 @@ const nl2br = (s: string) => esc(s).replace(/\n/g, '<br>')
 
 export type Mail = { subject: string; html: string }
 
-/** The shared look: logo, a card, one main button, a quiet footer */
-function layout(opts: { preheader: string; title: string; body: string; button?: { label: string; url: string }; note?: string }): string {
+/** Label and value rows in a soft card: order details, session time, receipts */
+export function details(rows: [string, string][]): string {
+  const body = rows.filter(([, v]) => v).map(([k, v]) => `<tr><td style="padding:9px 0;font-size:13px;color:#6B6E78;width:38%;vertical-align:top">${esc(k)}</td><td style="padding:9px 0;font-size:15px;font-weight:700;color:#15161A;vertical-align:top">${v}</td></tr>`).join('')
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F7F6F1;border-radius:16px;padding:6px 18px"><tr><td style="padding:6px 18px"><table width="100%" cellpadding="0" cellspacing="0">${body}</table></td></tr></table>`
+}
+
+/** A short note from the founder, on onboarding and billing emails */
+const CEO_NOTE = (line: string) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 4px;border-top:1px solid #ECEAE3"><tr><td style="padding-top:20px">
+<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#2B2D33;font-style:italic">${esc(line)}</p>
+<table cellpadding="0" cellspacing="0"><tr>
+<td style="padding-right:12px"><div style="width:44px;height:44px;border-radius:50%;background:#15161A;color:#D5F05C;text-align:center;line-height:44px;font-weight:800;font-size:16px">AP</div></td>
+<td><div style="font-weight:800;font-size:15px;color:#15161A">Ayush Pawar</div><div style="font-size:13px;color:#6B6E78">Founder and CEO, Joinlyy</div></td>
+</tr></table></td></tr></table>`
+
+/** The shared look: logo, a hero with an icon, a card, one main button, a quiet footer */
+function layout(opts: { preheader: string; title: string; body: string; button?: { label: string; url: string }; note?: string; icon?: string; ceo?: string }): string {
   const button = opts.button
-    ? `<p style="margin:28px 0 8px"><a href="${esc(opts.button.url)}" style="display:inline-block;background:#15161A;color:#D5F05C;text-decoration:none;font-weight:700;font-size:15px;padding:14px 26px;border-radius:999px">${esc(opts.button.label)}</a></p>`
+    ? `<table cellpadding="0" cellspacing="0" style="margin:26px 0 6px"><tr><td style="background:#15161A;border-radius:999px"><a href="${esc(opts.button.url)}" style="display:inline-block;color:#D5F05C;text-decoration:none;font-weight:700;font-size:16px;padding:15px 30px">${esc(opts.button.label)} &rarr;</a></td></tr></table>`
+    : ''
+  const icon = opts.icon
+    ? `<div style="width:56px;height:56px;border-radius:18px;background:#D5F05C;text-align:center;line-height:56px;font-size:28px;margin:0 0 18px">${opts.icon}</div>`
     : ''
   return `<!doctype html><html><body style="margin:0;background:#F2F1EC;font-family:Arial,Helvetica,sans-serif;color:#15161A">
 <span style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(opts.preheader)}</span>
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#F2F1EC;padding:28px 12px"><tr><td align="center">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
-<tr><td style="padding:0 4px 16px"><a href="${APP}" style="text-decoration:none;color:#15161A;font-weight:800;font-size:20px"><img src="${APP}/logo.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:50%;margin-right:8px">Joinlyy</a></td></tr>
-<tr><td style="background:#FFFFFF;border-radius:24px;padding:32px 28px">
-<h1 style="margin:0 0 14px;font-size:24px;line-height:1.25">${esc(opts.title)}</h1>
-<div style="font-size:16px;line-height:1.6;color:#2B2D33">${opts.body}</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px">
+<tr><td style="padding:0 6px 16px"><a href="${APP}" style="text-decoration:none;color:#15161A;font-weight:800;font-size:21px"><img src="${APP}/logo.png" width="34" height="34" alt="" style="vertical-align:middle;border-radius:50%;margin-right:9px">Joinlyy</a></td></tr>
+<tr><td style="background:#FFFFFF;border-radius:28px;overflow:hidden">
+<div style="height:6px;background:#D5F05C"></div>
+<div style="padding:32px 30px 30px">
+${icon}
+<h1 style="margin:0 0 14px;font-size:26px;line-height:1.25;letter-spacing:-0.3px">${esc(opts.title)}</h1>
+<div style="font-size:16px;line-height:1.65;color:#2B2D33">${opts.body}</div>
 ${button}
-${opts.note ? `<p style="margin:20px 0 0;font-size:13px;color:#6B6E78">${opts.note}</p>` : ''}
+${opts.note ? `<p style="margin:18px 0 0;font-size:13px;line-height:1.5;color:#6B6E78">${opts.note}</p>` : ''}
+${opts.ceo ? CEO_NOTE(opts.ceo) : ''}
+</div>
 </td></tr>
-<tr><td style="padding:16px 8px;font-size:12px;color:#8A8D96;text-align:center">Joinlyy, the link in bio for Indian creators.<br><a href="${APP}" style="color:#8A8D96">joinlyy.com</a></td></tr>
+<tr><td style="padding:18px 8px;font-size:12px;line-height:1.6;color:#8A8D96;text-align:center">Joinlyy, the link in bio for Indian creators.<br>Questions? Just reply to this email. &middot; <a href="${APP}" style="color:#8A8D96">joinlyy.com</a></td></tr>
 </table></td></tr></table></body></html>`
 }
 
 export function welcome(name: string): Mail {
+  const first = name ? esc(name.split(' ')[0]) : ''
+  const step = (n: number, title: string, text: string) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0"><tr>
+<td width="44" valign="top"><div style="width:34px;height:34px;border-radius:50%;background:#15161A;color:#D5F05C;text-align:center;line-height:34px;font-weight:800">${n}</div></td>
+<td style="padding-bottom:4px"><div style="font-weight:800;font-size:16px;color:#15161A">${title}</div><div style="font-size:14px;line-height:1.55;color:#4A4D55">${text}</div></td></tr></table>`
   return {
-    subject: 'Welcome to Joinlyy: your link in bio is almost ready',
+    subject: `Welcome to Joinlyy${first ? `, ${first}` : ''}! Let's get your page live`,
     html: layout({
-      preheader: 'Three quick steps to get your page live.',
-      title: `Welcome${name ? `, ${esc(name.split(' ')[0])}` : ''}!`,
-      body: `<p>Your Joinlyy account is ready. Here is the fastest way to get value from it:</p>
-<ol style="padding-left:20px;margin:12px 0">
-<li style="margin-bottom:8px"><b>Pick a template</b> and add your links. It takes about ten minutes.</li>
-<li style="margin-bottom:8px"><b>Connect Instagram</b> and set up free comment to DM automation: when someone comments a word on your Reel, they get your link in their DMs.</li>
-<li><b>Share your link</b> in your Instagram, YouTube and WhatsApp bio.</li></ol>`,
+      preheader: 'Three quick steps, about ten minutes in total.',
+      icon: '👋',
+      title: `Welcome${first ? `, ${first}` : ''}!`,
+      body: `<p>Your Joinlyy account is ready. We are here to help you onboard, and this is the fastest way to start getting value from it:</p>
+${step(1, 'Pick a template and add your links', 'Choose a look you like, add your links and products. It takes about ten minutes.')}
+${step(2, 'Connect Instagram', 'Set up free comment to DM automation: when someone comments a word on your Reel, your link lands in their DMs.')}
+${step(3, 'Share your link', 'Put it in your Instagram, YouTube and WhatsApp bio, and watch the first visits come in.')}`,
       button: { label: 'Open my dashboard', url: `${APP}/dashboard` },
-      note: 'Questions? Just reply to this email.',
+      note: 'Stuck anywhere? Reply to this email and a real person will help you.',
+      ceo: 'Greetings from the Joinlyy team. I started Joinlyy to help Indian creators earn from their audience, and we will help you onboard every step of the way. If something is confusing, tell me.',
     }),
   }
 }
 
 export type Session = { when: string; link?: string | null; kind: 'session' | 'webinar' }
 const sessionBlock = (s?: Session | null, lead = 'Your') => (s
-  ? `<p style="margin:16px 0;padding:14px 16px;background:#F2F1EC;border-radius:14px"><b>${lead} ${s.kind === 'webinar' ? 'webinar' : 'session'}:</b> ${esc(s.when)} IST${s.link ? `<br>Join link: <a href="${esc(s.link)}">${esc(s.link)}</a>` : ''}<br><span style="font-size:13px;color:#6B6E78">A calendar invite is attached. Open it to add this to your Google Calendar.</span></p>`
+  ? `<div style="margin:18px 0;padding:16px 18px;background:#EAF7B8;border-radius:16px"><div style="font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#4A5A10">${lead} ${s.kind === 'webinar' ? 'webinar' : 'session'}</div><div style="font-size:19px;font-weight:800;margin-top:4px">${esc(s.when)} IST</div>${s.link ? `<div style="margin-top:6px;font-size:14px">Join link: <a href="${esc(s.link)}" style="color:#15161A">${esc(s.link)}</a></div>` : ''}<div style="margin-top:8px;font-size:13px;color:#4A5A10">A calendar invite is attached. Open it to add this to your Google Calendar.</div></div>`
   : '')
 
 export function orderConfirmedBuyer(o: { creator: string; product: string; amount: number; orderUrl: string; session?: Session | null }): Mail {
@@ -54,8 +81,9 @@ export function orderConfirmedBuyer(o: { creator: string; product: string; amoun
     subject: `Your order from ${o.creator} is confirmed`,
     html: layout({
       preheader: `${o.product}, ${inr(o.amount)}`,
+      icon: '✅',
       title: 'Your order is confirmed',
-      body: `<p>Thank you! Your payment to <b>${esc(o.creator)}</b> for <b>${esc(o.product)}</b> (${inr(o.amount)}) is confirmed.</p>
+      body: `<p>Thank you! Your payment to <b>${esc(o.creator)}</b> is confirmed.</p>${details([['Product', esc(o.product)], ['Paid to', esc(o.creator)], ['Amount', inr(o.amount)]])}
 ${sessionBlock(o.session)}<p>Open your order page to get your download, booking or access. Keep this email: the link is your access to the order.</p>`,
       button: { label: 'Open my order', url: o.orderUrl },
       note: 'Something wrong? Use the support button on your order page and our team will help.',
@@ -68,8 +96,9 @@ export function newOrderCreator(o: { buyer: string; product: string; amount: num
     subject: `New order: ${o.product} (${inr(o.amount)})`,
     html: layout({
       preheader: `${o.buyer} bought ${o.product}`,
+      icon: '🎉',
       title: 'You have a new order',
-      body: `<p><b>${esc(o.buyer)}</b> bought <b>${esc(o.product)}</b> for <b>${inr(o.amount)}</b>.${o.buyerContact ? `<br>Contact: ${esc(o.buyerContact)}` : ''}</p>${sessionBlock(o.session, 'Booked')}`,
+      body: `<p>Great news, <b>${esc(o.buyer)}</b> just bought from you.</p>${details([['Product', esc(o.product)], ['Buyer', esc(o.buyer)], ['Contact', esc(o.buyerContact || '')], ['Amount', inr(o.amount)]])}${sessionBlock(o.session, 'Booked')}`,
       button: { label: 'See my sales', url: `${APP}/dashboard/sales` },
     }),
   }
@@ -82,9 +111,25 @@ export function sessionReminder(o: { who: 'buyer' | 'creator'; hours: number; pr
     subject: `${soon ? 'Starting in 1 hour' : 'Tomorrow'}: ${o.product}`,
     html: layout({
       preheader: `${o.product} at ${o.when} IST`,
+      icon: soon ? '⏰' : '📆',
       title: soon ? 'Starting in about an hour' : 'Coming up in 24 hours',
       body: `<p><b>${esc(o.product)}</b> with <b>${esc(o.other)}</b> is at <b>${esc(o.when)} IST</b>.</p>${o.link ? `<p>Join link: <a href="${esc(o.link)}">${esc(o.link)}</a></p>` : ''}`,
       button: { label: o.who === 'creator' ? 'See my sessions' : 'Open my order', url: o.url },
+    }),
+  }
+}
+
+/** A session was moved to a new time. who is the person receiving this email. */
+export function sessionMoved(o: { to: 'buyer' | 'creator'; by: 'buyer' | 'creator'; product: string; other: string; oldWhen: string; newWhen: string; link?: string | null; url: string }): Mail {
+  const lead = o.to === o.by ? 'You moved this session to a new time.' : o.by === 'creator' ? `<b>${esc(o.other)}</b> moved your session to a new time.` : `<b>${esc(o.other)}</b> moved their session to a new time.`
+  return {
+    subject: `Session moved: ${o.product}, now ${o.newWhen} IST`,
+    html: layout({
+      preheader: `New time: ${o.newWhen} IST`,
+      icon: '🔄',
+      title: 'Your session has a new time',
+      body: `<p>${lead}</p>${details([['Session', esc(o.product)], ['With', esc(o.other)], ['Old time', `<span style="text-decoration:line-through;color:#8A8D96">${esc(o.oldWhen)} IST</span>`], ['New time', `${esc(o.newWhen)} IST`], ['Join link', o.link ? `<a href="${esc(o.link)}" style="color:#15161A">${esc(o.link)}</a>` : '']])}<p style="font-size:14px;color:#4A5A10;background:#EAF7B8;border-radius:12px;padding:10px 14px">An updated calendar invite is attached. Open it to update your Google Calendar.</p>`,
+      button: { label: o.to === 'creator' ? 'See my sessions' : 'Open my order', url: o.url },
     }),
   }
 }
@@ -95,6 +140,7 @@ export function newContactCreator(o: { kind: 'lead' | 'brand enquiry'; who: stri
     subject: lead ? `New lead: ${o.who}` : `New brand enquiry from ${o.who}`,
     html: layout({
       preheader: lead ? `${o.who} joined your list` : `${o.who} sent a brand enquiry`,
+      icon: '🙌',
       title: lead ? 'You have a new lead' : 'You have a new brand enquiry',
       body: lead
         ? `<p><b>${esc(o.who)}</b> shared their details through your page.</p><p>${esc(o.detail)}</p>`
@@ -109,6 +155,7 @@ export function postStatusCreator(o: { ok: boolean; when: string; reason?: strin
     subject: o.ok ? 'Your Instagram post is live' : 'Your Instagram post could not be published',
     html: layout({
       preheader: o.ok ? `The post scheduled for ${o.when} is live.` : `The post scheduled for ${o.when} did not go out.`,
+      icon: '📅',
       title: o.ok ? 'Your scheduled post is live' : 'Your scheduled post did not go out',
       body: o.ok
         ? `<p>The post you scheduled for <b>${esc(o.when)}</b> was published on your Instagram profile.</p>`
@@ -123,6 +170,7 @@ export function paymentRejectedBuyer(o: { creator: string; product: string; orde
     subject: `${o.creator} could not find your payment`,
     html: layout({
       preheader: 'Your order is not confirmed yet.',
+      icon: '⚠️',
       title: 'We could not confirm your payment',
       body: `<p><b>${esc(o.creator)}</b> could not find your UPI payment for <b>${esc(o.product)}</b>.</p>
 ${o.reason ? `<p>Their note: ${nl2br(o.reason)}</p>` : ''}
@@ -137,9 +185,11 @@ export function planApproved(o: { plan: string; until: string | null }): Mail {
     subject: `Your ${o.plan} plan is active`,
     html: layout({
       preheader: 'Thanks for upgrading.',
+      icon: '🚀',
       title: `Your ${o.plan} plan is active`,
       body: `<p>We confirmed your payment and switched your account to <b>${esc(o.plan)}</b>${o.until ? `, valid until <b>${esc(o.until)}</b>` : ''}. All the extra features are on now.</p>`,
       button: { label: 'Open my dashboard', url: `${APP}/dashboard` },
+      ceo: 'Thank you for upgrading. We are here to help you get the most out of your plan.',
     }),
   }
 }
@@ -163,6 +213,7 @@ export function planExpiring(o: { plan: string; until: string; days: number }): 
     subject: `Your ${o.plan} plan ends in ${o.days} day${o.days === 1 ? '' : 's'}`,
     html: layout({
       preheader: `Renew by ${o.until} to keep your features.`,
+      icon: '⏳',
       title: `Your ${o.plan} plan ends on ${o.until}`,
       body: `<p>After that your account goes back to the free Starter plan. Extra automations, WhatsApp alerts and sales tools will pause.</p><p>Renew now and your plan continues without a gap.</p>`,
       button: { label: 'Renew my plan', url: `${APP}/dashboard/billing` },
@@ -175,6 +226,7 @@ export function planExpired(o: { plan: string }): Mail {
     subject: `Your ${o.plan} plan has ended`,
     html: layout({
       preheader: 'You are back on the free plan.',
+      icon: '⏳',
       title: 'Your plan has ended',
       body: `<p>Your <b>${esc(o.plan)}</b> plan has ended and your account is on the free Starter plan. Your page and content are safe, and free comment to DM automation keeps working.</p><p>You can upgrade again any time.</p>`,
       button: { label: 'See plans', url: `${APP}/dashboard/billing` },
@@ -187,6 +239,7 @@ export function ticketReceived(o: { ticketNo: number; orderUrl: string }): Mail 
     subject: `We got your request #${o.ticketNo}`,
     html: layout({
       preheader: 'Our team will reply on your order page.',
+      icon: '💬',
       title: `We received your request #${o.ticketNo}`,
       body: `<p>Thanks for writing in. Our team will look into it and reply on your order page, and by email when you are done.</p>`,
       button: { label: 'Open my order', url: o.orderUrl },
@@ -199,6 +252,7 @@ export function ticketReply(o: { reply: string; orderUrl: string; ticketNo: numb
     subject: `Re: your support request #${o.ticketNo}`,
     html: layout({
       preheader: 'Our team replied to your request.',
+      icon: '💬',
       title: `Reply to your request #${o.ticketNo}`,
       body: `<p>${nl2br(o.reply)}</p>`,
       button: { label: 'Open my order', url: o.orderUrl },
@@ -214,6 +268,7 @@ export function subscriptionReceipt(o: { plan: string; period: string; base: num
     subject: `Payment received: your ${o.plan} plan is active`,
     html: layout({
       preheader: `${inr2(o.total)} received. Thank you!`,
+      icon: '🚀',
       title: `Your ${o.plan} plan is active`,
       body: `<p>Thank you! We received your payment and your <b>${esc(o.plan)}</b> plan (${o.period === 'year' ? 'yearly' : o.period === 'test' ? 'Rs 1 test' : 'monthly'}) is on${o.until ? ` until <b>${esc(o.until)}</b>` : ''}.</p>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:15px;border-top:1px solid #ECEAE3">
@@ -222,6 +277,7 @@ export function subscriptionReceipt(o: { plan: string; period: string; base: num
 <tr><td style="padding:10px 0"><b>Total paid</b></td><td align="right" style="padding:10px 0"><b>${inr2(o.total)}</b></td></tr></table>
 <p style="font-size:13px;color:#6B6E78">Payment ID: ${esc(o.paymentId)}${o.method ? `, paid by ${esc(o.method)}` : ''}. Your plan renews automatically; you can turn auto-renew off any time on the Billing page.</p>`,
       button: { label: 'Open my dashboard', url: `${APP}/dashboard` },
+      ceo: 'Thank you for trusting Joinlyy with your creator business. We are here to help you get the most out of your plan, so reach out any time.',
     }),
   }
 }
@@ -231,6 +287,7 @@ export function renewalFailed(o: { plan: string; total: number; reason?: string 
     subject: `Your ${o.plan} payment did not go through`,
     html: layout({
       preheader: 'Your plan has not been renewed yet.',
+      icon: '⚠️',
       title: 'Your payment did not go through',
       body: `<p>We tried to charge <b>${inr2(o.total)}</b> for your <b>${esc(o.plan)}</b> plan, but the payment failed${o.reason ? ` (${esc(o.reason)})` : ''}.</p>
 <p>Your plan stays on until its current end date. Please check that your card or UPI has enough balance, or pay again from the Billing page, so you don't lose your paid features.</p>`,
@@ -245,6 +302,7 @@ export function payoutSent(o: { amount: number; upi: string | null; reference: s
     subject: `We sent you ${amt}`,
     html: layout({
       preheader: `${amt} is on its way to your UPI ID.`,
+      icon: '💸',
       title: 'Your payout is on its way',
       body: `<p>We sent <b>${esc(amt)}</b>, your share of recent sales, ${o.upi ? `to your UPI ID <b>${esc(o.upi)}</b>` : 'to you'}.</p>${o.reference ? `<p>UPI reference: <b>${esc(o.reference)}</b></p>` : ''}<p>See every sale and payout in your dashboard.</p>`,
       button: { label: 'Open payouts', url: `${APP}/dashboard/payouts` },
@@ -257,6 +315,7 @@ export function subscriptionCancelled(o: { plan: string; until: string | null })
     subject: `Your ${o.plan} auto-renew is off`,
     html: layout({
       preheader: o.until ? `Your plan stays on until ${o.until}.` : 'Your subscription was cancelled.',
+      icon: '🔔',
       title: 'Auto-renew is turned off',
       body: `<p>Your <b>${esc(o.plan)}</b> subscription will not renew${o.until ? `. Your plan stays active until <b>${esc(o.until)}</b>` : ''}, then your account moves to the free Starter plan. Your page and content stay safe.</p><p>Changed your mind? You can subscribe again any time.</p>`,
       button: { label: 'Open billing', url: `${APP}/dashboard/billing` },
@@ -269,6 +328,7 @@ export function autoRenewStopped(o: { plan: string; until: string | null }): Mai
     subject: `We could not renew your ${o.plan} plan`,
     html: layout({
       preheader: 'Auto-renew stopped after payment attempts failed.',
+      icon: '⚠️',
       title: 'Auto-renew stopped',
       body: `<p>We tried several times to renew your <b>${esc(o.plan)}</b> plan, but the payments failed, so auto-renew has stopped${o.until ? `. Your plan stays on until <b>${esc(o.until)}</b>` : ''}.</p><p>Subscribe again from the Billing page to keep your paid features.</p>`,
       button: { label: 'Renew my plan', url: `${APP}/dashboard/billing` },
@@ -289,5 +349,5 @@ export function planReminder(stage: string, o: { plan: string; until: string }):
     'after10': { subject: `Last reminder: renew your ${o.plan} plan`, title: 'Last reminder', pre: 'This is our last email about your plan.', text: 'This is our last reminder about your ended plan. You can renew any time from the Billing page. Thank you for creating with Joinlyy.' },
   }
   const m = t[stage] ?? t['after1']
-  return { subject: m.subject, html: layout({ preheader: m.pre, title: m.title, body: `<p>${esc(m.text)}</p>`, button: renew }) }
+  return { subject: m.subject, html: layout({ preheader: m.pre, icon: '⏳', title: m.title, body: `<p>${esc(m.text)}</p>`, button: renew }) }
 }

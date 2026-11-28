@@ -9,6 +9,7 @@ import { calendarUrl, formatIst } from '../../lib/slots'
 import { Badge, Button, Card, Empty, Modal, Spinner, Stats, Tabs, Textarea, useToast, askText } from '../../components/ui'
 import { DataTable, useViewMode, ViewToggle } from '../../components/DataTable'
 import { PageHeading } from './DashboardLayout'
+import RescheduleBooking from '../../components/RescheduleBooking'
 
 const TABS = [
   { key: 'orders', label: 'Orders', icon: Receipt },
@@ -324,9 +325,10 @@ function Bookings({ pageId }) {
   const [rows, setRows] = useState(null)
   const [past, setPast] = useState(false)
   const [view, setView] = useViewMode('bookings')
+  const [moving, setMoving] = useState(null)
 
   const load = useCallback(async () => {
-    let q = supabase.from('bookings').select('*, products(title, private)').eq('page_id', pageId)
+    let q = supabase.from('bookings').select('*, products(title, private, data)').eq('page_id', pageId)
     q = past ? q.lt('starts_at', new Date().toISOString()).order('starts_at', { ascending: false }) : q.gte('starts_at', new Date(Date.now() - 2 * 3600_000).toISOString()).order('starts_at')
     const { data } = await q.limit(200)
     setRows(data || [])
@@ -364,7 +366,7 @@ function Bookings({ pageId }) {
             { key: 'buyer_phone', label: 'Phone', value: (b) => b.buyer_phone, className: 'whitespace-nowrap text-ink-600', render: (b) => b.buyer_phone || '—' },
             { key: 'status', label: 'Status', value: (b) => b.status, render: (b) => <Badge tone={b.status === 'confirmed' ? 'green' : b.status === 'cancelled' ? 'red' : 'neutral'}>{b.status}</Badge> },
             { key: 'actions', label: '', align: 'right', render: (b) => b.status === 'confirmed' && (
-              past ? <Button variant="soft" size="sm" onClick={() => setStatus(b, 'completed')}>Mark done</Button> : <Button variant="dangerSoft" size="sm" onClick={() => setStatus(b, 'cancelled')}>Cancel</Button>
+              past ? <Button variant="soft" size="sm" onClick={() => setStatus(b, 'completed')}>Mark done</Button> : <span className="inline-flex gap-1.5"><Button variant="outline" size="sm" onClick={() => setMoving(b)}>Reschedule</Button><Button variant="dangerSoft" size="sm" onClick={() => setStatus(b, 'cancelled')}>Cancel</Button></span>
             ) },
           ]}
         />
@@ -389,7 +391,10 @@ function Bookings({ pageId }) {
                     {past ? (
                       <Button variant="soft" size="sm" onClick={() => setStatus(b, 'completed')}>Mark done</Button>
                     ) : (
-                      <Button variant="dangerSoft" size="sm" onClick={() => setStatus(b, 'cancelled')}>Cancel</Button>
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setMoving(b)}>Reschedule</Button>
+                        <Button variant="dangerSoft" size="sm" onClick={() => setStatus(b, 'cancelled')}>Cancel</Button>
+                      </>
                     )}
                   </>
                 )}
@@ -398,6 +403,7 @@ function Bookings({ pageId }) {
           ))}
         </div>
       )}
+      <RescheduleBooking booking={moving} product={moving?.products} onClose={() => setMoving(null)} onDone={load} />
     </div>
   )
 }

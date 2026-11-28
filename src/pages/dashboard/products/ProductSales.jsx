@@ -9,6 +9,7 @@ import { Badge, Button, Card, Empty, Spinner, Stats } from '../../../components/
 import { DataTable } from '../../../components/DataTable'
 import { PageHeading } from '../DashboardLayout'
 import { ORDER_COLUMNS } from '../Sales'
+import RescheduleBooking from '../../../components/RescheduleBooking'
 
 const TONE = { paid: 'green', refunded: 'red', pending: 'lilac', failed: 'neutral' }
 const LABEL = { pending: 'waiting for payment', failed: 'payment not received' }
@@ -21,6 +22,8 @@ export default function ProductSales() {
   const [product, setProduct] = useState(undefined)
   const [orders, setOrders] = useState(null)
   const [bookings, setBookings] = useState(null)
+  const [moving, setMoving] = useState(null)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     let live = true
@@ -38,7 +41,7 @@ export default function ProductSales() {
       setBookings(b || [])
     })()
     return () => { live = false }
-  }, [id, page.id])
+  }, [id, page.id, tick])
 
   const stats = useMemo(() => {
     const paid = (orders || []).filter((o) => o.status === 'paid')
@@ -70,7 +73,10 @@ export default function ProductSales() {
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={b.status === 'confirmed' ? 'green' : b.status === 'cancelled' ? 'red' : 'neutral'}>{b.status}</Badge>
         {b.status === 'confirmed' && (
-          <Button variant="outline" size="sm" href={calendarUrl({ title: `${product.title} with ${b.buyer_name || b.buyer_email}`, start: b.starts_at, end: b.ends_at, details: meeting || '' })} target="_blank" rel="noreferrer">Add to calendar</Button>
+          <>
+            <Button variant="outline" size="sm" href={calendarUrl({ title: `${product.title} with ${b.buyer_name || b.buyer_email}`, start: b.starts_at, end: b.ends_at, details: meeting || '' })} target="_blank" rel="noreferrer">Add to calendar</Button>
+            {new Date(b.starts_at).getTime() > Date.now() && <Button variant="soft" size="sm" onClick={() => setMoving(b)}>Reschedule</Button>}
+          </>
         )}
       </div>
     </Card>
@@ -128,6 +134,7 @@ export default function ProductSales() {
           </Card>
         )}
       </section>
+      <RescheduleBooking booking={moving} product={product} onClose={() => setMoving(null)} onDone={() => setTick((t) => t + 1)} />
     </div>
   )
 }
