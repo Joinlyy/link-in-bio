@@ -1,7 +1,7 @@
 // Automatic emails, sent through Brevo.
 //   POST { action: 'event', kind, id }  — called by database triggers when something happens. The row is read again and each email
 //        is recorded once (unique key in email_log), so a forged call can only trigger an email that should have gone out anyway.
-//        kinds: 'welcome' (profile id), 'order' (order id), 'creator_payout' (payout id), 'billing_payment', 'billing_sub'
+//        kinds: 'welcome' (profile id), 'order' (order id), 'creator_payout' (payout id), 'billing_payment', 'billing_sub', 'lead', 'enquiry', 'post' (scheduled Instagram post)
 //   POST { action: 'reminders' }        — called daily by pg_cron: plans ending in 3 days, plans that ended.
 // Secrets: BREVO_API_KEY, EMAIL_FROM (+ optional EMAIL_FROM_NAME, BREVO_LIST_ID), APP_ORIGIN. See docs/EMAIL-SETUP.md.
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -52,6 +52,30 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
       const { data: owner } = page?.owner_id ? await db.from('profiles').select('email').eq('id', page.owner_id).maybeSingle() : { data: null }
       await deliver(db, `order_creator:${o.id}`, 'order_creator', owner?.email, T.newOrderCreator({ buyer: o.buyer_name || o.buyer_email, product: what, amount: o.amount_inr }))
     }
+    return
+  }
+
+  // Creator alerts for leads, brand enquiries and scheduled posts. Every plan gets these by email; WhatsApp is Pro only.
+  if (kind === 'lead' || kind === 'enquiry') {
+    const table = kind === 'lead' ? 'leads' : 'enquiries'
+    const cols = kind === 'lead' ? 'id, name, email, phone, created_at, page_id' : 'id, brand_name, message, stage, created_at, page_id'
+    const { data: r } = await db.from(table).select(cols).eq('id', id).maybeSingle()
+    if (!r || !recent(r.created_at) || (kind === 'enquiry' && r.stage !== 'enquiry')) return
+    const { data: pg } = await db.from('pages').select('owner_id').eq('id', r.page_id).maybeSingle()
+    const { data: owner } = pg?.owner_id ? await db.from('profiles').select('email').eq('id', pg.owner_id).maybeSingle() : { data: null }
+    const mail = kind === 'lead'
+      ? T.newContactCreator({ kind: 'lead', who: r.name || 'Someone', detail: r.email || r.phone || '', url: `${APP}/dashboard/leads` })
+      : T.newContactCreator({ kind: 'brand enquiry', who: r.brand_name || 'A brand', detail: r.message || '', url: `${APP}/dashboard/deals` })
+    await deliver(db, `${kind}_creator:${r.id}`, `${kind}_creator`, owner?.email, mail)
+    return
+  }
+
+  if (kind === 'post') {
+    const { data: sp } = await db.from('ig_scheduled_posts').select('id, owner_id, status, scheduled_at, error').eq('id', id).maybeSingle()
+    if (!sp || !['published', 'failed'].includes(sp.status)) return
+    const { data: owner } = await db.from('profiles').select('email').eq('id', sp.owner_id).maybeSingle()
+    const when = `${new Date(sp.scheduled_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })} IST`
+    await deliver(db, `post_${sp.status}:${sp.id}`, `post_${sp.status}`, owner?.email, T.postStatusCreator({ ok: sp.status === 'published', when, reason: sp.error, url: `${APP}/dashboard/schedule` }))
     return
   }
 
@@ -138,7 +162,7 @@ Deno.serve(handle(async (req) => {
   const db = adminClient()
   if (body.action === 'event') {
     const id = String(body.id ?? '')
-    if (!/^[0-9a-f-]{36}$/i.test(id) || !['welcome', 'order', 'creator_payout', 'billing_payment', 'billing_sub'].includes(String(body.kind))) throw new HttpError(400, 'Invalid event')
+    if (!/^[0-9a-f-]{36}$/i.test(id) || !['welcome', 'order', 'creator_payout', 'billing_payment', 'billing_sub', 'lead', 'enquiry', 'post'].includes(String(body.kind))) throw new HttpError(400, 'Invalid event')
     await handleEvent(db, String(body.kind), id)
     return json({ ok: true })
   }

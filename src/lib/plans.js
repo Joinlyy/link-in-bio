@@ -19,7 +19,7 @@ export function featureList(f) {
     { on: f.ig_posts_per_day != null, text: `Auto-post to Instagram: ${f.ig_posts_per_day} post${f.ig_posts_per_day === 1 ? '' : 's'} a day, ${f.ig_reels_per_month} Reels a month` },
     { on: true, text: dmLimits },
     { on: !!f.dm_advanced, text: 'Story & DM keyword automations, follow to unlock, lead capture' },
-    { on: !!f.whatsapp, text: 'WhatsApp alerts for you and your buyers' },
+    { on: !!f.whatsapp, text: 'WhatsApp alerts for orders, leads and posts (email alerts on every plan)' },
     { on: true, text: `Analytics: ${(f.analytics_days ?? 7) >= 365 ? '1 year' : `${f.analytics_days ?? 7} days`} of history` },
     { on: !!f.sales_tools, text: 'Coupons, limited-time offers, pay what you want' },
     { on: !!f.advanced_products, text: 'Bundles, memberships & upsells' },
@@ -43,7 +43,7 @@ export function shortFeatures(f) {
     { on: true, text: dm },
     { on: f.ig_posts_per_day != null, text: `Auto-post to Instagram: ${f.ig_posts_per_day} a day, ${f.ig_reels_per_month} Reels a month` },
     { on: true, text: f.commission_pct != null ? `${f.commission_pct}% platform charge on sales` : 'No platform charge' },
-    { on: !!f.whatsapp, text: 'WhatsApp alerts for you and buyers' },
+    { on: !!f.whatsapp, text: 'WhatsApp alerts (email alerts on every plan)' },
     { on: !!(f.custom_domain && f.remove_branding), text: 'Your own domain, no branding' },
     { on: true, text: `Analytics: ${days} of history` },
   ]
@@ -76,7 +76,7 @@ export const COMPARE = [
     ['Profile import, media kit, latest Reel', () => true],
   ] },
   { group: 'Alerts & audience', rows: [
-    ['WhatsApp alerts for you and your buyers', (f) => !!f.whatsapp],
+    ['WhatsApp alerts (every plan gets email alerts)', (f) => !!f.whatsapp],
     ['Analytics history', (f) => ((f.analytics_days ?? 7) >= 365 ? '1 year' : `${f.analytics_days ?? 7} days`)],
     ['Export leads and audience (CSV)', (f) => !!f.leads_export],
     ['Meta Pixel, Google Analytics, UTM links', (f) => !!f.tracking],

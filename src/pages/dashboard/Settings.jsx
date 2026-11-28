@@ -91,9 +91,9 @@ function WhatsappAlertsCard() {
         <h2 className="text-lg font-bold">WhatsApp alerts</h2>
         {page.alert_on && page.alert_whatsapp ? <Badge tone="green">On</Badge> : <Badge>Off</Badge>}
       </div>
-      <p className="mt-1 text-sm text-ink-500">Get a WhatsApp message when someone pays you by UPI, buys something, joins your lead form or sends a brand enquiry.</p>
+      <p className="mt-1 text-sm text-ink-500">Get a WhatsApp message when someone buys something, joins your lead form, sends a brand enquiry, or when a scheduled Instagram post goes live or fails. Every plan gets the same alerts by email.</p>
       {!allowed ? (
-        <UpgradeNote className="mt-5">WhatsApp alerts, for you and order updates for your buyers, are on the Creator and Pro plans.</UpgradeNote>
+        <UpgradeNote className="mt-5">WhatsApp alerts are on the Pro plan. You still get every alert by email on your current plan.</UpgradeNote>
       ) : (
         <>
           <div className="mt-5 grid gap-4">

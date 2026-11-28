@@ -68,7 +68,7 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
         p_product_id: product.id, p_name: form.name, p_email: form.email, p_phone: form.phone,
         p_amount: product.pay_what_you_want ? Number(form.amount) : null, p_coupon: discount ? form.coupon : null, p_slot: slot,
         p_question: product.type === 'question' ? form.question.trim() : null,
-        p_wa_updates: Boolean(form.phone.trim() && form.waUpdates),
+        p_wa_updates: false,
       })
       if (onOrdered) onOrdered(token)
       else navigate(`/order/${token}`)
@@ -115,12 +115,6 @@ function Checkout({ product, page, booked, soldOut, onOrdered, preview }) {
       <input className="field" placeholder="Your name" required maxLength={120} autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       <input className="field" type="email" required maxLength={200} placeholder="Email (we’ll show your access link)" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
       <input className="field" type="tel" maxLength={20} placeholder="WhatsApp number (optional)" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-      {(mode === 'route' || mode === 'platform') && page.wa_updates !== false && form.phone.trim() && (
-        <label className="flex items-start gap-2.5 text-sm">
-          <input type="checkbox" className="mt-0.5 size-4 accent-ink" checked={form.waUpdates} onChange={(e) => setForm({ ...form, waUpdates: e.target.checked })} />
-          <span>Send me a WhatsApp message when my payment is confirmed</span>
-        </label>
-      )}
       {base > 0 && (
         <div>
           <div className="flex gap-2">

@@ -86,7 +86,7 @@ function Hero() {
             </svg>
             <p className="relative max-w-lg text-[16px] leading-relaxed text-ink-700 sm:text-[17px]">
               Sell products, courses and 1:1 calls, get paid by UPI
-              {INSTAGRAM_ENABLED ? ', schedule your Instagram posts, auto-reply to every comment with a DM' : ''} and get a WhatsApp ping for every order. In Hindi and English.
+              {INSTAGRAM_ENABLED ? ', schedule your Instagram posts, auto-reply to every comment with a DM' : ''} and get an alert for every order. In Hindi and English.
             </p>
             <div className="relative mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               <ClaimBox />
@@ -233,7 +233,7 @@ function Features() {
     { icon: Download, title: 'Digital products', text: 'PDFs, presets, templates and bundles, delivered through secure, expiring download links.', cls: 'bg-white' },
     { icon: Sparkles, title: 'Courses & brand picks', text: 'List your course or a product you recommend with its price and a buy link. Buyers pay on your platform or the brand’s site.', cls: 'bg-white' },
     { icon: CalendarDays, title: '1:1 calls & webinars', text: 'Paid sessions with IST time slots and meeting links, or webinars with limited seats.', cls: 'bg-lime' },
-    { icon: BellRing, title: 'WhatsApp alerts', text: 'A message the moment someone pays, books, joins your list or sends a brand enquiry.', cls: 'bg-white' },
+    { icon: BellRing, title: 'Instant alerts', text: 'An email the moment someone pays, books, joins your list or sends a brand enquiry. WhatsApp alerts on Pro.', cls: 'bg-white' },
     { icon: Handshake, title: 'Brand deals & media kit', text: INSTAGRAM_ENABLED ? 'An enquiry form, a deal tracker, GST invoices and a colourful media kit PDF built from your Instagram stats.' : 'An enquiry form, a deal tracker, GST invoices and a colourful media kit PDF with your rates.', cls: 'bg-white' },
   ]
   return (
@@ -265,7 +265,7 @@ function HowItWorks() {
     INSTAGRAM_ENABLED
       ? { n: '02', icon: InstagramIcon, title: 'Build your page', text: 'Import your photo and bio from Instagram in one tap, or start from one of 33 designs. Add products and your payout UPI ID.', cls: 'bg-lilac-100' }
       : { n: '02', icon: Palette, title: 'Build your page', text: 'Choose one of 33 designs. Add products, a lead form and your payout UPI ID, and switch designs any time without losing anything.', cls: 'bg-lilac-100' },
-    { n: '03', icon: Zap, title: 'Paste it in your bio', text: 'Put one link in your Instagram, YouTube and WhatsApp bios. Orders, leads and brand enquiries reach you on WhatsApp.', cls: 'bg-lime' },
+    { n: '03', icon: Zap, title: 'Paste it in your bio', text: 'Put one link in your Instagram, YouTube and WhatsApp bios. Orders, leads and brand enquiries reach you by email, and on WhatsApp with Pro.', cls: 'bg-lime' },
   ]
   return (
     <section id="how" className="card scroll-mt-28 p-6 sm:p-12">
@@ -535,7 +535,7 @@ function Trust() {
 
 const FAQ = [
   ['What is a link in bio?', 'One link you put in your Instagram, YouTube or WhatsApp bio. It opens a page with everything you want to share: products, bookings, videos, WhatsApp chat and more.'],
-  ['Is it really free?', `Yes. The free plan includes your website, products, bookings, lead capture, analytics and media kit${INSTAGRAM_ENABLED ? ', plus up to 10 comment-to-DM automations' : ''}. Paid plans raise the limits and add extras like WhatsApp alerts and your own domain.`],
+  ['Is it really free?', `Yes. The free plan includes your website, products, bookings, lead capture, analytics and media kit${INSTAGRAM_ENABLED ? ', plus up to 10 comment-to-DM automations' : ''}. Paid plans raise the limits and add extras like your own domain, and WhatsApp alerts on Pro.`],
   ['How do I get paid, and do you take a cut?', 'Buyers pay on your page by UPI, card or net banking, and their access opens at once. We keep a platform charge of 15% on Starter, 10% on Creator and 5% on Pro, and send the rest to your UPI ID within 2 working days of each sale. The price you set is final: add GST yourself if it applies to you, we never add anything on top.'],
   ...(INSTAGRAM_ENABLED ? [['Can I schedule Instagram posts?', 'Yes, on every plan. Upload photos, a carousel of up to 10 photos or a Reel, write the caption and pick a time, and Joinlyy publishes it to your connected Instagram account. Starter allows 1 post a day and 15 Reels a month, Creator 3 a day and 40 Reels, Pro 3 a day and 50 Reels.']] : []),
   ['What is your refund policy?', 'Refund requests for a purchase from a creator are handled by email. Send the creator’s name, the product and a screenshot of your payment to support@joinlyy.com. Read the full refund policy at /refund-policy.'],

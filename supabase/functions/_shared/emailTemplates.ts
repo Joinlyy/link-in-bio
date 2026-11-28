@@ -70,6 +70,35 @@ export function newOrderCreator(o: { buyer: string; product: string; amount: num
   }
 }
 
+export function newContactCreator(o: { kind: 'lead' | 'brand enquiry'; who: string; detail: string; url: string }): Mail {
+  const lead = o.kind === 'lead'
+  return {
+    subject: lead ? `New lead: ${o.who}` : `New brand enquiry from ${o.who}`,
+    html: layout({
+      preheader: lead ? `${o.who} joined your list` : `${o.who} sent a brand enquiry`,
+      title: lead ? 'You have a new lead' : 'You have a new brand enquiry',
+      body: lead
+        ? `<p><b>${esc(o.who)}</b> shared their details through your page.</p><p>${esc(o.detail)}</p>`
+        : `<p><b>${esc(o.who)}</b> sent you a brand enquiry.</p><p>${nl2br(o.detail)}</p>`,
+      button: { label: lead ? 'See my leads' : 'Open my deals', url: o.url },
+    }),
+  }
+}
+
+export function postStatusCreator(o: { ok: boolean; when: string; reason?: string | null; url: string }): Mail {
+  return {
+    subject: o.ok ? 'Your Instagram post is live' : 'Your Instagram post could not be published',
+    html: layout({
+      preheader: o.ok ? `The post scheduled for ${o.when} is live.` : `The post scheduled for ${o.when} did not go out.`,
+      title: o.ok ? 'Your scheduled post is live' : 'Your scheduled post did not go out',
+      body: o.ok
+        ? `<p>The post you scheduled for <b>${esc(o.when)}</b> was published on your Instagram profile.</p>`
+        : `<p>The post you scheduled for <b>${esc(o.when)}</b> could not be published.</p>${o.reason ? `<p>Reason: ${nl2br(o.reason)}</p>` : ''}<p>Open it to fix the problem and publish it again.</p>`,
+      button: { label: 'Open my scheduled posts', url: o.url },
+    }),
+  }
+}
+
 export function paymentRejectedBuyer(o: { creator: string; product: string; orderUrl: string; reason?: string }): Mail {
   return {
     subject: `${o.creator} could not find your payment`,
