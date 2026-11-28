@@ -98,7 +98,7 @@ export const SEO_PAGES_MORE = [
       ] },
       { h2: 'What Joinlyy does', body: [
         { list: ['A link in bio page with 33 templates, in Hindi and English', 'Free Instagram comment to DM automation, with public replies', 'Selling tools: digital products, paid calls, webinars, memberships and tips, paid by UPI',
-        'An Instagram post scheduler for photos, carousels and Reels, free on every plan', 'A media kit PDF and a brand-deal enquiry form', 'WhatsApp alerts for new orders, leads and brand enquiries', 'Analytics, lead capture and a support button on every order'] },
+        'An Instagram post scheduler for photos, carousels and Reels, free on every plan', 'A media kit PDF and a brand-deal enquiry form', 'Email alerts for new orders, leads and brand enquiries, and WhatsApp alerts on Pro', 'Analytics, lead capture and a support button on every order'] },
       ] },
       { h2: 'Who it is for', body: [
         'Indian creators, coaches, teachers, small businesses and freelancers who share one link on Instagram, YouTube or WhatsApp and want that link to do more than list links.',
@@ -109,7 +109,7 @@ export const SEO_PAGES_MORE = [
     ],
     faq: [
       ['How do you pronounce Joinlyy?', 'Say it "join-lee". It is written with two y at the end: Joinlyy.'],
-      ['What is Joinlyy?', 'A link in bio platform for Indian creators, with free Instagram comment to DM automation, an Instagram post scheduler, UPI selling and WhatsApp alerts.'],
+      ['What is Joinlyy?', 'A link in bio platform for Indian creators, with free Instagram comment to DM automation, an Instagram post scheduler, UPI selling and instant order alerts.'],
       ['Is Joinlyy the same as Joinly?', 'No. Joinlyy, spelled with two y, is a link in bio platform for creators. It is not related to products with a similar-sounding name.'],
       ['Is Joinlyy free?', 'Yes, the Starter plan is free, including comment to DM automation. Creator is ₹199 a month and Pro is ₹399 a month.'],
     ],
@@ -211,7 +211,7 @@ export const SEO_PAGES_MORE = [
     intro: 'If you only want comments to turn into DMs, you may not need a full chatbot platform. Joinlyy covers comment to DM automation together with your link in bio page and a way to sell, at no cost to start.',
     sections: [
       { h2: 'Where Joinlyy fits', body: [
-        { list: ['Comment to DM automation is free on the Starter plan', 'A link in bio page and selling tools in the same account', 'UPI payments and WhatsApp alerts', 'Hindi and English, with prices in rupees', 'Creator ₹199 a month, Pro ₹399 a month, with two months free on yearly billing'] },
+        { list: ['Comment to DM automation is free on the Starter plan', 'A link in bio page and selling tools in the same account', 'UPI payments and instant order alerts, with WhatsApp on Pro', 'Hindi and English, with prices in rupees', 'Creator ₹199 a month, Pro ₹399 a month, with two months free on yearly billing'] },
       ] },
       { h2: 'When a bigger chatbot tool is a better fit', body: [
         'If you need long multi-step chatbot flows across several messaging channels, a dedicated chatbot platform may suit you better. Joinlyy focuses on what most creators need first: turning comments into DMs, leads and sales.',
@@ -290,7 +290,7 @@ export const SEO_PAGES_MORE = [
         { list: ['Payments: can your followers pay by UPI, and who keeps the money?', 'Pricing in rupees: do you pay in INR, without surprise conversion fees?', 'Instagram automation: is comment to DM included, and at what price?', 'Language: does it work well in Hindi, including fonts?', 'WhatsApp: can you get alerts and share to WhatsApp easily?', 'Selling: digital products, calls, webinars, memberships', 'Analytics: views, clicks and sources, and for how long', 'Branding: can you remove the tool\'s logo, and on which plan?', 'Your data: can you export your leads?', 'Speed: does the page load fast on a mobile connection?'] },
       ] },
       { h2: 'Where Joinlyy stands', body: [
-        'Joinlyy is built around these points: UPI payments, rupee prices, free comment to DM automation, Hindi and English, WhatsApp alerts, selling tools and lead export on paid plans. Starter is free, Creator is ₹199 a month and Pro is ₹399 a month.',
+        'Joinlyy is built around these points: UPI payments, rupee prices, free comment to DM automation, Hindi and English, email order alerts on every plan (WhatsApp on Pro), selling tools and lead export on paid plans. Starter is free, Creator is ₹199 a month and Pro is ₹399 a month.',
       ] },
       { h2: 'Try before you decide', body: [
         'Most tools have a free plan. Set up your page on two or three, share one with friends and see which one feels better to use.',
