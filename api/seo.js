@@ -80,6 +80,9 @@ async function describe(path) {
     return { title: `Creator guides for Indian creators | ${NAME} Academy`, description: 'Practical, step-by-step guides on link in bio, Instagram automation, selling with UPI and growing as an Indian creator.', path }
   }
 
+  // Return pages of account connections: private, never a creator page
+  if (['instagram', 'linkedin', 'youtube'].includes(parts[0]) && parts[1] === 'callback') return { title: `Connecting your account | ${NAME}`, description: '', path, noindex: true }
+
   // Creator pages: /:username and /:username/:page (media-kit and product pages share the shell)
   if (parts.length >= 1 && parts.length <= 2 && !(parts[1] === 'media-kit' || parts[1] === 'p')) {
     const data = await creatorPage(parts[0], parts[1])
