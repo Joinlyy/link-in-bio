@@ -76,7 +76,7 @@ const sessionBlock = (s?: Session | null, lead = 'Your') => (s
   ? `<div style="margin:18px 0;padding:16px 18px;background:#EAF7B8;border-radius:16px"><div style="font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#4A5A10">${lead} ${s.kind === 'webinar' ? 'webinar' : 'session'}</div><div style="font-size:19px;font-weight:800;margin-top:4px">${esc(s.when)} IST</div>${s.link ? `<div style="margin-top:6px;font-size:14px">Join link: <a href="${esc(s.link)}" style="color:#15161A">${esc(s.link)}</a></div>` : ''}<div style="margin-top:8px;font-size:13px;color:#4A5A10">A calendar invite is attached. Open it to add this to your Google Calendar.</div></div>`
   : '')
 
-export function orderConfirmedBuyer(o: { creator: string; product: string; amount: number; orderUrl: string; session?: Session | null }): Mail {
+export function orderConfirmedBuyer(o: { creator: string; product: string; amount: number; orderUrl: string; session?: Session | null; needsSlot?: boolean }): Mail {
   return {
     subject: `Your order from ${o.creator} is confirmed`,
     html: layout({
@@ -84,7 +84,7 @@ export function orderConfirmedBuyer(o: { creator: string; product: string; amoun
       icon: '✅',
       title: 'Your order is confirmed',
       body: `<p>Thank you! Your payment to <b>${esc(o.creator)}</b> is confirmed.</p>${details([['Product', esc(o.product)], ['Paid to', esc(o.creator)], ['Amount', inr(o.amount)]])}
-${sessionBlock(o.session)}<p>Open your order page to get your download, booking or access. Keep this email: the link is your access to the order.</p>`,
+${sessionBlock(o.session)}${o.needsSlot ? `<div style="margin:18px 0;padding:16px 18px;background:#FFF1E0;border-radius:16px"><b>Please pick your time.</b> Your payment is confirmed, but the time you chose is no longer held. Open your order and choose a new time. Nothing else to pay.</div>` : ''}<p>Open your order page to get your download, booking or access. Keep this email: the link is your access to the order.</p>`,
       button: { label: 'Open my order', url: o.orderUrl },
       note: 'Something wrong? Use the support button on your order page and our team will help.',
     }),

@@ -61,7 +61,7 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
 
   if (kind === 'order') {
     const { data: o } = await db.from('orders')
-      .select('id, kind, product_id, product_title, buyer_name, buyer_email, buyer_phone, amount_inr, status, payment_provider, payment_ref, refund_reason, access_token, paid_at, created_at, pages(display_name, username, owner_id)')
+      .select('id, kind, product_id, product_type, product_title, buyer_name, buyer_email, buyer_phone, amount_inr, status, payment_provider, payment_ref, refund_reason, access_token, paid_at, created_at, pages(display_name, username, owner_id)')
       .eq('id', id).maybeSingle()
     if (!o) return
     const page = first(o.pages)
@@ -71,7 +71,7 @@ async function handleEvent(db: SupabaseClient, kind: string, id: string) {
     if (o.status === 'paid' && recent(o.paid_at || o.created_at)) {
       const sch = await scheduleFor(db, o)
       const session = sch ? { kind: sch.kind, when: istWhen(sch.start), link: sch.link } : null
-      await deliver(db, `order_paid:${o.id}`, 'order_paid', o.buyer_email, T.orderConfirmedBuyer({ creator: creatorName, product: what, amount: o.amount_inr, orderUrl, session }),
+      await deliver(db, `order_paid:${o.id}`, 'order_paid', o.buyer_email, T.orderConfirmedBuyer({ creator: creatorName, product: what, amount: o.amount_inr, orderUrl, session, needsSlot: o.product_type === 'session' && !sch }),
         sch ? icsFor(o.id, `${what} with ${creatorName}`, sch, 'buyer') : undefined)
       const { data: owner } = page?.owner_id ? await db.from('profiles').select('email').eq('id', page.owner_id).maybeSingle() : { data: null }
       await deliver(db, `order_creator:${o.id}`, 'order_creator', owner?.email, T.newOrderCreator({ buyer: o.buyer_name || o.buyer_email, product: what, amount: o.amount_inr, buyerContact: [o.buyer_email, o.buyer_phone].filter(Boolean).join(' · '), session }),
