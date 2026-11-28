@@ -24,7 +24,7 @@ const TEMPLATES = [
   },
   {
     name: 'admin_support_ticket',
-    text: 'New support request #{{1}}: {{2}}, from {{3}}. Open it in your admin at {{4}}.',
+    text: 'New support request #{{1}}: {{2}}, from {{3}}. Open it in your admin at {{4}} to reply.',
     example: ['12', 'Payment failed or pending', 'priya@example.com', 'https://joinlyy.com/admin/support'],
   },
   {
