@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, ChevronLeft, ChevronRight, ExternalLink, Film, Image as ImageIcon, ImagePlus, Images, Plus, Trash2, X } from 'lucide-react'
+import { CalendarClock, ChevronLeft, ChevronRight, ExternalLink, Film, Image as ImageIcon, ImagePlus, Images, Plus, Trash2, Type, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { errorMessage, invokeFunction, supabase } from '../../lib/supabase'
 import { Alert, Badge, Button, Card, Empty, Spinner, Textarea, useToast, askConfirm } from '../../components/ui'
@@ -19,6 +19,7 @@ const KINDS = [
   { id: 'image', label: 'Image', hint: 'One photo', icon: ImageIcon },
   { id: 'carousel', label: 'Carousel', hint: '2 to 10 photos', icon: Images },
   { id: 'reel', label: 'Reel', hint: 'One video', icon: Film },
+  { id: 'text', label: 'Text', hint: 'LinkedIn only', icon: Type },
 ]
 const TONE = { scheduled: 'lilac', publishing: 'lilac', published: 'green', failed: 'red', cancelled: 'neutral' }
 const LABEL = { scheduled: 'Scheduled', publishing: 'Publishing…', published: 'Posted', failed: 'Failed', cancelled: 'Cancelled' }
@@ -76,6 +77,7 @@ function KIND_BUTTON(kind, mode, n) {
   const now = mode === 'now'
   if (kind === 'carousel') return now ? `Post carousel now${n ? ` (${n} photos)` : ''}` : `Schedule carousel${n ? ` (${n} photos)` : ''}`
   if (kind === 'reel') return now ? 'Post Reel now' : 'Schedule Reel'
+  if (kind === 'text') return now ? 'Post text now' : 'Schedule text'
   return now ? 'Post image now' : 'Schedule image'
 }
 
@@ -139,8 +141,10 @@ export default function SchedulePosts() {
     clearItems()
     setError('')
     setKind(k)
+    // A text post can only go to LinkedIn; leaving it, Instagram is the usual starting point again
+    setTargets(k === 'text' ? { instagram: false, linkedin: true, youtube: false } : (t) => (kind === 'text' ? { instagram: !!account, linkedin: !account && !!connected.linkedin, youtube: false } : t))
   }
-  const can = { instagram: Boolean(account), linkedin: Boolean(connected.linkedin), youtube: Boolean(connected.youtube) && kind === 'reel' }
+  const can = { instagram: Boolean(account) && kind !== 'text', linkedin: Boolean(connected.linkedin), youtube: Boolean(connected.youtube) && kind === 'reel' }
   const chosen = PLATFORMS.filter((x) => targets[x.id] && can[x.id])
   const multi = chosen.length > 1
   const split = multi && !sameCaption
@@ -210,7 +214,7 @@ export default function SchedulePosts() {
   async function submit(e) {
     e.preventDefault()
     setError('')
-    if (!items.length) return setError(kind === 'reel' ? 'Choose a video first.' : kind === 'carousel' ? 'Choose 2 to 10 photos first.' : 'Choose a photo first.')
+    if (kind !== 'text' && !items.length) return setError(kind === 'reel' ? 'Choose a video first.' : kind === 'carousel' ? 'Choose 2 to 10 photos first.' : 'Choose a photo first.')
     if (kind === 'carousel' && items.length < 2) return setError('A carousel needs at least 2 photos.')
     if (!chosen.length) return setError('Choose where to post: tick at least one account below.')
     if (targets.linkedin && can.linkedin && kind === 'carousel' && items.length > 9) return setError('LinkedIn carousels take up to 9 photos. Remove one, or untick LinkedIn.')
@@ -227,7 +231,9 @@ export default function SchedulePosts() {
       const group = crypto.randomUUID()
       // Upload once; every platform uses the same files
       let ups = []
-      if (kind !== 'carousel') {
+      if (kind === 'text') {
+        // nothing to upload
+      } else if (kind !== 'carousel') {
         const file = items[0].file
         const isVideo = file.type.startsWith('video/')
         const up = await upload(isVideo ? file : await toJpeg(file), isVideo ? 'mp4' : 'jpg', isVideo ? 'video/mp4' : 'image/jpeg')
@@ -252,9 +258,9 @@ export default function SchedulePosts() {
           ids.push({ platform: 'instagram', id: data })
         } else {
           const { data, error: err } = await supabase.rpc('schedule_social_post', {
-            p_platform: t.id, p_kind: kind === 'carousel' ? 'CAROUSEL' : isVideo ? 'VIDEO' : 'IMAGE', p_caption: captionFor(t.id),
+            p_platform: t.id, p_kind: kind === 'text' ? 'TEXT' : kind === 'carousel' ? 'CAROUSEL' : isVideo ? 'VIDEO' : 'IMAGE', p_caption: captionFor(t.id),
             p_title: t.id === 'youtube' ? (ytTitle.trim() || captionFor('youtube').split('\n')[0]).slice(0, 100) : null,
-            p_path: kind === 'carousel' ? null : ups[0].path, p_url: kind === 'carousel' ? null : ups[0].url, p_items: kind === 'carousel' ? ups : [],
+            p_path: kind === 'carousel' || kind === 'text' ? null : ups[0].path, p_url: kind === 'carousel' || kind === 'text' ? null : ups[0].url, p_items: kind === 'carousel' ? ups : [],
             p_at: whenOf(t.id), p_group: group, p_options: t.id === 'youtube' ? { short: ytShort, privacy: 'public' } : {},
           })
           if (err) throw err
@@ -337,8 +343,8 @@ export default function SchedulePosts() {
           <form onSubmit={submit} className="mt-5 space-y-6">
             <div>
               <p className="text-sm font-semibold">What do you want to post?</p>
-              <div className="mt-2.5 grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3" role="radiogroup" aria-label="Post type">
-                {KINDS.map((k) => (
+              <div className={`mt-2.5 grid gap-2 sm:max-w-2xl sm:gap-3 ${connected.linkedin ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`} role="radiogroup" aria-label="Post type">
+                {KINDS.filter((k) => k.id !== 'text' || connected.linkedin).map((k) => (
                   <button key={k.id} type="button" role="radio" aria-checked={kind === k.id} onClick={() => changeKind(k.id)}
                     className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-3.5 text-center transition sm:py-4 ${kind === k.id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white hover:border-ink/30'}`}>
                     <k.icon className="size-6" />
@@ -349,8 +355,8 @@ export default function SchedulePosts() {
               </div>
             </div>
 
-            <div className={kind === 'carousel' ? 'space-y-6' : 'grid gap-6 lg:grid-cols-[260px_1fr]'}>
-              <div className="min-w-0">
+            <div className={kind === 'carousel' || kind === 'text' ? 'space-y-6' : 'grid gap-6 lg:grid-cols-[260px_1fr]'}>
+              {kind !== 'text' && <div className="min-w-0">
                 <input ref={fileRef} type="file" multiple={kind === 'carousel'} accept={kind === 'reel' ? 'video/mp4,video/quicktime' : 'image/*'} className="sr-only" onChange={pick} />
 
                 {kind === 'carousel' ? (
@@ -392,7 +398,7 @@ export default function SchedulePosts() {
                 )}
                 {kind !== 'carousel' && <p className="mt-2 text-xs text-ink-500">{kind === 'reel' ? 'MP4 video, up to 50 MB.' : 'Fitted to Instagram’s shapes, with white bars if needed.'}</p>}
                 <p className="mt-1 text-xs text-ink-500">Your files are kept only until the post is published, then deleted.</p>
-              </div>
+              </div>}
 
               <div className="space-y-5">
                 {!split && (
