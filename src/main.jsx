@@ -14,6 +14,12 @@ window.addEventListener('vite:preloadError', (event) => {
   window.location.reload()
 })
 
+// A focused number field changes its value when the page is scrolled over it. Let go of the field instead.
+document.addEventListener('wheel', () => {
+  const el = document.activeElement
+  if (el instanceof HTMLInputElement && el.type === 'number') el.blur()
+}, { passive: true })
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
