@@ -334,7 +334,7 @@ export default function SchedulePosts() {
       ) : (
         <Card className="p-5 sm:p-7">
           <div className="flex items-center gap-3">
-            {account.profile_picture_url && <img src={account.profile_picture_url} alt="" className="size-10 rounded-full object-cover" />}
+            {account?.profile_picture_url && <img src={account.profile_picture_url} alt="" className="size-10 rounded-full object-cover" />}
             <div className="min-w-0">
               <p className="text-sm text-ink-600">Posting to {[account && <b key="i">@{account.username}</b>, connected.linkedin && <b key="l">{connected.linkedin.display_name || 'LinkedIn'}</b>, connected.youtube && <b key="y">{connected.youtube.display_name || 'YouTube'}</b>].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ', ', el] : [el]), [])}</p>
               {allow && account && <p className="text-xs text-ink-500">Instagram today: {allow.posts_today} of {allow.posts_per_day} post{allow.posts_per_day === 1 ? '' : 's'} · This month: {allow.reels_this_month} of {allow.reels_per_month} Reels. <a href="/dashboard/billing" className="underline">Plans</a></p>}
