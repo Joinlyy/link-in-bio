@@ -93,6 +93,7 @@ export default function SchedulePosts() {
   const [targets, setTargets] = useState({ instagram: true, linkedin: false, youtube: false })
   const [ytTitle, setYtTitle] = useState('')
   const [ytShort, setYtShort] = useState(false)
+  const [ytPrivacy, setYtPrivacy] = useState('public')
   const [sameCaption, setSameCaption] = useState(true) // one caption for every account, or one each
   const [captions, setCaptions] = useState({})
   const [sameTime, setSameTime] = useState(true) // one time for every account, or one each
@@ -261,7 +262,7 @@ export default function SchedulePosts() {
             p_platform: t.id, p_kind: kind === 'text' ? 'TEXT' : kind === 'carousel' ? 'CAROUSEL' : isVideo ? 'VIDEO' : 'IMAGE', p_caption: captionFor(t.id),
             p_title: t.id === 'youtube' ? (ytTitle.trim() || captionFor('youtube').split('\n')[0]).slice(0, 100) : null,
             p_path: kind === 'carousel' || kind === 'text' ? null : ups[0].path, p_url: kind === 'carousel' || kind === 'text' ? null : ups[0].url, p_items: kind === 'carousel' ? ups : [],
-            p_at: whenOf(t.id), p_group: group, p_options: t.id === 'youtube' ? { short: ytShort, privacy: 'public' } : {},
+            p_at: whenOf(t.id), p_group: group, p_options: t.id === 'youtube' ? { short: ytShort, privacy: ytPrivacy } : {},
           })
           if (err) throw err
           scheduledAny = true
@@ -276,6 +277,7 @@ export default function SchedulePosts() {
       setAts({})
       setYtTitle('')
       setYtShort(false)
+      setYtPrivacy('public')
       if (mode === 'now') {
         toast(`Publishing to ${chosen.map((c) => c.label).join(', ')}…`)
         for (const x of ids) {
@@ -454,6 +456,14 @@ export default function SchedulePosts() {
                         <label htmlFor="yt-title" className="block text-sm font-semibold">YouTube title</label>
                         <input id="yt-title" className="field mt-2" maxLength={100} placeholder="A clear title people would search for" value={ytTitle} onChange={(e) => setYtTitle(e.target.value)} />
                         <p className="mt-1 text-right text-xs text-ink-500">{ytTitle.length} / 100</p>
+                      </div>
+                      <div>
+                        <label htmlFor="yt-privacy" className="block text-sm font-semibold">Who can watch</label>
+                        <select id="yt-privacy" className="field mt-2 max-w-xs" value={ytPrivacy} onChange={(e) => setYtPrivacy(e.target.value)}>
+                          <option value="public">Public</option>
+                          <option value="unlisted">Unlisted (only people with the link)</option>
+                          <option value="private">Private (only you)</option>
+                        </select>
                       </div>
                       <label className="flex items-start gap-2.5 text-sm">
                         <input type="checkbox" className="mt-0.5 size-4 accent-ink" checked={ytShort} onChange={(e) => setYtShort(e.target.checked)} />

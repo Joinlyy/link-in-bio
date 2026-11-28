@@ -18,6 +18,7 @@ export default function SocialCallback({ platform }) {
     ran.current = true
     finishSocialConnect(platform, params.get('code'), params.get('state'))
       .then(() => {
+        document.title = 'Joinlyy'
         const back = socialReturnTo()
         navigate(`${back}${back.includes('?') ? '&' : '?'}connected=${platform}`, { replace: true })
       })
