@@ -19,7 +19,7 @@ import { useUsernameCheck } from '../../lib/useUsernameCheck'
 import { CustomDomainCard, SeoTrackingCard, TwoFactorCard } from './SettingsExtra'
 import { Link } from 'react-router-dom'
 import { KYC_LABEL, usePayouts } from '../../lib/payouts'
-import { disconnectSocial, SOCIAL, socialStatus, startSocialConnect } from '../../lib/social'
+import { disconnectSocial, FACEBOOK_COMING_SOON, SOCIAL, socialStatus, startSocialConnect } from '../../lib/social'
 
 const SHOW_DOMAIN_AND_SEO = false
 
@@ -165,7 +165,7 @@ export function ConnectedAccountsCard() {
     <Card className="p-5 sm:p-7">
       <div id="connected-accounts" className="scroll-mt-24">
         <h2 className="text-lg font-bold">Connected accounts</h2>
-        <p className="mt-1 text-sm text-ink-500">Post to LinkedIn, YouTube and Facebook Pages from Schedule posts, next to Instagram.</p>
+        <p className="mt-1 text-sm text-ink-500">Post to LinkedIn and YouTube from Schedule posts, next to Instagram. Facebook Pages are coming soon.</p>
       </div>
       <div className="mt-4 divide-y divide-ink/5">
         {['linkedin', 'youtube', 'facebook'].map((pf) => {
@@ -184,7 +184,7 @@ export function ConnectedAccountsCard() {
                   <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => disconnect(pf)}>Disconnect</Button>
                 </div>
               ) : (
-                <Button size="sm" loading={busy === pf} disabled={status === null || !available} onClick={() => connect(pf)}>{available === false ? 'Opening soon' : 'Connect'}</Button>
+                <Button size="sm" loading={busy === pf} disabled={status === null || !available || (pf === 'facebook' && FACEBOOK_COMING_SOON)} onClick={() => connect(pf)}>{pf === 'facebook' && FACEBOOK_COMING_SOON ? 'Coming soon' : available === false ? 'Opening soon' : 'Connect'}</Button>
               )}
             </div>
           )

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { errorMessage, invokeFunction, supabase } from '../../lib/supabase'
 import { Alert, Badge, Button, Card, Empty, Spinner, Textarea, useToast, askConfirm } from '../../components/ui'
 import { PageHeading } from './DashboardLayout'
+import { FACEBOOK_COMING_SOON } from '../../lib/social'
 
 const MAX_CAPTION = 2200
 const MAX_VIDEO = 50 * 1024 * 1024
@@ -19,7 +20,7 @@ const KINDS = [
   { id: 'image', label: 'Image', hint: 'One photo', icon: ImageIcon },
   { id: 'carousel', label: 'Carousel', hint: '2 to 10 photos', icon: Images },
   { id: 'reel', label: 'Reel', hint: 'One video', icon: Film },
-  { id: 'text', label: 'Text', hint: 'LinkedIn, Facebook', icon: Type },
+  { id: 'text', label: 'Text', hint: FACEBOOK_COMING_SOON ? 'LinkedIn only' : 'LinkedIn, Facebook', icon: Type },
 ]
 const TONE = { scheduled: 'lilac', publishing: 'lilac', published: 'green', failed: 'red', cancelled: 'neutral' }
 const LABEL = { scheduled: 'Scheduled', publishing: 'Publishing…', published: 'Posted', failed: 'Failed', cancelled: 'Cancelled' }
@@ -335,7 +336,7 @@ export default function SchedulePosts() {
       {!account && !connected.linkedin && !connected.youtube && !fbPages.length ? (
         <Card className="p-6">
           <Empty icon={CalendarClock} title="Connect an account first" action={<Button to="/dashboard/connections">Connect accounts</Button>}>
-            Posts are published to the accounts you connect: Instagram, LinkedIn, YouTube and Facebook Pages.
+            Posts are published to the accounts you connect: Instagram, LinkedIn and YouTube. Facebook Pages are coming soon.
           </Empty>
         </Card>
       ) : (
@@ -455,7 +456,7 @@ export default function SchedulePosts() {
                       )}
                     </div>
                   )}
-                  {!fbPages.length && (
+                  {!fbPages.length && !FACEBOOK_COMING_SOON && (
                     <div className="mt-2"><Link to="/dashboard/connections" className="inline-flex h-10 items-center gap-2 rounded-full border-2 border-dashed border-ink/20 px-4 text-sm font-semibold text-ink-500 hover:border-ink/40"><Plus className="size-4" />Connect Facebook</Link></div>
                   )}
                   {targets.youtube && can.youtube && (

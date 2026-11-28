@@ -9,6 +9,9 @@ export const SOCIAL = {
   facebook: { name: 'Facebook', note: 'Post text, photos and videos to the Facebook Pages you manage. You choose which Pages to share.' },
 }
 
+// Facebook Pages posting is built but waits for Meta's app approval. Flip to false to open it to everyone.
+export const FACEBOOK_COMING_SOON = true
+
 /** What is available and what this creator has connected */
 export function socialStatus() {
   return invokeFunction('social', { action: 'status' })
