@@ -17,6 +17,27 @@ function extOf(name, fallback) {
 }
 
 /**
+ * Page photos are shown on every visit, so smaller files cost less and load faster.
+ * JPEG, PNG and WebP are resized to at most 1600 px on the long side and saved as WebP (transparency is kept).
+ * The original is kept when this would not make it smaller, and GIF/AVIF are left alone.
+ */
+async function shrinkImage(blob) {
+  if (!/^image\/(jpeg|png|webp)$/.test(blob.type) || blob.size < 120 * 1024) return blob
+  try {
+    const bitmap = await createImageBitmap(blob)
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bitmap.width * scale)
+    canvas.height = Math.round(bitmap.height * scale)
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const out = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.82))
+    return out && out.type === 'image/webp' && out.size < blob.size ? out : blob
+  } catch {
+    return blob
+  }
+}
+
+/**
  * Upload an image to the public `creator-images` bucket (File, Blob or remote URL).
  * Files live under <user id>/<folder>/ so storage policies can enforce ownership.
  */
@@ -29,6 +50,7 @@ export async function uploadImage(input, folder = 'pages') {
   }
   if (!blob.type?.startsWith('image/')) throw new Error('Please choose an image file.')
   if (blob.size > MAX_IMAGE) throw new Error('Images must be smaller than 5 MB.')
+  blob = await shrinkImage(blob)
   const uid = await userId()
   const path = `${uid}/${folder}/${crypto.randomUUID()}.${extOf(blob.name, blob.type.split('/')[1] || 'jpg')}`
   const { error } = await supabase.storage.from(IMAGE_BUCKET).upload(path, blob, {
