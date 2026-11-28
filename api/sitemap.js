@@ -25,7 +25,7 @@ export default async function handler() {
   if (url && key) {
     try {
       const res = await fetch(`${url}/rest/v1/rpc/public_sitemap`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: '{}' })
-      if (res.ok) for (const p of await res.json()) entries.push({ loc: `/${encodeURIComponent(p.username)}`, lastmod: String(p.updated_at).slice(0, 10), priority: '0.5' })
+      if (res.ok) for (const p of (await res.json()).filter((x) => x.username !== 'joinlyyreview')) entries.push({ loc: `/${encodeURIComponent(p.username)}`, lastmod: String(p.updated_at).slice(0, 10), priority: '0.5' })
     } catch {
       // creator pages are left out this time; the rest is still valid
     }

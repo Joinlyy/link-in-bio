@@ -11,7 +11,7 @@ const BASE_PAGES = [
     description: 'One link in bio to get paid by UPI, sell digital products, book calls, schedule Instagram posts and auto-DM every comment. Built for Indian creators, in Hindi and English. Free to start.',
     h1: 'The link in bio built for Indian creators',
     kicker: 'Link in bio',
-    intro: 'Joinlyy turns the one link in your Instagram, YouTube or WhatsApp bio into a small website that sells for you. Buyers pay by UPI, you can schedule your Instagram posts, you get alerted on WhatsApp, and you never copy-paste a payment link into a DM again.',
+    intro: 'Joinlyy turns the one link in your Instagram, YouTube or WhatsApp bio into a small website that sells for you. Buyers pay by UPI, you can schedule your Instagram posts, you get an alert for every order, and you never copy-paste a payment link into a DM again.',
     sections: [
       { h2: 'Everything a creator needs behind one link', body: [
         'Most link pages only list links. Joinlyy lets you sell, book and collect leads from the same page, so your followers can act without leaving your bio.',
@@ -164,7 +164,7 @@ const BASE_PAGES = [
         'Download a colourful PDF that keeps the layout you see on screen, or share a link that always shows your latest numbers.',
       ] },
       { h2: 'Get brand enquiries on your page', body: [
-        'Add a brand-deal form to your link in bio, so sponsors can send a brief with their budget. You are alerted on WhatsApp on paid plans.',
+        'Add a brand-deal form to your link in bio, so sponsors can send a brief with their budget. You are alerted by email on every plan, and on WhatsApp with Pro.',
       ] },
     ],
     faq: [

@@ -95,7 +95,7 @@ async function describe(path) {
       path: `/${page.username}${sub ? `/${sub.slug}` : ''}`,
       image: seo.image || page.avatar_url || null,
       type: 'profile',
-      noindex: seo.noindex === true || sub?.visibility === 'members',
+      noindex: seo.noindex === true || sub?.visibility === 'members' || page.username === 'joinlyyreview',
       lang: page.language || 'en',
       jsonld: { '@context': 'https://schema.org', '@type': 'ProfilePage', mainEntity: { '@type': 'Person', name, description: page.bio || undefined, image: page.avatar_url || undefined, url: `${SITE}/${page.username}` } },
     }
