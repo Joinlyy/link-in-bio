@@ -5,6 +5,7 @@ import { ArrowUpRight, Check, Download, Share2 } from 'lucide-react'
 import { usePage } from '../../context/PageContext'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { useOwnerFeatures } from '../../lib/usePlan'
 import { pageDisplayUrl, pageUrl, INSTAGRAM_ENABLED } from '../../lib/config'
 import { formatNumber } from '../../lib/embeds'
 import { Button, Card } from '../../components/ui'
@@ -72,6 +73,7 @@ export default function Overview() {
   const { page, blocks, instagram, updatePage } = usePage()
   const { profile } = useAuth()
   const stats = useWeekStats(page.id)
+  const features = useOwnerFeatures(page.owner_id)
   const firstName = (profile?.full_name || page.display_name || '').split(' ')[0]
   const max = Math.max(1, ...(stats?.series || []).map((s) => s.views))
 
@@ -95,6 +97,16 @@ export default function Overview() {
   return (
     <div className="space-y-4">
       <PageHeading title={`Hi${firstName ? `, ${firstName}` : ''}.`} italic="Here’s your week." />
+
+      {features?.whatsapp && !(page.alert_on && page.alert_whatsapp) && (
+        <div className="flex flex-col gap-3 rounded-3xl bg-lime p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div>
+            <p className="font-display text-lg font-bold">Turn on your WhatsApp alerts</p>
+            <p className="mt-0.5 text-sm text-ink-700">Your Pro plan includes them. Get a message for every order, lead, brand enquiry and Instagram post. It takes 20 seconds.</p>
+          </div>
+          <Button to="/dashboard/settings#whatsapp-alerts" className="shrink-0">Add my number</Button>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[

@@ -43,13 +43,13 @@ function PaymentsCard() {
   return <PayoutsPointer />
 }
 
-const ALERT_EVENT = { new_order: 'New order', new_lead: 'New lead', brand_enquiry: 'Brand enquiry', order_confirmed: 'Buyer: payment confirmed', payment_rejected: 'Buyer: payment not received', test: 'Test message' }
+const ALERT_EVENT = { new_order: 'New order', new_contact: 'New lead or brand enquiry', post_status: 'Instagram post update', new_lead: 'New lead', brand_enquiry: 'Brand enquiry', test: 'Test message' }
 
 /** WhatsApp alerts from Joinlyy's number about orders, payments, leads and enquiries */
 function WhatsappAlertsCard() {
   const { page, updatePage, canEdit } = usePage()
   const toast = useToast()
-  const [phone, setPhone] = useState(page.alert_whatsapp ? `+${page.alert_whatsapp}` : '')
+  const [phone, setPhone] = useState(page.alert_whatsapp ? `+${page.alert_whatsapp}` : page.whatsapp?.number ? `+${String(page.whatsapp.number).replace(/\D/g, '')}` : '')
   const [busy, setBusy] = useState(false)
   const [recent, setRecent] = useState([])
   const features = useOwnerFeatures(page.owner_id)
@@ -62,6 +62,10 @@ function WhatsappAlertsCard() {
   })()
   const wrong = phone.trim() && !/^\d{10,15}$/.test(digits)
   const changed = (digits || null) !== (page.alert_whatsapp || null)
+
+  useEffect(() => {
+    if (window.location.hash === '#whatsapp-alerts') setTimeout(() => document.getElementById('whatsapp-alerts')?.scrollIntoView({ block: 'center' }), 300)
+  }, [])
 
   useEffect(() => {
     supabase.from('notifications').select('id, event, status, error, created_at').eq('page_id', page.id).order('created_at', { ascending: false }).limit(5)
@@ -87,13 +91,13 @@ function WhatsappAlertsCard() {
 
   return (
     <Card className="p-5 sm:p-7">
-      <div className="flex flex-wrap items-center gap-2">
+      <div id="whatsapp-alerts" className="flex scroll-mt-24 flex-wrap items-center gap-2">
         <h2 className="text-lg font-bold">WhatsApp alerts</h2>
         {page.alert_on && page.alert_whatsapp ? <Badge tone="green">On</Badge> : <Badge>Off</Badge>}
       </div>
       <p className="mt-1 text-sm text-ink-500">Get a WhatsApp message when someone buys something, joins your lead form, sends a brand enquiry, or when a scheduled Instagram post goes live or fails. Every plan gets the same alerts by email.</p>
       {!allowed ? (
-        <UpgradeNote className="mt-5">WhatsApp alerts are on the Pro plan. You still get every alert by email on your current plan.</UpgradeNote>
+        <UpgradeNote className="mt-5">WhatsApp alerts come with the Pro plan (₹399 a month). You still get every alert by email on your current plan.</UpgradeNote>
       ) : (
         <>
           <div className="mt-5 grid gap-4">
@@ -102,7 +106,7 @@ function WhatsappAlertsCard() {
           </div>
           {canEdit && (
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button onClick={() => save()} disabled={!changed || wrong}>Save number</Button>
+              <Button onClick={() => save(true)} disabled={(!changed && page.alert_on) || !digits || wrong}>{page.alert_on ? 'Save number' : 'Save and turn on alerts'}</Button>
               <Button variant="outline" loading={busy} disabled={!page.alert_whatsapp || changed} onClick={test}>Send a test</Button>
             </div>
           )}
