@@ -68,6 +68,8 @@ function PlanEditor({ plan, isNew, onClose, onSaved }) {
           <Input className="sm:col-span-2" label="Description" value={form.description} onChange={(e) => set({ description: e.target.value })} maxLength={120} />
           <Input label="Monthly price (₹)" type="number" min={0} value={form.price_monthly_inr} onChange={(e) => set({ price_monthly_inr: e.target.value })} />
           <Input label="Yearly price (₹)" type="number" min={0} value={form.price_yearly_inr} onChange={(e) => set({ price_yearly_inr: e.target.value })} />
+          <Input label="Crossed-out monthly price (₹)" type="number" min={0} placeholder="none" hint="Shown struck through, e.g. 299 next to 199" value={form.features?.compare_monthly_inr ?? ''} onChange={(e) => setFeature('compare_monthly_inr', e.target.value === '' ? null : int(e.target.value))} />
+          <Input label="Badge" placeholder="Best seller" hint="“Best seller” highlights the card" value={form.features?.badge ?? ''} maxLength={24} onChange={(e) => setFeature('badge', e.target.value || null)} />
         </div>
         <div>
           <p className="eyebrow text-ink-500">Limits</p>

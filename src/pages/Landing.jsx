@@ -10,7 +10,7 @@ import PhoneFrame from '../components/PhoneFrame'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
 import { InstagramIcon } from '../components/icons'
 import { APP_NAME, INSTAGRAM_ENABLED, PUBLIC_DOMAIN, SUPABASE_KEY, SUPABASE_URL } from '../lib/config'
-import { COMPARE, shortFeatures } from '../lib/plans'
+import { COMPARE, planDeal, shortFeatures } from '../lib/plans'
 import { captureRef } from '../lib/referral'
 
 const inTenDays = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10)
@@ -466,24 +466,32 @@ function Pricing() {
         <div className="mt-10 h-72 animate-pulse rounded-3xl bg-cream-200" />
       ) : (
         <>
-          <div className={`mt-10 grid gap-4 ${plans.length > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
-            {plans.map((p, i) => {
-              const dark = i === 1
-              const price = period === 'year' ? p.price_yearly_inr : p.price_monthly_inr
+          <p className="mt-6 inline-flex rounded-full bg-lime px-4 py-1.5 text-sm font-bold text-ink">Launch offer: save up to 33% on every paid plan</p>
+          <div className={`mt-8 grid gap-5 ${plans.length > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+            {plans.map((p) => {
+              const d = planDeal(p, period)
+              const dark = d.badge === 'Best seller'
               return (
-                <div key={p.id} className={`flex flex-col rounded-3xl p-7 sm:p-9 ${dark ? 'bg-ink text-white' : 'bg-cream-200'}`}>
+                <div key={p.id} className={`relative flex flex-col rounded-3xl p-7 sm:p-9 ${dark ? 'bg-ink text-white ring-4 ring-lime lg:-my-3' : 'bg-cream-200'}`}>
+                  {d.badge && (
+                    <span className={`absolute -top-3.5 left-7 rounded-full px-3.5 py-1 text-xs font-bold tracking-wide shadow-sm sm:left-9 ${dark ? 'bg-lime text-ink' : 'bg-ink text-white'}`}>
+                      {dark ? '🔥 ' : ''}{d.badge}
+                    </span>
+                  )}
                   <div className="flex items-center justify-between gap-2">
                     <p className={`eyebrow ${dark ? 'text-lime' : 'text-ink-500'}`}>{p.name}</p>
-                    {dark && <span className="rounded-full bg-lime px-2.5 py-0.5 text-[11px] font-bold text-ink">Most popular</span>}
+                    {d.savePct > 0 && <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${dark ? 'bg-white/15 text-lime' : 'bg-lime text-ink'}`}>Save {d.savePct}%</span>}
                   </div>
-                  <p className="mt-4 font-display text-5xl font-bold">
-                    {inr(price)}
-                    <span className={`text-lg font-medium ${dark ? 'text-white/50' : 'text-ink-500'}`}>{p.price_monthly_inr ? (period === 'year' ? ' / year' : ' / month') : ' / forever'}</span>
+                  <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    {d.was && <span className={`text-2xl font-medium line-through decoration-2 ${dark ? 'text-white/40' : 'text-ink-400'}`}>{inr(d.was)}</span>}
+                    <span className="font-display text-5xl font-bold">{inr(d.price)}</span>
+                    <span className={`text-lg font-medium ${dark ? 'text-white/50' : 'text-ink-500'}`}>{p.price_monthly_inr ? (period === 'year' ? '/ year' : '/ month') : '/ forever'}</span>
+                  </div>
+                  <p className={`mt-1 min-h-5 text-sm font-medium ${dark ? 'text-lime' : 'text-teal'}`}>
+                    {d.perDay ? `Just ₹${d.perDay} a day${d.yearSave ? ` · 2 months free, you save ${inr(d.yearSave)}` : ''}` : 'No card needed'}
                   </p>
-                  <p className={`mt-1 min-h-5 text-sm ${dark ? 'text-white/70' : 'text-ink-600'}`}>
-                    {period === 'year' && p.price_yearly_inr > 0 ? `${inr(Math.round(p.price_yearly_inr / 12))} a month, save ${inr(p.price_monthly_inr * 12 - p.price_yearly_inr)}` : p.description}
-                  </p>
-                  <ul className="mt-7 space-y-3 text-[15px]">
+                  <p className={`mt-1 text-sm ${dark ? 'text-white/70' : 'text-ink-600'}`}>{d.tagline}</p>
+                  <ul className="mt-6 space-y-3 text-[15px]">
                     {shortFeatures(p.features || {}).map((f) => (
                       <li key={f.text} className={`flex items-start gap-2.5 ${f.on ? '' : 'opacity-45'}`}>
                         {f.on ? <Check className="mt-0.5 size-4 shrink-0" strokeWidth={3} /> : <Minus className="mt-0.5 size-4 shrink-0" />}
@@ -493,7 +501,7 @@ function Pricing() {
                   </ul>
                   <div className="mt-auto pt-8">
                     <a href="/signup" className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold ${dark ? 'bg-lime text-ink' : 'bg-ink text-white'}`}>
-                      {p.price_monthly_inr ? 'Start free, upgrade anytime' : 'Start free'} <ArrowUpRight className="size-4" />
+                      {p.price_monthly_inr ? (dark ? 'Get the best seller' : 'Start free, upgrade anytime') : 'Start free'} <ArrowUpRight className="size-4" />
                     </a>
                   </div>
                 </div>

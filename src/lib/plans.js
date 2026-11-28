@@ -86,3 +86,19 @@ export const COMPARE = [
     ['Support', (f) => (f.support === 'priority' ? 'Priority' : f.support === 'email' ? 'Email' : 'Help centre')],
   ] },
 ]
+
+/** The offer shown on a plan card: price for the period, the crossed-out list price, % saved and the daily cost. */
+export function planDeal(p, period) {
+  const f = p.features || {}
+  const year = period === 'year'
+  const price = year ? p.price_yearly_inr : p.price_monthly_inr
+  const was = f.compare_monthly_inr ? f.compare_monthly_inr * (year ? 12 : 1) : null
+  const save = was && price && was > price ? was - price : 0
+  const perDay = price ? Math.max(1, Math.round(price / (year ? 365 : 30))) : null
+  return {
+    price, was: save ? was : null, save, savePct: save ? Math.round((save / was) * 100) : 0, perDay,
+    badge: f.badge || null, tagline: f.tagline || p.description,
+    // Two months free on the yearly price against paying monthly
+    yearSave: year && p.price_monthly_inr ? p.price_monthly_inr * 12 - p.price_yearly_inr : 0,
+  }
+}

@@ -8,7 +8,7 @@ import { formatInr } from '../../lib/images'
 import { Alert, Badge, Button, Card, Empty, Modal, Spinner, useToast } from '../../components/ui'
 import { DataTable, useViewMode, ViewToggle } from '../../components/DataTable'
 import { PageHeading } from './DashboardLayout'
-import { featureList } from '../../lib/plans'
+import { featureList, planDeal } from '../../lib/plans'
 import { cancelAutoRenew, checkPayment, money2, payForPlan, razorpayConfig, withGst } from '../../lib/razorpay'
 
 const LIMITS = [
@@ -250,19 +250,23 @@ export default function Billing() {
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {plans.map((p) => {
             const isCurrent = p.id === plan.plan
-            const price = period === 'year' ? p.price_yearly_inr : p.price_monthly_inr
-            const highlight = p.id === 'pro'
+            const d = planDeal(p, period)
+            const price = d.price
+            const highlight = d.badge === 'Best seller'
             return (
-              <div key={p.id} className={`flex flex-col rounded-3xl p-6 ${highlight ? 'bg-lime' : 'bg-cream'}`}>
+              <div key={p.id} className={`relative flex flex-col rounded-3xl p-6 ${highlight ? 'bg-lime ring-2 ring-ink' : 'bg-cream'}`}>
+                {d.badge && <span className="absolute -top-3 left-6 rounded-full bg-ink px-3 py-0.5 text-xs font-bold text-lime">{highlight ? '🔥 ' : ''}{d.badge}</span>}
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-display text-xl font-bold">{p.name}</h3>
-                  {isCurrent && <Badge tone="dark">Current</Badge>}
+                  {isCurrent ? <Badge tone="dark">Current</Badge> : d.savePct > 0 ? <Badge tone="green">Save {d.savePct}%</Badge> : null}
                 </div>
-                <p className="mt-1 text-sm text-ink-600">{p.description}</p>
+                <p className="mt-1 text-sm text-ink-600">{d.tagline}</p>
                 <p className="mt-5 font-display text-4xl font-bold tracking-tight">
+                  {d.was && <span className="mr-2 text-xl font-medium text-ink-400 line-through">{formatInr(d.was)}</span>}
                   {price ? formatInr(price) : '₹0'}
                   <span className="text-base font-medium text-ink-500"> / {period === 'year' ? 'year' : 'month'}{price ? ' + GST' : ''}</span>
                 </p>
+                {d.perDay && <p className="mt-1 text-sm font-semibold text-teal">Just ₹{d.perDay} a day{d.yearSave ? ` · 2 months free (save ${formatInr(d.yearSave)})` : ''}</p>}
                 {price > 0 && <p className="mt-1 text-xs text-ink-600">You pay {money2(withGst(price).total)} with 18% GST ({money2(withGst(price).gst)}), renewing automatically</p>}
                 <ul className="mt-5 flex-1 space-y-2 text-sm">
                   {featureList(p.features || {}).map((f) => (
