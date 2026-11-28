@@ -9,7 +9,7 @@ import { adminClient, handle, HttpError, json, requireUser } from '../_shared/ut
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
 const LI = { id: Deno.env.get('LINKEDIN_CLIENT_ID') ?? '', secret: Deno.env.get('LINKEDIN_CLIENT_SECRET') ?? '' }
 const YT = { id: Deno.env.get('YOUTUBE_CLIENT_ID') ?? '', secret: Deno.env.get('YOUTUBE_CLIENT_SECRET') ?? '' }
-const FB = { id: Deno.env.get('FACEBOOK_APP_ID') ?? '', secret: Deno.env.get('FACEBOOK_APP_SECRET') ?? '' }
+const FB = { id: Deno.env.get('FACEBOOK_APP_ID') ?? '', secret: Deno.env.get('FACEBOOK_APP_SECRET') ?? '', config: Deno.env.get('FACEBOOK_CONFIG_ID') ?? '' }
 const FB_GRAPH = 'https://graph.facebook.com/v21.0'
 const LI_VERSION = Deno.env.get('LINKEDIN_API_VERSION') ?? '202606'
 const ALLOWED_REDIRECT_HOSTS = new Set(['joinlyy.com', 'www.joinlyy.com', 'localhost'])
@@ -116,7 +116,13 @@ async function authorizeUrl(admin: SupabaseClient, userId: string, platform: Pla
   if (platform === 'linkedin') {
     url.searchParams.set('scope', 'openid profile w_member_social')
   } else if (platform === 'facebook') {
-    url.searchParams.set('scope', 'pages_show_list,pages_manage_posts,pages_read_engagement,public_profile')
+    // Facebook Login for Business: the configuration holds the permission list
+    if (FB.config) {
+      url.searchParams.set('config_id', FB.config)
+      url.searchParams.set('override_default_response_type', 'true')
+    } else {
+      url.searchParams.set('scope', 'pages_show_list,pages_manage_posts,pages_read_engagement,public_profile')
+    }
   } else {
     url.searchParams.set('scope', 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly')
     url.searchParams.set('access_type', 'offline')
