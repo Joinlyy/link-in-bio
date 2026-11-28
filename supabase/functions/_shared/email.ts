@@ -3,7 +3,7 @@
 // ideally on a domain with Brevo's SPF and DKIM records added), EMAIL_FROM_NAME (default "Joinlyy").
 // Returns a short result for logs and the admin screen: "sent", "skipped: ..." or "failed: ...". Never throws.
 
-export async function sendEmail(opts: { to: string; subject: string; html: string; replyTo?: string }): Promise<string> {
+export async function sendEmail(opts: { to: string; subject: string; html: string; replyTo?: string; attachments?: { name: string; content: string }[] }): Promise<string> {
   const key = Deno.env.get('BREVO_API_KEY')
   const from = Deno.env.get('EMAIL_FROM')
   if (!key || !from) return 'skipped: email is not set up'
@@ -17,6 +17,7 @@ export async function sendEmail(opts: { to: string; subject: string; html: strin
         subject: opts.subject,
         htmlContent: opts.html,
         ...(opts.replyTo ? { replyTo: { email: opts.replyTo } } : {}),
+        ...(opts.attachments?.length ? { attachment: opts.attachments } : {}),
       }),
     })
     if (res.ok) return 'sent'

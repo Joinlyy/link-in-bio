@@ -42,6 +42,7 @@ const MediaKitSettings = lazy(() => import('./pages/dashboard/MediaKitSettings')
 const Settings = lazy(() => import('./pages/dashboard/Settings'))
 const Products = lazy(() => import('./pages/dashboard/products/Products'))
 const ProductEditor = lazy(() => import('./pages/dashboard/products/ProductEditor'))
+const ProductSales = lazy(() => import('./pages/dashboard/products/ProductSales'))
 const Sales = lazy(() => import('./pages/dashboard/Sales'))
 const BrandDeals = lazy(() => import('./pages/dashboard/BrandDeals'))
 const Automations = lazy(() => import('./pages/dashboard/Automations'))
@@ -140,6 +141,7 @@ export default function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="products" element={<Products />} />
               <Route path="products/:id" element={<ProductEditor />} />
+              <Route path="products/:id/sales" element={<ProductSales />} />
               <Route path="sales" element={<Sales />} />
               <Route path="deals" element={<BrandDeals />} />
               <Route path="automations" element={<Automations />} />

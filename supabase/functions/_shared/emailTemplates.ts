@@ -44,28 +44,47 @@ export function welcome(name: string): Mail {
   }
 }
 
-export function orderConfirmedBuyer(o: { creator: string; product: string; amount: number; orderUrl: string }): Mail {
+export type Session = { when: string; link?: string | null; kind: 'session' | 'webinar' }
+const sessionBlock = (s?: Session | null, lead = 'Your') => (s
+  ? `<p style="margin:16px 0;padding:14px 16px;background:#F2F1EC;border-radius:14px"><b>${lead} ${s.kind === 'webinar' ? 'webinar' : 'session'}:</b> ${esc(s.when)} IST${s.link ? `<br>Join link: <a href="${esc(s.link)}">${esc(s.link)}</a>` : ''}<br><span style="font-size:13px;color:#6B6E78">A calendar invite is attached. Open it to add this to your Google Calendar.</span></p>`
+  : '')
+
+export function orderConfirmedBuyer(o: { creator: string; product: string; amount: number; orderUrl: string; session?: Session | null }): Mail {
   return {
     subject: `Your order from ${o.creator} is confirmed`,
     html: layout({
       preheader: `${o.product}, ${inr(o.amount)}`,
       title: 'Your order is confirmed',
       body: `<p>Thank you! Your payment to <b>${esc(o.creator)}</b> for <b>${esc(o.product)}</b> (${inr(o.amount)}) is confirmed.</p>
-<p>Open your order page to get your download, booking or access. Keep this email: the link is your access to the order.</p>`,
+${sessionBlock(o.session)}<p>Open your order page to get your download, booking or access. Keep this email: the link is your access to the order.</p>`,
       button: { label: 'Open my order', url: o.orderUrl },
       note: 'Something wrong? Use the support button on your order page and our team will help.',
     }),
   }
 }
 
-export function newOrderCreator(o: { buyer: string; product: string; amount: number }): Mail {
+export function newOrderCreator(o: { buyer: string; product: string; amount: number; buyerContact?: string; session?: Session | null }): Mail {
   return {
     subject: `New order: ${o.product} (${inr(o.amount)})`,
     html: layout({
       preheader: `${o.buyer} bought ${o.product}`,
       title: 'You have a new order',
-      body: `<p><b>${esc(o.buyer)}</b> bought <b>${esc(o.product)}</b> for <b>${inr(o.amount)}</b>.</p>`,
+      body: `<p><b>${esc(o.buyer)}</b> bought <b>${esc(o.product)}</b> for <b>${inr(o.amount)}</b>.${o.buyerContact ? `<br>Contact: ${esc(o.buyerContact)}` : ''}</p>${sessionBlock(o.session, 'Booked')}`,
       button: { label: 'See my sales', url: `${APP}/dashboard/sales` },
+    }),
+  }
+}
+
+/** Reminder before a session or webinar, for the buyer or for the creator */
+export function sessionReminder(o: { who: 'buyer' | 'creator'; hours: number; product: string; when: string; link?: string | null; other: string; url: string }): Mail {
+  const soon = o.hours <= 1
+  return {
+    subject: `${soon ? 'Starting in 1 hour' : 'Tomorrow'}: ${o.product}`,
+    html: layout({
+      preheader: `${o.product} at ${o.when} IST`,
+      title: soon ? 'Starting in about an hour' : 'Coming up in 24 hours',
+      body: `<p><b>${esc(o.product)}</b> with <b>${esc(o.other)}</b> is at <b>${esc(o.when)} IST</b>.</p>${o.link ? `<p>Join link: <a href="${esc(o.link)}">${esc(o.link)}</a></p>` : ''}`,
+      button: { label: o.who === 'creator' ? 'See my sessions' : 'Open my order', url: o.url },
     }),
   }
 }

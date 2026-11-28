@@ -24,7 +24,7 @@ const NAV = [
     tabs: [['/dashboard/editor', 'Pages'], ['/dashboard/appearance', 'Design'], ['/dashboard/templates', 'Templates']],
   },
   {
-    to: '/dashboard/products', label: 'Products', icon: ShoppingBag,
+    to: '/dashboard/products', label: 'Products & Sales', icon: ShoppingBag,
     tabs: [['/dashboard/products', 'Products'], ['/dashboard/sales', 'Sales']],
   },
   { to: '/dashboard/content', label: 'Content & forms', icon: Layers },

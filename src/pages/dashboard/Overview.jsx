@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
-import { ArrowUpRight, Check, Download, Share2 } from 'lucide-react'
+import { ArrowUpRight, CalendarCheck, Check, Download, Share2 } from 'lucide-react'
 import { usePage } from '../../context/PageContext'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -76,6 +76,11 @@ export default function Overview() {
   const features = useOwnerFeatures(page.owner_id)
   const firstName = (profile?.full_name || page.display_name || '').split(' ')[0]
   const max = Math.max(1, ...(stats?.series || []).map((s) => s.views))
+  const [sessions, setSessions] = useState([])
+  useEffect(() => {
+    supabase.from('bookings').select('id, starts_at, buyer_name, buyer_email, products(title)').eq('page_id', page.id).eq('status', 'confirmed')
+      .gte('starts_at', new Date(Date.now() - 2 * 3600_000).toISOString()).order('starts_at').limit(4).then(({ data }) => setSessions(data || []))
+  }, [page.id])
 
   // Google sign-ups can't carry ?ref= metadata — claim it once after login
   useEffect(() => {
@@ -106,6 +111,23 @@ export default function Overview() {
           </div>
           <Button to="/dashboard/settings#whatsapp-alerts" className="shrink-0">Add my number</Button>
         </div>
+      )}
+
+      {sessions.length > 0 && (
+        <Card className="p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-2">
+            <p className="flex items-center gap-2 font-display text-lg font-bold"><CalendarCheck className="size-5" /> Upcoming sessions</p>
+            <Link to="/dashboard/sales" className="text-sm font-semibold underline underline-offset-2">All bookings</Link>
+          </div>
+          <ul className="mt-3 divide-y divide-ink/5">
+            {sessions.map((b) => (
+              <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                <span className="font-semibold">{b.products?.title || 'Session'} · {b.buyer_name || b.buyer_email}</span>
+                <span className="text-ink-600">{new Date(b.starts_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} IST</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

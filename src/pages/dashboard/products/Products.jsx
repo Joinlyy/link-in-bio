@@ -341,7 +341,7 @@ export default function Products() {
               { key: 'show', label: 'On my page', value: (p) => (p.show_on_page !== false ? 1 : 0), render: (p) => <Toggle checked={p.show_on_page !== false} disabled={!canEdit || !p.is_published} onChange={(v) => toggleShow(p, v)} /> },
               { key: 'actions', label: '', align: 'right', render: (p) => (canEdit && !p.is_published
                 ? <button type="button" onClick={() => activate(p)} className="text-xs font-semibold underline underline-offset-2">Activate</button>
-                : productKind(p) !== 'link' && <button type="button" onClick={() => navigator.clipboard.writeText(`${pageUrl(page.username)}/p/${p.id}`).then(() => toast('Product link copied'))} className="ml-auto grid size-8 place-items-center rounded-full text-ink-500 hover:bg-white" aria-label="Copy product link"><Copy className="size-4" /></button>) },
+                : productKind(p) !== 'link' && <span className="inline-flex items-center gap-2"><button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/products/${p.id}/sales`) }} className="text-xs font-semibold underline underline-offset-2">Sales</button><button type="button" onClick={() => navigator.clipboard.writeText(`${pageUrl(page.username)}/p/${p.id}`).then(() => toast('Product link copied'))} className="grid size-8 place-items-center rounded-full text-ink-500 hover:bg-white" aria-label="Copy product link"><Copy className="size-4" /></button></span>) },
             ]}
           />
         )}
@@ -387,6 +387,7 @@ export default function Products() {
                   </div>
                 </button>
                 <div className="mt-auto flex items-center justify-between gap-2 border-t border-ink/5 px-4 py-3">
+                  {productKind(p) !== 'link' && <button type="button" onClick={() => navigate(`/dashboard/products/${p.id}/sales`)} className="text-xs font-semibold underline underline-offset-2">Sales</button>}
                   <Toggle label="Show on my page" checked={p.show_on_page !== false} disabled={!canEdit || !p.is_published} onChange={(v) => toggleShow(p, v)} />
                   {canEdit && !category && (
                     <span className="flex shrink-0 gap-1">
