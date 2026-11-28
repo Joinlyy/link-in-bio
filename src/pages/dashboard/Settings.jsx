@@ -53,6 +53,7 @@ function WhatsappAlertsCard() {
   const toast = useToast()
   const [phone, setPhone] = useState(page.alert_whatsapp ? `+${page.alert_whatsapp}` : page.whatsapp?.number ? `+${String(page.whatsapp.number).replace(/\D/g, '')}` : '')
   const [busy, setBusy] = useState(false)
+  const [tested, setTested] = useState(null) // the number we just sent a test to
   const [recent, setRecent] = useState([])
   const features = useOwnerFeatures(page.owner_id)
   const allowed = features?.whatsapp ?? true
@@ -83,7 +84,7 @@ function WhatsappAlertsCard() {
     setBusy(true)
     try {
       const r = await invokeFunction('whatsapp', { action: 'test', page_id: page.id })
-      if (r.status === 'sent') toast('Test sent. Check WhatsApp.')
+      if (r.status !== 'failed') { toast('Test sent. Check WhatsApp.'); setTested(digits) }
       else toast(r.error || 'WhatsApp couldn’t send it yet', 'error')
     } catch (err) {
       toast(err.message, 'error')
@@ -109,7 +110,7 @@ function WhatsappAlertsCard() {
           {canEdit && (
             <div className="mt-4 flex flex-wrap gap-2">
               <Button onClick={() => save(true)} disabled={(!changed && page.alert_on) || !digits || wrong}>{page.alert_on ? 'Save number' : 'Save and turn on alerts'}</Button>
-              <Button variant="outline" loading={busy} disabled={!page.alert_whatsapp || changed} onClick={test}>Send a test</Button>
+              <Button variant="outline" loading={busy} disabled={!page.alert_whatsapp || changed || tested === page.alert_whatsapp} onClick={test}>{tested === page.alert_whatsapp ? 'Test sent' : 'Send a test'}</Button>
             </div>
           )}
         </>

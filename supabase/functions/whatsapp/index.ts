@@ -184,10 +184,14 @@ Deno.serve(handle(async (req) => {
     if (page.owner_id !== user.id && !['admin', 'editor'].includes(member?.role)) throw new HttpError(403, 'Not allowed')
     if (!(await pageHasWhatsApp(db, page.id))) throw new HttpError(403, 'WhatsApp alerts are on the Creator and Pro plans. Upgrade to turn them on.')
     if (!page.alert_whatsapp) throw new HttpError(400, 'Add your WhatsApp number first')
-    const key = `test:${page.id}:${Math.floor(Date.now() / 60_000)}` // one test a minute
+    // One test for each number a creator adds. A test that failed can be tried again.
+    const key = `test:${page.id}:${page.alert_whatsapp}`
+    const { data: before } = await db.from('notifications').select('status').eq('key', key).maybeSingle()
+    if (before && !['failed', 'skipped'].includes(before.status)) throw new HttpError(429, 'You already sent a test to this number. To test again, save a different number.')
+    if (before) await db.from('notifications').delete().eq('key', key)
     await send(db, { key, pageId: page.id, event: 'new_order', recipient: 'test', to: page.alert_whatsapp, params: ['Test buyer', 'Sample product (test alert)', '₹0', `${APP}/dashboard/sales`] })
     const { data: n } = await db.from('notifications').select('status, error').eq('key', key).maybeSingle()
-    if (!n) throw new HttpError(429, 'Please wait a minute before sending another test')
+    if (!n) throw new HttpError(500, 'The test could not be sent. Please try again.')
     return json(n)
   }
 
