@@ -31,6 +31,7 @@ const ResetPassword = lazy(() => import('./pages/auth/PasswordPages').then((m) =
 const AuthCallback = lazy(() => import('./pages/auth/PasswordPages').then((m) => ({ default: m.AuthCallback })))
 const Onboarding = lazy(() => import('./pages/onboarding/Onboarding'))
 const InstagramCallback = lazy(() => import('./pages/InstagramCallback'))
+const SocialCallback = lazy(() => import('./pages/SocialCallback'))
 const DashboardLayout = lazy(() => import('./pages/dashboard/DashboardLayout'))
 const Overview = lazy(() => import('./pages/dashboard/Overview'))
 const Editor = lazy(() => import('./pages/dashboard/Editor'))
@@ -121,6 +122,8 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/onboarding" element={<RequireAuth><RequireCreator><Onboarding /></RequireCreator></RequireAuth>} />
+            <Route path="/linkedin/callback" element={<RequireAuth><RequireCreator><SocialCallback platform="linkedin" /></RequireCreator></RequireAuth>} />
+            <Route path="/youtube/callback" element={<RequireAuth><RequireCreator><SocialCallback platform="youtube" /></RequireCreator></RequireAuth>} />
             <Route path="/instagram/callback" element={<RequireAuth><RequireCreator><InstagramCallback /></RequireCreator></RequireAuth>} />
             <Route path="/invoices/:id/print" element={<RequireAuth><InvoicePrint /></RequireAuth>} />
             <Route path="/invoices/order/:id/print" element={<RequireAuth><OrderInvoicePage creator /></RequireAuth>} />

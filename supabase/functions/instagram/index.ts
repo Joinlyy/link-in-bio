@@ -376,8 +376,14 @@ async function publishDue(admin: SupabaseClient, onlyId?: string) {
         /* the post is live either way */
       }
       const paths = [post.media_path, ...(((post.items ?? []) as { path: string }[]).map((i) => i.path))].filter(Boolean)
-      await admin.storage.from('ig-posts').remove([...new Set(paths)]).catch(() => {}) // the files are on Instagram now; the hourly cleanup catches any that fail
       await admin.from('ig_scheduled_posts').update({ status: 'published', ig_media_id: mediaId, permalink, published_at: new Date().toISOString(), error: null, media_url: '', media_path: '', items: [] }).eq('id', post.id)
+      // The files are on Instagram now. Keep any that a LinkedIn or YouTube copy of this post still needs; the hourly cleanup catches the rest.
+      const unused: string[] = []
+      for (const path of new Set(paths)) {
+        const { data: inUse } = await admin.rpc('social_media_in_use', { p_path: path })
+        if (!inUse) unused.push(path)
+      }
+      if (unused.length) await admin.storage.from('ig-posts').remove(unused).catch(() => {})
       published++
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)

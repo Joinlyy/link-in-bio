@@ -19,6 +19,7 @@ import { useUsernameCheck } from '../../lib/useUsernameCheck'
 import { CustomDomainCard, SeoTrackingCard, TwoFactorCard } from './SettingsExtra'
 import { Link } from 'react-router-dom'
 import { KYC_LABEL, usePayouts } from '../../lib/payouts'
+import { disconnectSocial, SOCIAL, socialStatus, startSocialConnect } from '../../lib/social'
 
 const SHOW_DOMAIN_AND_SEO = false
 
@@ -124,6 +125,70 @@ function WhatsappAlertsCard() {
           ))}
         </ul>
       )}
+    </Card>
+  )
+}
+
+/** LinkedIn and YouTube: connect once, then tick them when scheduling a post */
+function ConnectedAccountsCard() {
+  const toast = useToast()
+  const [status, setStatus] = useState(null)
+  const [busy, setBusy] = useState('')
+  const load = () => socialStatus().then(setStatus).catch(() => setStatus({ available: {}, accounts: [] }))
+  useEffect(() => {
+    load()
+    if (window.location.hash === '#connected-accounts') setTimeout(() => document.getElementById('connected-accounts')?.scrollIntoView({ block: 'center' }), 400)
+    const done = new URLSearchParams(window.location.search).get('connected')
+    if (done && SOCIAL[done]) toast(`${SOCIAL[done].name} connected.`)
+  }, [])
+  async function connect(platform) {
+    setBusy(platform)
+    try {
+      await startSocialConnect(platform)
+    } catch (err) {
+      toast(err.message, 'error')
+      setBusy('')
+    }
+  }
+  async function disconnect(platform) {
+    if (!(await askConfirm({ title: `Disconnect ${SOCIAL[platform].name}?`, message: 'Posts waiting for it will be cancelled.', confirmLabel: 'Disconnect' }))) return
+    setBusy(platform)
+    try {
+      await disconnectSocial(platform)
+      await load()
+    } catch (err) {
+      toast(err.message, 'error')
+    }
+    setBusy('')
+  }
+  return (
+    <Card className="p-5 sm:p-7">
+      <div id="connected-accounts" className="scroll-mt-24">
+        <h2 className="text-lg font-bold">Connected accounts</h2>
+        <p className="mt-1 text-sm text-ink-500">Post to LinkedIn and YouTube from Schedule posts, next to Instagram.</p>
+      </div>
+      <div className="mt-4 divide-y divide-ink/5">
+        {['linkedin', 'youtube'].map((pf) => {
+          const acc = status?.accounts?.find((a) => a.platform === pf)
+          const available = status?.available?.[pf]
+          return (
+            <div key={pf} className="flex flex-wrap items-center gap-3 py-3.5">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{SOCIAL[pf].name} {acc && <Badge tone="green">Connected</Badge>}</p>
+                <p className="text-sm text-ink-500">{acc ? `Posting as ${acc.display_name || SOCIAL[pf].name}` : SOCIAL[pf].note}</p>
+              </div>
+              {acc ? (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" loading={busy === pf} onClick={() => connect(pf)}>Reconnect</Button>
+                  <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => disconnect(pf)}>Disconnect</Button>
+                </div>
+              ) : (
+                <Button size="sm" loading={busy === pf} disabled={status === null || !available} onClick={() => connect(pf)}>{available === false ? 'Opening soon' : 'Connect'}</Button>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </Card>
   )
 }
@@ -402,6 +467,7 @@ export default function Settings() {
         <TwoFactorCard />
         <WhatsappAlertsCard />
         {INSTAGRAM_ENABLED && <InstagramCard />}
+        <ConnectedAccountsCard />
         <PageSettingsCard />
         <PrivacyCard />
         {/* Hidden for now: custom domain and SEO & sharing */}

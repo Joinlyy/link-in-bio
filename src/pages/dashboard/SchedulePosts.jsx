@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CalendarClock, ChevronLeft, ChevronRight, ExternalLink, Film, Image as ImageIcon, ImagePlus, Images, Plus, Trash2, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { errorMessage, invokeFunction, supabase } from '../../lib/supabase'
@@ -8,6 +9,12 @@ import { PageHeading } from './DashboardLayout'
 const MAX_CAPTION = 2200
 const MAX_VIDEO = 50 * 1024 * 1024
 const MAX_PHOTOS = 10
+const PLATFORMS = [
+  { id: 'instagram', label: 'Instagram', dot: 'bg-pink-500' },
+  { id: 'linkedin', label: 'LinkedIn', dot: 'bg-sky-600' },
+  { id: 'youtube', label: 'YouTube', dot: 'bg-red-600' },
+]
+const PLATFORM_NAME = { instagram: 'Instagram', linkedin: 'LinkedIn', youtube: 'YouTube' }
 const KINDS = [
   { id: 'image', label: 'Image', hint: 'One photo', icon: ImageIcon },
   { id: 'carousel', label: 'Carousel', hint: '2 to 10 photos', icon: Images },
@@ -79,6 +86,11 @@ export default function SchedulePosts() {
   const [account, setAccount] = useState(undefined)
   const [posts, setPosts] = useState(null)
   const [allow, setAllow] = useState(null)
+  const [connected, setConnected] = useState({}) // LinkedIn and YouTube accounts, by platform
+  const [social, setSocial] = useState([])
+  const [targets, setTargets] = useState({ instagram: true, linkedin: false, youtube: false })
+  const [ytTitle, setYtTitle] = useState('')
+  const [ytShort, setYtShort] = useState(false)
   const [kind, setKind] = useState('image') // image | carousel | reel
   const [items, setItems] = useState([]) // chosen files: { id, file, preview }
   const [caption, setCaption] = useState('')
@@ -88,12 +100,16 @@ export default function SchedulePosts() {
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
-    const [{ data: acc }, { data: list }] = await Promise.all([
+    const [{ data: acc }, { data: list }, { data: soc }, { data: sp }] = await Promise.all([
       supabase.from('instagram_accounts').select('username, profile_picture_url').eq('owner_id', user.id).maybeSingle(),
       supabase.from('ig_scheduled_posts').select('id, media_type, media_url, items, caption, scheduled_at, status, permalink, error, published_at').eq('owner_id', user.id).order('scheduled_at', { ascending: false }).limit(60),
+      supabase.from('social_accounts').select('platform, display_name').eq('owner_id', user.id),
+      supabase.from('social_posts').select('id, platform, kind, caption, title, media_url, scheduled_at, status, permalink, error, published_at').eq('owner_id', user.id).order('scheduled_at', { ascending: false }).limit(60),
     ])
     setAccount(acc || null)
     setPosts(list || [])
+    setConnected(Object.fromEntries((soc || []).map((a) => [a.platform, a])))
+    setSocial(sp || [])
     supabase.rpc('my_post_allowance').then(({ data }) => setAllow(data || null))
   }, [user.id])
   useEffect(() => {
@@ -101,10 +117,10 @@ export default function SchedulePosts() {
   }, [load])
   // Posts going out right now: look again shortly
   useEffect(() => {
-    if (!posts?.some((p) => p.status === 'publishing' || (p.status === 'scheduled' && new Date(p.scheduled_at) <= new Date()))) return
+    if (![...(posts || []), ...social].some((p) => p.status === 'publishing' || (p.status === 'scheduled' && new Date(p.scheduled_at) <= new Date()))) return
     const t = setTimeout(load, 15000)
     return () => clearTimeout(t)
-  }, [posts, load])
+  }, [posts, social, load])
   const itemsRef = useRef([])
   itemsRef.current = items
   useEffect(() => () => itemsRef.current.forEach((i) => URL.revokeObjectURL(i.preview)), [])
@@ -120,6 +136,13 @@ export default function SchedulePosts() {
     setError('')
     setKind(k)
   }
+  const can = { instagram: Boolean(account), linkedin: Boolean(connected.linkedin), youtube: Boolean(connected.youtube) && kind === 'reel' }
+  const chosen = PLATFORMS.filter((x) => targets[x.id] && can[x.id])
+  useEffect(() => {
+    // Start from what is connected: Instagram if it is, else the first other account
+    if (account === undefined) return
+    setTargets((t) => (t.instagram || t.linkedin || t.youtube ? { ...t, instagram: t.instagram && !!account } : { instagram: !!account, linkedin: !account && !!connected.linkedin, youtube: false }))
+  }, [account, connected.linkedin])
 
   function pick(e) {
     const chosen = [...(e.target.files || [])]
@@ -171,42 +194,69 @@ export default function SchedulePosts() {
     setError('')
     if (!items.length) return setError(kind === 'reel' ? 'Choose a video first.' : kind === 'carousel' ? 'Choose 2 to 10 photos first.' : 'Choose a photo first.')
     if (kind === 'carousel' && items.length < 2) return setError('A carousel needs at least 2 photos.')
+    if (!chosen.length) return setError('Choose where to post: tick at least one account below.')
+    if (targets.linkedin && can.linkedin && kind === 'carousel' && items.length > 9) return setError('LinkedIn carousels take up to 9 photos. Remove one, or untick LinkedIn.')
     if (caption.length > MAX_CAPTION) return setError('The caption is too long.')
+    if (chosen.some((c) => c.id === 'youtube') && !(ytTitle.trim() || caption.trim())) return setError('Add a title for YouTube.')
     if (mode === 'later' && !(new Date(fromIst(at)) > new Date(Date.now() + 2 * 60000))) return setError('Pick a time in the future.')
     setBusy(true)
     const uploaded = []
+    let scheduledAny = false
     try {
       const when = mode === 'now' ? new Date().toISOString() : fromIst(at)
-      let id
+      const group = crypto.randomUUID()
+      // Upload once; every platform uses the same files
+      let ups = []
       if (kind !== 'carousel') {
         const file = items[0].file
         const isVideo = file.type.startsWith('video/')
         const up = await upload(isVideo ? file : await toJpeg(file), isVideo ? 'mp4' : 'jpg', isVideo ? 'video/mp4' : 'image/jpeg')
         uploaded.push(up.path)
-        const { data, error: err } = await supabase.rpc('schedule_ig_post', { p_type: isVideo ? 'REELS' : 'IMAGE', p_path: up.path, p_url: up.url, p_caption: caption, p_at: when })
-        if (err) throw err
-        id = data
+        ups = [up]
       } else {
-        const ups = []
         for (const it of items) {
           const up = await upload(await toCarouselJpeg(it.file), 'jpg', 'image/jpeg')
           uploaded.push(up.path)
           ups.push(up)
         }
-        const { data, error: err } = await supabase.rpc('schedule_ig_carousel', { p_items: ups, p_caption: caption, p_at: when })
-        if (err) throw err
-        id = data
+      }
+      const isVideo = kind === 'reel'
+      const ids = [] // { platform, id }
+      for (const t of chosen) {
+        if (t.id === 'instagram') {
+          const { data, error: err } = kind === 'carousel'
+            ? await supabase.rpc('schedule_ig_carousel', { p_items: ups, p_caption: caption, p_at: when })
+            : await supabase.rpc('schedule_ig_post', { p_type: isVideo ? 'REELS' : 'IMAGE', p_path: ups[0].path, p_url: ups[0].url, p_caption: caption, p_at: when })
+          if (err) throw err
+          scheduledAny = true
+          ids.push({ platform: 'instagram', id: data })
+        } else {
+          const { data, error: err } = await supabase.rpc('schedule_social_post', {
+            p_platform: t.id, p_kind: kind === 'carousel' ? 'CAROUSEL' : isVideo ? 'VIDEO' : 'IMAGE', p_caption: caption,
+            p_title: t.id === 'youtube' ? (ytTitle.trim() || caption.split('\n')[0]).slice(0, 100) : null,
+            p_path: kind === 'carousel' ? null : ups[0].path, p_url: kind === 'carousel' ? null : ups[0].url, p_items: kind === 'carousel' ? ups : [],
+            p_at: when, p_group: group, p_options: t.id === 'youtube' ? { short: ytShort, privacy: 'public' } : {},
+          })
+          if (err) throw err
+          scheduledAny = true
+          ids.push({ platform: t.id, id: data })
+        }
       }
       clearItems()
       setCaption('')
+      setYtTitle('')
+      setYtShort(false)
       if (mode === 'now') {
-        toast('Publishing to Instagram…')
-        const r = await invokeFunction('instagram', { action: 'publish_now', id }).catch((e2) => toast(e2.message, 'error'))
-        if (r?.published) toast('Posted to Instagram.')
-        else if (r?.failed) toast('Instagram did not accept this post. See the reason in the list below.', 'error')
+        toast(`Publishing to ${chosen.map((c) => c.label).join(', ')}…`)
+        for (const x of ids) {
+          const r = await invokeFunction(x.platform === 'instagram' ? 'instagram' : 'social', { action: 'publish_now', id: x.id }).catch((e2) => toast(e2.message, 'error'))
+          if (r?.published) toast(`Posted to ${PLATFORM_NAME[x.platform]}.`)
+          else if (r?.failed) toast(`${PLATFORM_NAME[x.platform]} did not accept this post. See the reason in the list below.`, 'error')
+        }
       } else toast('Scheduled. It goes out at the time you picked.')
     } catch (e2) {
-      if (uploaded.length) await supabase.storage.from('ig-posts').remove(uploaded)
+      // Keep the files if some platform already has the post: it still needs them
+      if (uploaded.length && !scheduledAny) await supabase.storage.from('ig-posts').remove(uploaded)
       setError(errorMessage(e2))
     } finally {
       setBusy(false)
@@ -214,31 +264,41 @@ export default function SchedulePosts() {
     }
   }
 
+  const isIg = (p) => p.platform === 'instagram'
   async function cancel(p) {
-    if (!(await askConfirm({ title: 'Cancel this post?', message: 'It will not be posted to Instagram.', confirmLabel: 'Cancel post' }))) return
-    const { error: err } = await supabase.rpc('cancel_ig_post', { p_id: p.id })
+    if (!(await askConfirm({ title: 'Cancel this post?', message: `It will not be posted to ${PLATFORM_NAME[p.platform]}.`, confirmLabel: 'Cancel post' }))) return
+    const { error: err } = isIg(p) ? await supabase.rpc('cancel_ig_post', { p_id: p.id }) : await supabase.rpc('cancel_social_post', { p_id: p.id })
     if (err) toast(errorMessage(err), 'error')
     load()
   }
   async function retry(p) {
-    const { error: err } = await supabase.rpc('retry_ig_post', { p_id: p.id })
+    const { error: err } = isIg(p) ? await supabase.rpc('retry_ig_post', { p_id: p.id }) : await supabase.rpc('retry_social_post', { p_id: p.id })
     if (err) return toast(errorMessage(err), 'error')
-    await invokeFunction('instagram', { action: 'publish_now', id: p.id }).catch((e2) => toast(e2.message, 'error'))
+    await invokeFunction(isIg(p) ? 'instagram' : 'social', { action: 'publish_now', id: p.id }).catch((e2) => toast(e2.message, 'error'))
     load()
   }
+  async function postNow(p) {
+    await invokeFunction(isIg(p) ? 'instagram' : 'social', { action: 'publish_now', id: p.id }).catch((e) => toast(e.message, 'error'))
+    load()
+  }
+  // One list for every platform, newest first
+  const allPosts = [
+    ...posts.map((p) => ({ ...p, platform: 'instagram', kindLabel: p.media_type === 'REELS' ? 'Reel' : p.media_type === 'CAROUSEL' ? 'Carousel' : 'Photo' })),
+    ...social.map((p) => ({ ...p, kindLabel: p.kind === 'VIDEO' ? 'Video' : p.kind === 'CAROUSEL' ? 'Carousel' : p.kind === 'IMAGE' ? 'Photo' : 'Text', media_type: p.kind === 'VIDEO' ? 'REELS' : p.kind })),
+  ].sort((x, y) => new Date(y.scheduled_at) - new Date(x.scheduled_at))
 
   if (account === undefined || !posts) return <div className="grid h-60 place-items-center"><Spinner /></div>
 
   return (
     <div className="space-y-4">
       <PageHeading title="Schedule posts." italic="Post while you sleep.">
-        Choose what to post (an image, a carousel or a Reel), upload it, write the caption and pick a time. Joinlyy posts it to your Instagram account for you.
+        Choose what to post (an image, a carousel or a video), upload it, write the caption, tick where it goes (Instagram, LinkedIn, YouTube) and pick a time. Joinlyy posts it for you.
       </PageHeading>
 
-      {!account ? (
+      {!account && !connected.linkedin && !connected.youtube ? (
         <Card className="p-6">
-          <Empty icon={CalendarClock} title="Connect Instagram first" action={<Button to="/dashboard/settings">Open Settings</Button>}>
-            Posts are published to the Instagram professional account you connect in Settings.
+          <Empty icon={CalendarClock} title="Connect an account first" action={<Button to="/dashboard/settings">Open Settings</Button>}>
+            Posts are published to the accounts you connect in Settings: Instagram, LinkedIn and YouTube.
           </Empty>
         </Card>
       ) : (
@@ -246,8 +306,8 @@ export default function SchedulePosts() {
           <div className="flex items-center gap-3">
             {account.profile_picture_url && <img src={account.profile_picture_url} alt="" className="size-10 rounded-full object-cover" />}
             <div className="min-w-0">
-              <p className="text-sm text-ink-600">Posting to <b>@{account.username}</b></p>
-              {allow && <p className="text-xs text-ink-500">Today: {allow.posts_today} of {allow.posts_per_day} post{allow.posts_per_day === 1 ? '' : 's'} · This month: {allow.reels_this_month} of {allow.reels_per_month} Reels. <a href="/dashboard/billing" className="underline">Plans</a></p>}
+              <p className="text-sm text-ink-600">Posting to {[account && <b key="i">@{account.username}</b>, connected.linkedin && <b key="l">{connected.linkedin.display_name || 'LinkedIn'}</b>, connected.youtube && <b key="y">{connected.youtube.display_name || 'YouTube'}</b>].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ', ', el] : [el]), [])}</p>
+              {allow && account && <p className="text-xs text-ink-500">Instagram today: {allow.posts_today} of {allow.posts_per_day} post{allow.posts_per_day === 1 ? '' : 's'} · This month: {allow.reels_this_month} of {allow.reels_per_month} Reels. <a href="/dashboard/billing" className="underline">Plans</a></p>}
             </div>
           </div>
           <form onSubmit={submit} className="mt-5 space-y-6">
@@ -315,6 +375,39 @@ export default function SchedulePosts() {
                   <Textarea label="Caption" rows={kind === 'carousel' ? 4 : 6} maxLength={MAX_CAPTION} placeholder="Write your caption, hashtags included" value={caption} onChange={(e) => setCaption(e.target.value)} />
                   <p className="mt-1 text-right text-xs text-ink-500">{caption.length} / {MAX_CAPTION}</p>
                 </div>
+                <div>
+                  <p className="text-sm font-semibold">Post to</p>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {PLATFORMS.map((pf) => {
+                      const ok = pf.id === 'youtube' ? Boolean(connected.youtube) : can[pf.id]
+                      const hidden = pf.id === 'youtube' && kind !== 'reel'
+                      if (hidden) return null
+                      return ok ? (
+                        <button key={pf.id} type="button" role="checkbox" aria-checked={!!targets[pf.id]} onClick={() => setTargets((t) => ({ ...t, [pf.id]: !t[pf.id] }))}
+                          className={`inline-flex h-10 items-center gap-2 rounded-full border-2 px-4 text-sm font-semibold transition ${targets[pf.id] ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white hover:border-ink/30'}`}>
+                          <span className={`size-2.5 rounded-full ${pf.dot}`} />{pf.label}
+                        </button>
+                      ) : (
+                        <Link key={pf.id} to="/dashboard/settings#connected-accounts" className="inline-flex h-10 items-center gap-2 rounded-full border-2 border-dashed border-ink/20 px-4 text-sm font-semibold text-ink-500 hover:border-ink/40">
+                          <Plus className="size-4" />Connect {pf.label}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                  {targets.youtube && can.youtube && (
+                    <div className="mt-4 space-y-3 rounded-2xl bg-cream p-4">
+                      <div>
+                        <label htmlFor="yt-title" className="block text-sm font-semibold">YouTube title</label>
+                        <input id="yt-title" className="field mt-2" maxLength={100} placeholder="A clear title people would search for" value={ytTitle} onChange={(e) => setYtTitle(e.target.value)} />
+                        <p className="mt-1 text-right text-xs text-ink-500">{ytTitle.length} / 100</p>
+                      </div>
+                      <label className="flex items-start gap-2.5 text-sm">
+                        <input type="checkbox" className="mt-0.5 size-4 accent-ink" checked={ytShort} onChange={(e) => setYtShort(e.target.checked)} />
+                        <span>Post as a YouTube Short <span className="text-ink-500">(vertical video up to 60 seconds)</span></span>
+                      </label>
+                    </div>
+                  )}
+                </div>
                 <div className="flex w-fit gap-1 rounded-full bg-cream p-1">
                   {[['later', 'Schedule'], ['now', 'Post now']].map(([v, l]) => (
                     <button key={v} type="button" onClick={() => setMode(v)} className={`h-9 rounded-full px-4 text-sm font-semibold ${mode === v ? 'bg-ink text-white' : 'text-ink-600'}`}>{l}</button>
@@ -327,7 +420,7 @@ export default function SchedulePosts() {
                   </div>
                 )}
                 {error && <Alert>{error}</Alert>}
-                <Button type="submit" loading={busy}>{KIND_BUTTON(kind, mode, items.length)}</Button>
+                <Button type="submit" loading={busy}>{KIND_BUTTON(kind, mode, items.length)}{chosen.length > 1 ? ` to ${chosen.length} accounts` : ''}</Button>
               </div>
             </div>
           </form>
@@ -336,25 +429,25 @@ export default function SchedulePosts() {
 
       <Card className="p-5 sm:p-7">
         <h2 className="text-lg font-bold">Your posts</h2>
-        {posts.length === 0 ? (
+        {allPosts.length === 0 ? (
           <p className="mt-2 text-sm text-ink-500">Scheduled and posted items appear here.</p>
         ) : (
           <div className="mt-3 divide-y divide-ink/5">
-            {posts.map((p) => (
-              <div key={p.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
+            {allPosts.map((p) => (
+              <div key={`${p.platform}-${p.id}`} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
                 <div className="size-16 shrink-0 overflow-hidden rounded-2xl bg-cream">
-                  {p.media_type !== 'REELS' && p.media_url ? <img src={p.media_url} alt="" className="size-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} /> : <span className="grid size-full place-items-center px-1 text-center text-xs font-semibold text-ink-500">{p.media_type === 'REELS' ? 'Reel' : p.media_type === 'CAROUSEL' ? 'Photos' : 'Photo'}</span>}
+                  {p.media_type !== 'REELS' && p.media_url ? <img src={p.media_url} alt="" className="size-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} /> : <span className="grid size-full place-items-center px-1 text-center text-xs font-semibold text-ink-500">{p.kindLabel}</span>}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-sm font-medium">{p.caption || <span className="text-ink-500">No caption</span>}</p>
+                  <p className="line-clamp-2 text-sm font-medium">{p.title || p.caption || <span className="text-ink-500">No caption</span>}</p>
                   <p className="mt-1 text-xs text-ink-500">{p.status === 'published' && p.published_at ? `Posted ${when(p.published_at)}` : `${p.status === 'cancelled' ? 'Was for' : 'For'} ${when(p.scheduled_at)}`} IST</p>
                   {p.status === 'failed' && p.error && <p className="mt-1 text-xs text-red-700">{p.error}</p>}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {p.media_type === 'CAROUSEL' && <Badge>Carousel</Badge>}
+                  <Badge>{PLATFORM_NAME[p.platform]}{p.kindLabel === 'Carousel' ? ' carousel' : ''}</Badge>
                   <Badge tone={TONE[p.status]}>{LABEL[p.status]}</Badge>
                   {p.permalink && <a href={p.permalink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-semibold underline underline-offset-2">View <ExternalLink className="size-3.5" /></a>}
-                  {p.status === 'scheduled' && <Button size="sm" variant="outline" onClick={async () => { await invokeFunction('instagram', { action: 'publish_now', id: p.id }).catch((e) => toast(e.message, 'error')); load() }}>Post now</Button>}
+                  {p.status === 'scheduled' && <Button size="sm" variant="outline" onClick={() => postNow(p)}>Post now</Button>}
                   {p.status === 'failed' && <Button size="sm" variant="outline" onClick={() => retry(p)}>Try again</Button>}
                   {['scheduled', 'failed'].includes(p.status) && <Button size="sm" variant="ghost" onClick={() => cancel(p)} aria-label="Cancel post"><Trash2 className="size-4" /></Button>}
                 </div>
