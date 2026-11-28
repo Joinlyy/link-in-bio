@@ -91,6 +91,10 @@ export default function SchedulePosts() {
   const [targets, setTargets] = useState({ instagram: true, linkedin: false, youtube: false })
   const [ytTitle, setYtTitle] = useState('')
   const [ytShort, setYtShort] = useState(false)
+  const [sameCaption, setSameCaption] = useState(true) // one caption for every account, or one each
+  const [captions, setCaptions] = useState({})
+  const [sameTime, setSameTime] = useState(true) // one time for every account, or one each
+  const [ats, setAts] = useState({})
   const [kind, setKind] = useState('image') // image | carousel | reel
   const [items, setItems] = useState([]) // chosen files: { id, file, preview }
   const [caption, setCaption] = useState('')
@@ -138,6 +142,20 @@ export default function SchedulePosts() {
   }
   const can = { instagram: Boolean(account), linkedin: Boolean(connected.linkedin), youtube: Boolean(connected.youtube) && kind === 'reel' }
   const chosen = PLATFORMS.filter((x) => targets[x.id] && can[x.id])
+  const multi = chosen.length > 1
+  const split = multi && !sameCaption
+  const CAP_MAX = { instagram: 2200, linkedin: 3000, youtube: 5000 }
+  const captionFor = (id) => (split ? captions[id] ?? caption : caption)
+  const atFor = (id) => (multi && !sameTime ? ats[id] || at : at)
+  function splitCaptions() {
+    // Start every account from what is already written
+    setCaptions(Object.fromEntries(PLATFORMS.map((x) => [x.id, captions[x.id] ?? caption])))
+    setSameCaption(false)
+  }
+  function splitTimes() {
+    setAts(Object.fromEntries(PLATFORMS.map((x) => [x.id, ats[x.id] || at])))
+    setSameTime(false)
+  }
   useEffect(() => {
     // Start from what is connected: Instagram if it is, else the first other account
     if (account === undefined) return
@@ -196,14 +214,16 @@ export default function SchedulePosts() {
     if (kind === 'carousel' && items.length < 2) return setError('A carousel needs at least 2 photos.')
     if (!chosen.length) return setError('Choose where to post: tick at least one account below.')
     if (targets.linkedin && can.linkedin && kind === 'carousel' && items.length > 9) return setError('LinkedIn carousels take up to 9 photos. Remove one, or untick LinkedIn.')
-    if (caption.length > MAX_CAPTION) return setError('The caption is too long.')
-    if (chosen.some((c) => c.id === 'youtube') && !(ytTitle.trim() || caption.trim())) return setError('Add a title for YouTube.')
-    if (mode === 'later' && !(new Date(fromIst(at)) > new Date(Date.now() + 2 * 60000))) return setError('Pick a time in the future.')
+    for (const c of chosen) {
+      if (captionFor(c.id).length > CAP_MAX[c.id]) return setError(`The ${c.label} caption is too long (${CAP_MAX[c.id]} characters at most).`)
+      if (mode === 'later' && !(new Date(fromIst(atFor(c.id))) > new Date(Date.now() + 2 * 60000))) return setError(`Pick a time in the future${multi ? ` for ${c.label}` : ''}.`)
+    }
+    if (chosen.some((c) => c.id === 'youtube') && !(ytTitle.trim() || captionFor('youtube').trim())) return setError('Add a title for YouTube.')
     setBusy(true)
     const uploaded = []
     let scheduledAny = false
     try {
-      const when = mode === 'now' ? new Date().toISOString() : fromIst(at)
+      const whenOf = (id) => (mode === 'now' ? new Date().toISOString() : fromIst(atFor(id)))
       const group = crypto.randomUUID()
       // Upload once; every platform uses the same files
       let ups = []
@@ -225,17 +245,17 @@ export default function SchedulePosts() {
       for (const t of chosen) {
         if (t.id === 'instagram') {
           const { data, error: err } = kind === 'carousel'
-            ? await supabase.rpc('schedule_ig_carousel', { p_items: ups, p_caption: caption, p_at: when })
-            : await supabase.rpc('schedule_ig_post', { p_type: isVideo ? 'REELS' : 'IMAGE', p_path: ups[0].path, p_url: ups[0].url, p_caption: caption, p_at: when })
+            ? await supabase.rpc('schedule_ig_carousel', { p_items: ups, p_caption: captionFor('instagram'), p_at: whenOf('instagram') })
+            : await supabase.rpc('schedule_ig_post', { p_type: isVideo ? 'REELS' : 'IMAGE', p_path: ups[0].path, p_url: ups[0].url, p_caption: captionFor('instagram'), p_at: whenOf('instagram') })
           if (err) throw err
           scheduledAny = true
           ids.push({ platform: 'instagram', id: data })
         } else {
           const { data, error: err } = await supabase.rpc('schedule_social_post', {
-            p_platform: t.id, p_kind: kind === 'carousel' ? 'CAROUSEL' : isVideo ? 'VIDEO' : 'IMAGE', p_caption: caption,
-            p_title: t.id === 'youtube' ? (ytTitle.trim() || caption.split('\n')[0]).slice(0, 100) : null,
+            p_platform: t.id, p_kind: kind === 'carousel' ? 'CAROUSEL' : isVideo ? 'VIDEO' : 'IMAGE', p_caption: captionFor(t.id),
+            p_title: t.id === 'youtube' ? (ytTitle.trim() || captionFor('youtube').split('\n')[0]).slice(0, 100) : null,
             p_path: kind === 'carousel' ? null : ups[0].path, p_url: kind === 'carousel' ? null : ups[0].url, p_items: kind === 'carousel' ? ups : [],
-            p_at: when, p_group: group, p_options: t.id === 'youtube' ? { short: ytShort, privacy: 'public' } : {},
+            p_at: whenOf(t.id), p_group: group, p_options: t.id === 'youtube' ? { short: ytShort, privacy: 'public' } : {},
           })
           if (err) throw err
           scheduledAny = true
@@ -244,6 +264,10 @@ export default function SchedulePosts() {
       }
       clearItems()
       setCaption('')
+      setCaptions({})
+      setSameCaption(true)
+      setSameTime(true)
+      setAts({})
       setYtTitle('')
       setYtShort(false)
       if (mode === 'now') {
@@ -371,10 +395,20 @@ export default function SchedulePosts() {
               </div>
 
               <div className="space-y-5">
-                <div>
-                  <Textarea label="Caption" rows={kind === 'carousel' ? 4 : 6} maxLength={MAX_CAPTION} placeholder="Write your caption, hashtags included" value={caption} onChange={(e) => setCaption(e.target.value)} />
-                  <p className="mt-1 text-right text-xs text-ink-500">{caption.length} / {MAX_CAPTION}</p>
-                </div>
+                {!split && (
+                  <div>
+                    <Textarea label={multi ? 'Caption (same on every account)' : 'Caption'} rows={kind === 'carousel' ? 4 : 6} maxLength={chosen.some((c) => c.id === 'instagram') || !chosen.length ? MAX_CAPTION : 3000} placeholder="Write your caption, hashtags included" value={caption} onChange={(e) => setCaption(e.target.value)} />
+                  </div>
+                )}
+                {split && (
+                  <div className="space-y-4">
+                    {chosen.map((c) => (
+                      <div key={c.id}>
+                        <Textarea label={`${c.label} caption`} rows={4} maxLength={CAP_MAX[c.id]} placeholder={`Caption for ${c.label}`} value={captions[c.id] ?? ''} onChange={(e) => setCaptions((m) => ({ ...m, [c.id]: e.target.value }))} />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div>
                   <p className="text-sm font-semibold">Post to</p>
                   <div className="mt-2.5 flex flex-wrap gap-2">
@@ -394,6 +428,20 @@ export default function SchedulePosts() {
                       )
                     })}
                   </div>
+                  {multi && (
+                    <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" className="size-4 accent-ink" checked={!sameCaption} onChange={(e) => (e.target.checked ? splitCaptions() : setSameCaption(true))} />
+                        <span>Write a different caption for each account</span>
+                      </label>
+                      {mode === 'later' && (
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="size-4 accent-ink" checked={!sameTime} onChange={(e) => (e.target.checked ? splitTimes() : setSameTime(true))} />
+                          <span>Pick a different time for each account</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
                   {targets.youtube && can.youtube && (
                     <div className="mt-4 space-y-3 rounded-2xl bg-cream p-4">
                       <div>
@@ -413,12 +461,21 @@ export default function SchedulePosts() {
                     <button key={v} type="button" onClick={() => setMode(v)} className={`h-9 rounded-full px-4 text-sm font-semibold ${mode === v ? 'bg-ink text-white' : 'text-ink-600'}`}>{l}</button>
                   ))}
                 </div>
-                {mode === 'later' && (
+                {mode === 'later' && (multi && !sameTime ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {chosen.map((c) => (
+                      <div key={c.id}>
+                        <label htmlFor={`when-${c.id}`} className="block text-sm font-semibold">{c.label}: when (India time)</label>
+                        <input id={`when-${c.id}`} type="datetime-local" className="field mt-3" min={istNow(5)} value={ats[c.id] || at} onChange={(e) => setAts((m) => ({ ...m, [c.id]: e.target.value }))} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                   <div>
                     <label htmlFor="post-when" className="block text-sm font-semibold">When (India time)</label>
-                    <input id="post-when" type="datetime-local" className="field mt-3 max-w-xs" min={istNow(5)} value={at} onChange={(e) => setAt(e.target.value)} />
+                    <input id="post-when" type="datetime-local" className="field mt-3 max-w-xs" min={istNow(5)} value={at} onChange={(e) => { setAt(e.target.value) }} />
                   </div>
-                )}
+                ))}
                 {error && <Alert>{error}</Alert>}
                 <Button type="submit" loading={busy}>{KIND_BUTTON(kind, mode, items.length)}{chosen.length > 1 ? ` to ${chosen.length} accounts` : ''}</Button>
               </div>
