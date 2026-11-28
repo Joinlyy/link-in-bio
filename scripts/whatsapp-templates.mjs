@@ -29,7 +29,7 @@ const TEMPLATES = [
   },
   {
     name: 'creator_post_status',
-    text: 'Your scheduled Instagram post for {{1}} {{2}}. {{3}} You can review it at {{4}}.',
+    text: 'Your scheduled Instagram post for {{1}} {{2}}. {{3}} You can review it at {{4}} in your dashboard.',
     example: ['28 Nov, 7:00 pm IST', 'was published successfully', 'It is now live on your Instagram profile.', 'https://joinlyy.com/dashboard/schedule'],
   },
 ]
