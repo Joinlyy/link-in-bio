@@ -13,6 +13,9 @@ const LIMIT_FIELDS = [
   ['max_products', 'Live products / page'],
   ['max_automations', 'DM automations'],
   ['dm_monthly_limit', 'DMs / month'],
+  ['schedule_posts_per_month', 'Scheduled posts / month'],
+  ['schedule_videos_per_month', 'Scheduled videos / month'],
+  ['schedule_trial_days', 'Scheduler free trial (days)'],
   ['analytics_days', 'Analytics days'],
   ['commission_pct', 'Commission %'],
 ]

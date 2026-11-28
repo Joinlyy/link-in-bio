@@ -345,7 +345,13 @@ export default function SchedulePosts() {
             {account?.profile_picture_url && <img src={account.profile_picture_url} alt="" className="size-10 rounded-full object-cover" />}
             <div className="min-w-0">
               <p className="text-sm text-ink-600">Posting to {[account && <b key="i">@{account.username}</b>, connected.linkedin && <b key="l">{connected.linkedin.display_name || 'LinkedIn'}</b>, connected.youtube && <b key="y">{connected.youtube.display_name || 'YouTube'}</b>, ...fbPages.map((f) => <b key={f.id}>{f.display_name}</b>)].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ', ', el] : [el]), [])}</p>
-              {allow && account && <p className="text-xs text-ink-500">Instagram today: {allow.posts_today} of {allow.posts_per_day} post{allow.posts_per_day === 1 ? '' : 's'} · This month: {allow.reels_this_month} of {allow.reels_per_month} Reels. <a href="/dashboard/billing" className="underline">Plans</a></p>}
+              {allow && (
+                <p className="text-xs text-ink-500">
+                  {allow.trial_days != null && <b className="text-ink-700">{allow.trial_ends_at ? `Free trial ends ${new Date(allow.trial_ends_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}. ` : `Your ${allow.trial_days} day free trial starts with your first scheduled post. `}</b>}
+                  This month: {allow.posts_this_month}{allow.posts_per_month != null && ` of ${allow.posts_per_month}`} posts{allow.videos_per_month != null && `, ${allow.videos_this_month} of ${allow.videos_per_month} videos`}. Waiting to post: {allow.waiting_mb} of {allow.cap_mb} MB.{' '}
+                  <a href="/dashboard/billing" className="underline">Plans</a>
+                </p>
+              )}
             </div>
           </div>
           <form onSubmit={submit} className="mt-5 space-y-6">
