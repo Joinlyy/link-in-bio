@@ -18,18 +18,18 @@ const BASE_PAGES = [
         { list: ['Sell digital products, PDFs, presets, courses and memberships', 'Take paid 1:1 calls and webinar bookings with a calendar', 'Collect emails and phone numbers with lead forms', 'Show your latest Reel, YouTube video or Spotify playlist', 'Add a brand-deal enquiry form so sponsors can reach you'] },
       ] },
       { h2: 'Made for how India pays and chats', body: [
-        'Your customers already pay by UPI and talk on WhatsApp. Joinlyy is built around both: buyers pay by UPI at checkout, your earning is sent to your UPI ID, and you can get a WhatsApp message the moment an order, lead or brand enquiry arrives.',
+        'Your customers already pay by UPI and talk on WhatsApp. Joinlyy is built around both: buyers pay by UPI at checkout, your earning is sent to your UPI ID within 2 working days, and you get an email the moment an order, lead or brand enquiry arrives (WhatsApp alerts on Pro).',
         'Pages work in Hindi and English, with fonts that render Devanagari properly, and there are Hindi templates for recipes, teachers, parents and spiritual creators.',
       ] },
       { h2: '33 templates, then make it yours', body: [
         'Start from a template for your niche, from fashion and fitness to food, travel, education and gaming. Change colours, fonts, buttons and layout, or keep it as it is. You can publish in minutes.',
       ] },
       { h2: 'Know what works', body: [
-        'See page views, link clicks, where visitors come from and which links earn. Creator and Pro plans keep a longer history and let you export your leads.',
+        'See page views, link clicks, where visitors come from and which links earn. The free plan keeps 30 days of history; Creator keeps 90 days and Pro a full year, and paid plans let you export your leads.',
       ] },
     ],
     faq: [
-      ['Is Joinlyy free?', 'Yes. The Starter plan is free, with one page, free comment to DM automation and the core selling tools. Paid plans add more automations, WhatsApp alerts, more history and extras.'],
+      ['Is Joinlyy free?', 'Yes. The Starter plan is free, with one page, free comment to DM automation and the core selling tools. Paid plans add more automations, longer history, higher posting limits and extras, and Pro adds WhatsApp alerts.'],
       ['Can I take UPI payments?', 'Yes. Buyers pay at checkout by UPI, card or net banking, and we send your earning to your UPI ID within 2 working days, after a platform charge of 15%, 10% or 5% by plan.'],
       ['Can I schedule Instagram posts?', 'Yes, on every plan. Upload photos, a carousel or a Reel, pick a time and Joinlyy posts it for you. Starter allows 1 post a day and 15 Reels a month.'],
       ['Does it work in Hindi?', 'Yes. Pages, buttons and several templates are available in Hindi and English.'],
@@ -102,13 +102,13 @@ const BASE_PAGES = [
   {
     slug: 'linktree-alternative-india',
     title: 'Linktree Alternative for Indian Creators | Joinlyy',
-    description: 'Looking for a Linktree alternative? Joinlyy adds UPI payments, free Instagram comment to DM automation, WhatsApp alerts and Hindi support to your link in bio.',
+    description: 'Looking for a Linktree alternative? Joinlyy adds UPI payments, free Instagram comment to DM automation, instant order alerts and Hindi support to your link in bio.',
     h1: 'A Linktree alternative made for India',
     kicker: 'Comparison',
     intro: 'If you are comparing link in bio tools like Linktree, Beacons or Stan, here is what Joinlyy is built around: the way Indian creators sell, get paid and talk to their audience.',
     sections: [
       { h2: 'What is different', body: [
-        { list: ['UPI payments: buyers pay your UPI ID directly', 'Free Instagram comment to DM automation on the Starter plan', 'WhatsApp alerts for new orders, leads and brand enquiries', 'Hindi and English pages, with Hindi templates', 'Prices in rupees: Creator ₹199 a month, Pro ₹399 a month', 'A one-click media kit PDF to send to brands'] },
+        { list: ['UPI payments at checkout, with your earnings sent to your UPI ID in 2 working days', 'Free Instagram comment to DM automation on the Starter plan', 'Email alerts for new orders, leads and brand enquiries, and WhatsApp alerts on Pro', 'Hindi and English pages, with Hindi templates', 'Prices in rupees: Creator ₹199 a month, Pro ₹399 a month', 'A one-click media kit PDF to send to brands'] },
       ] },
       { h2: 'What you still get', body: [
         'Everything you expect from a link in bio: unlimited links, social icons, 33 templates, themes and fonts, analytics, lead capture, embeds for YouTube, Instagram and Spotify, and a custom look for every page.',
@@ -185,12 +185,12 @@ const BASE_PAGES = [
         { list: ['One link in bio page with all 33 templates', 'Unlimited links, social icons and embeds', 'Free comment to DM automation (10 automations, 1,000 DMs a month)', 'Free Instagram post scheduler: 1 post a day and 15 Reels a month', 'Digital products, paid sessions and lead forms', 'Media kit and PDF download', 'Page analytics and a Hindi and English interface'] },
       ] },
       { h2: 'Upgrade when it makes sense', body: [
-        'Creator is ₹199 a month and Pro is ₹399 a month, with two months free on yearly billing. Paid plans add WhatsApp alerts, more automations and DMs, coupons and offers, longer analytics history, lead export, team access and removing our branding.',
+        'Creator is ₹199 a month (list price ₹299) and Pro is ₹399 a month (list price ₹599), with two months free on yearly billing. Paid plans add more automations and DMs, higher Instagram posting limits, coupons and offers, longer analytics history, lead export, team access and removing our branding.',
       ] },
     ],
     faq: [
       ['Is the free plan really free?', 'Yes, there is no trial and no card needed. Starter stays free.'],
-      ['What do I get when I upgrade?', 'More automations and DMs, WhatsApp alerts for you and your buyers, sales tools, longer analytics and priority help.'],
+      ['What do I get when I upgrade?', 'More automations and DMs, sales tools, longer analytics and priority help, and Pro adds WhatsApp alerts.'],
     ],
     related: ['link-in-bio-for-indian-creators', 'linktree-alternative-india', 'instagram-comment-to-dm-automation'],
   },

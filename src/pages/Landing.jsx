@@ -602,7 +602,7 @@ function FinalCta() {
 
 export default function Landing() {
   useEffect(() => {
-    applySeo({ title: `${APP_NAME}: Free Link in Bio + Instagram Comment to DM Automation (India)`, description: 'One link in bio to sell, book and get paid by UPI. Schedule your Instagram posts, auto-DM every comment and get WhatsApp alerts. Free for Indian creators, in Hindi and English.', path: '/' })
+    applySeo({ title: `${APP_NAME}: Free Link in Bio + Instagram Comment to DM Automation (India)`, description: 'One link in bio to sell, book and get paid by UPI. Schedule your Instagram posts, auto-DM every comment and get instant order alerts. Free for Indian creators, in Hindi and English.', path: '/' })
     captureRef()
   }, [])
   return (
